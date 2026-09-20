@@ -1,0 +1,97 @@
+# ---------------------------------------------------------------------------
+# Cookfeed API — .NET 10 + EF Core
+# Shared/editor/OS ignores live in the repo-root .gitignore.
+# ---------------------------------------------------------------------------
+
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+bld/
+artifacts/
+publish/
+[Ll]og/
+[Ll]ogs/
+
+# Publish profiles
+*.publishsettings
+PublishScripts/
+*.pubxml
+*.pubxml.user
+*.azurePubxml
+
+# NuGet / build intermediates
+project.lock.json
+project.fragment.lock.json
+*.binlog
+*.nupkg
+*.snupkg
+packages/
+!packages/build/
+*.nuget.props
+*.nuget.targets
+*.dll
+*.exe
+*.pdb
+*.cache
+*.tlog
+*.ilk
+*.obj
+*.iobj
+*.ipdb
+*.tmp_proj
+*_wpftmp.csproj
+*.VisualState.xml
+StyleCopReport.xml
+
+# Test results / coverage
+[Tt]est[Rr]esult*/
+TestResults/
+coverage/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+*.trx
+.coverlet/
+
+# Visual Studio / user-specific project files
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# ---------------------------------------------------------------------------
+# EF Core
+# NOTE: migrations under src/Cookfeed.Infrastructure/Persistence/Migrations ARE
+# committed. Only tooling/scratch output is ignored here.
+# ---------------------------------------------------------------------------
+*.efbundle
+efbundle
+efbundle.exe
+*.dacpac
+ef-*.log
+
+# ---------------------------------------------------------------------------
+# Local configuration
+# ---------------------------------------------------------------------------
+appsettings.Local.json
+appsettings.*.Local.json
+
+# ---------------------------------------------------------------------------
+# Docker / local database data
+# ---------------------------------------------------------------------------
+docker-compose.override.yml
+.pgdata/
+pgdata/
