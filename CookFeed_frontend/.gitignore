@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------------
+# Cookfeed frontend — Angular
+# Shared/editor/OS ignores live in the repo-root .gitignore.
+# ---------------------------------------------------------------------------
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+
+# Build output
+dist/
+out-tsc/
+bazel-out/
+tmp/
+
+# Angular / tooling caches
+.angular/
+.nx/cache
+.nx/workspace-data
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Test / profiling output
+coverage/
+connect.lock
+libpeerconnection.log
+testem.log
+chrome-profiler-events*.json
+speed-measure-plugin*.json
+
+# Package-manager debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Misc
+typings/
+
+# Prototype write-up material - drafting notes, not part of the code
+prototype/NOTES.md

@@ -1,0 +1,53 @@
+# ---------------------------------------------------------------------------
+# Cookfeed — root ignores (shared across all projects in this repo)
+# Per-project ignores live in CookFeed_api/.gitignore and
+# CookFeed_frontend/.gitignore.
+# ---------------------------------------------------------------------------
+
+# Claude Code project instructions and local state (local only, never committed)
+CLAUDE.md
+.claude/
+
+# ---------------------------------------------------------------------------
+# IDEs / editors
+# ---------------------------------------------------------------------------
+.vs/
+.vscode/
+.idea/
+.history/
+*.code-workspace
+*.sln.iml
+.vsconfig
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+*~
+*.swp
+*.swo
+
+# ---------------------------------------------------------------------------
+# OS
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------------
+# Secrets / local environment (any project)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+secrets.json
+
+# ---------------------------------------------------------------------------
+# Logs / scratch
+# ---------------------------------------------------------------------------
+*.log
+tmp/

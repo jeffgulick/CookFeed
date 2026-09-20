@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reviews | Three Weeknights in Japan | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body onload="startReviewsPage()">
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Meal plan</a>
+      <a class="navlink active" href="reviews.html">Reviews</a>
+      <a class="navlink" href="creator.html">Creator</a>
+      <a class="cart-chip" href="cart.html">Cart</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+
+    <span class="pill">Reviews</span>
+    <h1>Three Weeknights in Japan</h1>
+    <p class="byline">
+      by <a href="creator.html">kenji-kitchen</a> &middot;
+      <a href="index.html">back to the meal plan</a>
+    </p>
+
+    <div class="card summary">
+      <div>
+        <div class="big-num" id="averageNumber">0.0</div>
+        <div class="stars" id="averageStars"></div>
+        <div class="meta"><span id="reviewCount">0</span> reviews</div>
+      </div>
+      <div>
+        <div class="big-num" id="recommendPercent">0%</div>
+        <div class="meta">would recommend this plan</div>
+      </div>
+    </div>
+
+    <h2>What cooks are saying</h2>
+    <div id="reviewList"></div>
+
+    <h2>Leave your feedback</h2>
+    <div class="card">
+
+      <div class="field">
+        <label for="reviewerName">Your name</label>
+        <input type="text" id="reviewerName" placeholder="First name and last initial">
+      </div>
+
+      <div class="field">
+        <label for="reviewRating">Rating</label>
+        <select id="reviewRating">
+          <option value="5">5 - Excellent</option>
+          <option value="4">4 - Good</option>
+          <option value="3">3 - Fine</option>
+          <option value="2">2 - Disappointing</option>
+          <option value="1">1 - Poor</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Would you recommend this plan to another home cook?</label>
+        <div class="radio-row">
+          <label><input type="radio" name="recommend" id="recommendYes" checked> Yes</label>
+          <label><input type="radio" name="recommend" id="recommendNo"> No</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="reviewComment">Your review</label>
+        <textarea id="reviewComment" placeholder="Did the plan save you a trip? Did the shopping list match what you actually needed?"></textarea>
+      </div>
+
+      <button class="btn-primary" onclick="addReview()">Post review</button>
+
+    </div>
+
+    <div class="cta-foot">
+      <p><strong>Ready to cook these three?</strong></p>
+      <p><a href="index.html">&larr; Back to Three Weeknights in Japan</a></p>
+    </div>
+
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/reviews.js"></script>
+</body>
+</html>

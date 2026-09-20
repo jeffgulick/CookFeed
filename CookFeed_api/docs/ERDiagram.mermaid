@@ -1,0 +1,158 @@
+erDiagram
+    users ||--o{ user_roles : "has"
+    roles ||--o{ user_roles : "granted as"
+    users ||--o| creator_profiles : "may be"
+    creator_profiles ||--o{ recipes : "publishes"
+    creator_profiles ||--o{ products : "sells"
+    recipes ||--o{ recipe_steps : "has"
+    recipes ||--o{ recipe_ingredients : "requires"
+    ingredients ||--o{ recipe_ingredients : "used in"
+    units ||--o{ recipe_ingredients : "measured in"
+    units |o--o{ ingredients : "preferred shopping unit"
+    users ||--o{ saved_recipes : "saves"
+    recipes ||--o{ saved_recipes : "saved as"
+    users ||--o{ meal_plans : "plans"
+    meal_plans ||--o{ meal_plan_entries : "contains"
+    recipes ||--o{ meal_plan_entries : "scheduled as"
+    products ||--o{ product_recipes : "bundles"
+    recipes ||--o{ product_recipes : "included in"
+    users ||--o{ cart_items : "cart"
+    products ||--o{ cart_items : "in cart"
+    users ||--o{ orders : "places"
+    orders ||--o{ order_items : "contains"
+    products ||--o{ order_items : "purchased as"
+
+    users {
+        int id PK
+        varchar email UK
+        varchar display_name
+        varchar password_hash
+        timestamptz created_at
+    }
+    roles {
+        int id PK
+        varchar name UK
+    }
+    user_roles {
+        int user_id PK,FK
+        int role_id PK,FK
+        timestamptz granted_at
+    }
+    creator_profiles {
+        int user_id PK,FK
+        varchar handle UK
+        varchar bio
+        varchar avatar_url
+        bool is_verified
+    }
+    recipes {
+        int id PK
+        int creator_id FK
+        varchar title
+        varchar description
+        varchar video_url
+        varchar thumbnail_url
+        int servings
+        int prep_minutes
+        int cook_minutes
+        bool is_published
+        timestamptz created_at
+        timestamptz published_at
+        int save_count "denormalized"
+    }
+    recipe_steps {
+        int id PK
+        int recipe_id FK
+        int step_number
+        varchar instruction
+        int video_timestamp_seconds
+        int duration_minutes
+    }
+    units {
+        int id PK
+        varchar name UK
+        varchar abbreviation UK
+        varchar category "Volume|Mass|Count"
+        numeric to_base_factor
+        bool is_metric
+    }
+    ingredients {
+        int id PK
+        varchar name UK "canonical"
+        varchar category "aisle"
+        numeric density_g_per_ml
+        int preferred_shopping_unit_id FK
+    }
+    recipe_ingredients {
+        int id PK
+        int recipe_id FK
+        int ingredient_id FK
+        int unit_id FK
+        numeric quantity
+        varchar display_text
+        varchar preparation
+        int sort_order
+        bool is_optional
+    }
+    saved_recipes {
+        int user_id PK,FK
+        int recipe_id PK,FK
+        timestamptz saved_at
+    }
+    meal_plans {
+        int id PK
+        int user_id FK
+        varchar name
+        date week_start
+        timestamptz created_at
+    }
+    meal_plan_entries {
+        int id PK
+        int meal_plan_id FK
+        int recipe_id FK
+        date planned_date
+        varchar slot
+        int servings_override
+    }
+    products {
+        int id PK
+        int creator_id FK
+        varchar type "RecipeCollection|MealPlan"
+        varchar title
+        varchar description
+        varchar cover_image_url
+        int price_cents
+        char currency
+        bool is_active
+        timestamptz created_at
+    }
+    product_recipes {
+        int product_id PK,FK
+        int recipe_id PK,FK
+        int sort_order
+        int day_offset
+        varchar slot
+    }
+    cart_items {
+        int user_id PK,FK
+        int product_id PK,FK
+        timestamptz added_at
+    }
+    orders {
+        int id PK
+        int user_id FK
+        varchar status
+        timestamptz placed_at
+        timestamptz paid_at
+        int total_cents "denormalized"
+        char currency
+        varchar payment_reference
+    }
+    order_items {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int creator_id "snapshot"
+        varchar product_title "snapshot"
+        int unit_price_cents "snapshot"
+    }

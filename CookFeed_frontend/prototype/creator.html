@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kenji-kitchen | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body onload="startCreatorPage()">
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Meal plan</a>
+      <a class="navlink" href="reviews.html">Reviews</a>
+      <a class="navlink active" href="creator.html">Creator</a>
+      <a class="cart-chip" href="cart.html">Cart</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+
+    <div class="card creator-head" style="margin-top:24px">
+      <img src="images/avatar-kenji.svg" alt="Profile picture for kenji-kitchen">
+      <div>
+        <h1 style="margin:0">Kenji Watanabe <span class="verified">&#10003; Verified</span></h1>
+        <p class="handle">@kenji-kitchen</p>
+        <p class="lede" style="margin:10px 0 0">
+          Japanese home cooking with a weeknight clock. Everything under 30 minutes,
+          everything shoppable.
+        </p>
+        <div class="stat-row">
+          <div class="stat"><b id="followerCount">18,400</b><span>followers</span></div>
+          <div class="stat"><b>3</b><span>published recipes</span></div>
+          <div class="stat"><b>1,624</b><span>total saves</span></div>
+        </div>
+      </div>
+      <button class="btn-primary" id="followButton" onclick="followCreator()">Follow</button>
+    </div>
+
+    <h2>Recipes</h2>
+    <div class="sort-row">
+      <span class="meta">Sort by:</span>
+      <button class="btn-small saved" id="sortSaves" onclick="showRecipes('saves')">Most saved</button>
+      <button class="btn-small" id="sortNewest" onclick="showRecipes('newest')">Newest</button>
+    </div>
+    <div class="grid" id="creatorRecipes"></div>
+
+    <h2>For sale</h2>
+    <div class="card">
+      <span class="pill">Meal plan</span>
+      <h3 style="margin:10px 0 4px">Three Weeknights in Japan</h3>
+      <p class="meta">Monday, Tuesday, Wednesday dinners, all under 30 minutes. 3 recipes, 1 shopping list.</p>
+      <div class="buybar">
+        <span class="price" id="planPrice">$12.99</span>
+        <a href="index.html"><button class="btn-primary">View this plan</button></a>
+      </div>
+    </div>
+
+    <div class="cta-foot">
+      <p><strong>New here?</strong> Start with the plan that made this kitchen popular.</p>
+      <p><a href="index.html">&larr; Three Weeknights in Japan</a> &middot; <a href="reviews.html">read the reviews</a></p>
+    </div>
+
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/creator.js"></script>
+</body>
+</html>
