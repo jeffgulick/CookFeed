@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: cookfeed-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cookfeed
+    ports:
+      # host:container — the API on the WSL host connects to localhost:5432
+      - "5432:5432"
+    volumes:
+      # Named volume: the data survives `docker compose down` and container rebuilds.
+      - cookfeed_pgdata:/var/lib/postgresql/data
+      # Anything in this folder runs ONCE, the first time the data volume is created.
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # `docker compose up -d --wait` blocks until this passes, so scripts never race the server.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cookfeed"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  cookfeed_pgdata:
