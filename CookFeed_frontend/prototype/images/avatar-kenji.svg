@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Profile picture for the creator kenji-kitchen">
+  <circle cx="100" cy="100" r="100" fill="#fbe0c4"/>
+  <path d="M46 62 q54 -30 108 0 q6 -34 -54 -36 q-60 2 -54 36 Z" fill="#f7f3ea"/>
+  <rect x="44" y="56" width="112" height="14" rx="7" fill="#efe8da"/>
+  <circle cx="100" cy="112" r="46" fill="#e8b184"/>
+  <path d="M54 104 q46 -26 92 0 v-8 q-46 -30 -92 0 Z" fill="#3a2f26"/>
+  <circle cx="84" cy="112" r="5" fill="#3a2f26"/>
+  <circle cx="116" cy="112" r="5" fill="#3a2f26"/>
+  <path d="M86 132 q14 12 28 0" stroke="#3a2f26" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M40 200 q12 -48 60 -48 q48 0 60 48 Z" fill="#c2410c"/>
+</svg>

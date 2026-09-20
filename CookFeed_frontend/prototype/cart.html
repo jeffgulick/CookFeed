@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your cart | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body onload="startCartPage()">
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Meal plan</a>
+      <a class="navlink" href="reviews.html">Reviews</a>
+      <a class="navlink" href="creator.html">Creator</a>
+      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">1</span></a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+
+    <span class="pill">Checkout</span>
+    <h1>Your cart</h1>
+    <p class="byline"><span id="itemCount">1</span> item &middot; digital plans, yours to keep</p>
+
+    <div id="cartArea">
+      <div id="cartLines"></div>
+      <p class="meta" id="emptyNote"></p>
+
+      <div class="card totals">
+        <div class="total-row"><span>Subtotal</span><span id="subtotal">$12.99</span></div>
+        <div class="total-row"><span>Tax</span><span>$0.00</span></div>
+        <div class="total-row"><span>Delivery</span><span>None &mdash; digital</span></div>
+        <div class="total-row grand"><span>Total</span><span id="orderTotal">$12.99</span></div>
+        <button class="btn-primary" id="checkoutButton" onclick="checkout()">Place order</button>
+        <p class="meta" style="margin:10px 0 0">
+          This prototype does not take payment. Placing an order shows the confirmation a
+          real checkout would produce.
+        </p>
+      </div>
+    </div>
+
+    <div class="cta-foot">
+      <p><strong>Still deciding?</strong></p>
+      <p><a href="reviews.html">Read what other cooks said</a> &middot;
+         <a href="index.html">back to the meal plan</a></p>
+    </div>
+
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/cart.js"></script>
+</body>
+</html>

@@ -39,3 +39,6 @@ lerna-debug.log*
 
 # Misc
 typings/
+
+# Prototype write-up material - drafting notes, not part of the code
+prototype/NOTES.md

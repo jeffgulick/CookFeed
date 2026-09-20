@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>10-Minute Ginger Garlic Stir-Fry | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body onload="startRecipePage(7)">
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Meal plan</a>
+      <a class="navlink" href="reviews.html">Reviews</a>
+      <a class="navlink" href="creator.html">Creator</a>
+      <a class="cart-chip" href="cart.html">Cart</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+
+    <p class="crumb"><a href="index.html">Three Weeknights in Japan</a> &rsaquo; Tuesday</p>
+
+    <span class="pill">Tuesday</span>
+    <h1>10-Minute Ginger Garlic Stir-Fry</h1>
+    <p class="byline">
+      by <a href="creator.html">kenji-kitchen</a>
+      <span class="verified">&#10003; Verified creator</span>
+    </p>
+    <p class="lede">The one-pan dinner I make when I have nothing planned.</p>
+
+    <div class="player">
+      <img src="images/recipe-stirfry.svg" alt="A pan of ginger garlic chicken stir-fry">
+      <div class="player-bar">
+        <span class="play">&#9654;</span>
+        <div class="track"><div class="track-fill" id="videoProgress"></div></div>
+        <span class="time" id="videoTime">0:00 / 0:32</span>
+      </div>
+      <p class="player-note" id="videoLabel">Tap a step below to jump to that moment.</p>
+    </div>
+
+    <div class="buybar">
+      <span class="meta">Serves 2 &middot; <span id="totalTime">20</span> min total &middot;
+        <span id="saveCount">0</span> saves</span>
+      <button class="btn-primary" id="saveButton" onclick="saveThisRecipe()">Save recipe</button>
+      <button class="btn-secondary" onclick="askRecipeServings()">Cook for a different number</button>
+    </div>
+
+    <h2>Ingredients <span class="meta" style="font-weight:400">for <span id="servingsLabel">2</span></span></h2>
+    <div class="card">
+      <ul class="ingredients" id="ingredientList"></ul>
+    </div>
+
+    <h2>Method</h2>
+    <ol class="steps" id="stepList"></ol>
+
+    <div class="cta-foot">
+      <p><strong>This is one of three dinners in the plan.</strong></p>
+      <p><a href="index.html">&larr; Back to Three Weeknights in Japan</a> &middot;
+         <a href="cart.html">go to cart</a></p>
+    </div>
+
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/recipe.js"></script>
+</body>
+</html>

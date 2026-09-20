@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A pan of ginger garlic chicken stir-fry with broccoli and peppers">
+  <rect width="400" height="300" fill="#eef6e8"/>
+  <circle cx="200" cy="140" r="108" fill="#dcecd1"/>
+  <ellipse cx="200" cy="248" rx="126" ry="16" fill="#c9dcbc"/>
+  <rect x="296" y="150" width="104" height="16" rx="8" fill="#3b3b40"/>
+  <path d="M82 166 Q200 274 318 166 Z" fill="#43434a"/>
+  <ellipse cx="200" cy="166" rx="118" ry="26" fill="#55555d"/>
+  <ellipse cx="200" cy="162" rx="100" ry="20" fill="#6a6a73"/>
+  <g>
+    <circle cx="150" cy="150" r="20" fill="#3f7a35"/>
+    <circle cx="136" cy="134" r="13" fill="#4d9040"/>
+    <circle cx="164" cy="132" r="12" fill="#4d9040"/>
+    <circle cx="250" cy="152" r="18" fill="#3f7a35"/>
+    <circle cx="262" cy="136" r="11" fill="#4d9040"/>
+    <rect x="182" y="130" width="42" height="20" rx="8" fill="#d4622a"/>
+    <rect x="196" y="154" width="46" height="18" rx="8" fill="#c8531f"/>
+    <rect x="160" y="160" width="38" height="17" rx="8" fill="#e0913a"/>
+    <rect x="228" y="168" width="34" height="15" rx="7" fill="#e8c07a"/>
+  </g>
+  <path d="M150 104 q10 -16 0 -30" stroke="#b9c9ae" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M206 96 q10 -18 0 -34" stroke="#b9c9ae" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M256 104 q10 -16 0 -30" stroke="#b9c9ae" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>
