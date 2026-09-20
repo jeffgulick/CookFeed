@@ -1,0 +1,165 @@
+# ---------------------------------------------------------------------------
+# Cookfeed — .NET 10 backend + Angular frontend
+# ---------------------------------------------------------------------------
+
+# Claude Code project instructions (local only)
+CLAUDE.md
+.claude/
+
+# ---------------------------------------------------------------------------
+# .NET / C#
+# ---------------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+bld/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+*.publishsettings
+PublishScripts/
+*.pubxml
+*.pubxml.user
+*.azurePubxml
+
+# Build / IDE generated
+project.lock.json
+project.fragment.lock.json
+*.binlog
+*.nupkg
+*.snupkg
+.packages/
+packages/
+!packages/build/
+*.nuget.props
+*.nuget.targets
+*.dll
+*.exe
+*.pdb
+*.cache
+*.tlog
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.ipdb
+*.tmp_proj
+*_wpftmp.csproj
+*.VisualState.xml
+StyleCopReport.xml
+
+# Test results / coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResults/
+coverage*.json
+coverage*.xml
+coverage*.info
+coverage/
+*.coverage
+*.coveragexml
+*.trx
+.coverlet/
+
+# ---------------------------------------------------------------------------
+# EF Core
+# ---------------------------------------------------------------------------
+# NOTE: migrations under src/Cookfeed.Infrastructure/Persistence/Migrations ARE
+# committed. Only tooling/scratch output is ignored here.
+*.efbundle
+efbundle
+efbundle.exe
+*.dacpac
+Migrations/*.Designer.cs.orig
+ef-*.log
+
+# ---------------------------------------------------------------------------
+# Secrets / local configuration
+# ---------------------------------------------------------------------------
+appsettings.Local.json
+appsettings.*.Local.json
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+secrets.json
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Angular / Node
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+tmp/
+out-tsc/
+bazel-out/
+.angular/
+.angular/cache/
+connect.lock
+libpeerconnection.log
+testem.log
+typings/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+.npm/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+.nx/cache
+.nx/workspace-data
+chrome-profiler-events*.json
+speed-measure-plugin*.json
+
+# ---------------------------------------------------------------------------
+# IDEs / editors
+# ---------------------------------------------------------------------------
+.vs/
+.vscode/
+.history/
+*.code-workspace
+.idea/
+*.sln.iml
+.vsconfig
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# ---------------------------------------------------------------------------
+# OS
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*~
+*.swp
+*.swo
+
+# ---------------------------------------------------------------------------
+# Docker / local data
+# ---------------------------------------------------------------------------
+docker-compose.override.yml
+.pgdata/
+pgdata/
