@@ -182,7 +182,7 @@ function saveThisRecipe() {
   if (recipeSaved === false) {
     recipeSaved = true;
     counter.innerHTML = count + 1;
-    button.innerHTML = "Saved ✓";
+    button.innerHTML = "Saved \u2713";
     button.className = "btn-secondary";
     alert("Saved. Its ingredients will be added to your shopping list.");
   } else {

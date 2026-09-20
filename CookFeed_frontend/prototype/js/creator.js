@@ -49,7 +49,7 @@ function followCreator() {
   if (following === false) {
     following = true;
     followers = followers + 1;
-    button.innerHTML = "Following ✓";
+    button.innerHTML = "Following \u2713";
     button.className = "btn-secondary";
   } else {
     following = false;

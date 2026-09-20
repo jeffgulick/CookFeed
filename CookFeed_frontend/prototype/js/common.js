@@ -14,9 +14,9 @@ function buildStars(rating) {
   var stars = "";
   for (var i = 1; i <= 5; i = i + 1) {
     if (i <= rating) {
-      stars = stars + "★";
+      stars = stars + "\u2605";
     } else {
-      stars = stars + "☆";
+      stars = stars + "\u2606";
     }
   }
   return stars;

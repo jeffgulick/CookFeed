@@ -9,13 +9,19 @@ rm -rf CookFeed_frontend/prototype
 
 ## Running it
 
-There is nothing to install and nothing to build. Open `index.html` in any modern browser.
+There is nothing to install and nothing to build.
 
-From Windows: double-click `index.html`.
-From WSL: `explorer.exe index.html`
+**If you received this as a zip, extract it first.** Right-click the archive and choose
+Extract All, then open `index.html` from the extracted folder. Opening the page directly
+from inside the zip viewer will show the text without its stylesheet or scripts, because
+the viewer hands the browser only the one file it clicked.
 
-The pages are plain HTML, CSS, and JavaScript, so they work straight from the file system
-with no web server.
+Once extracted, double-click `index.html`, or drag it onto a browser window. Any modern
+browser works.
+
+The pages are plain HTML, CSS, and JavaScript, so they run straight from the file system
+with no web server and no internet connection. To serve them over HTTP instead, run
+`python3 -m http.server 8000` in this folder and open `http://localhost:8000`.
 
 ## Pages
 

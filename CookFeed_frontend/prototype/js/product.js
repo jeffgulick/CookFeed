@@ -120,7 +120,7 @@ function addToCart(title, cents) {
 
   cartCount = cartCount + 1;
   document.getElementById("cartCount").innerHTML = cartCount;
-  button.innerHTML = "In cart ✓";
+  button.innerHTML = "In cart \u2713";
   button.className = "btn-primary done";
   alert("Added. Your shopping list is waiting in the cart.");
 }
@@ -184,7 +184,7 @@ function saveRecipe(id) {
   var count = Number(counter.innerHTML);
 
   if (button.innerHTML === "Save") {
-    button.innerHTML = "Saved ✓";
+    button.innerHTML = "Saved \u2713";
     button.className = "btn-small saved";
     counter.innerHTML = count + 1;
   } else {
@@ -197,6 +197,6 @@ function saveRecipe(id) {
 /* Draw the page in its starting state. */
 function startProductPage() {
   document.getElementById("priceTag").innerHTML = formatPrice(PRODUCT_CENTS);
-  document.getElementById("buyButton").innerHTML = "Add to cart — " + formatPrice(PRODUCT_CENTS);
+  document.getElementById("buyButton").innerHTML = "Add to cart \u2014 " + formatPrice(PRODUCT_CENTS);
   changeServings(0);
 }

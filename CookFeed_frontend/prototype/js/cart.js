@@ -101,7 +101,7 @@ function checkout() {
 
   var html = "";
   html = html + "<div class='receipt'>";
-  html = html + "<div class='receipt-check'>✓</div>";
+  html = html + "<div class='receipt-check'>\u2713</div>";
   html = html + "<h2 style='margin:6px 0'>Order confirmed</h2>";
   html = html + "<p class='meta'>Order " + orderNumber + "</p>";
   html = html + "<p>You paid <strong>" + formatPrice(total) + "</strong> for " + bought + " plan.</p>";
