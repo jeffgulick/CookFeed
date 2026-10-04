@@ -26,8 +26,28 @@ on a Mac) on each page to load the current files. The current product page has a
 every night for" box with minus and plus buttons above the shopping list.
 
 The pages are plain HTML, CSS, and JavaScript, so they run straight from the file system
-with no web server and no internet connection. To serve them over HTTP instead, run
-`python3 -m http.server 8000` in this folder and open `http://localhost:8000`.
+with no web server and no internet connection.
+
+### Serving it over HTTP while you work on it
+
+To serve the pages instead, run this from this folder and open `http://localhost:8000`.
+It is Python's built-in web server, with one header added that tells the browser not to keep
+a stored copy of the pages. Without that header, the browser can keep showing an old version
+after the files change. Press Ctrl+C to stop it.
+
+```bash
+python3 - <<'EOF'
+import http.server as h
+class H(h.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+h.ThreadingHTTPServer(("", 8000), H).serve_forever()
+EOF
+```
+
+If the browser still shows an old page the first time, clear its stored copy once: open
+DevTools (F12), then right-click the reload button and choose **Empty cache and hard reload**.
 
 ## Pages
 
