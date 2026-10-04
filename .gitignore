@@ -4,10 +4,6 @@
 # CookFeed_frontend/.gitignore.
 # ---------------------------------------------------------------------------
 
-# Local editor instructions and settings (kept on this machine, never committed)
-CLAUDE.md
-.claude/
-
 # ---------------------------------------------------------------------------
 # IDEs / editors
 # ---------------------------------------------------------------------------
