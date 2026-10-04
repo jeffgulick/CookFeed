@@ -6,7 +6,7 @@
   <title>Your cart | Cookfeed</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body onload="startCartPage()">
+<body>
 
   <nav class="nav">
     <div class="nav-inner">
@@ -14,7 +14,7 @@
       <a class="navlink" href="index.html">Meal plan</a>
       <a class="navlink" href="reviews.html">Reviews</a>
       <a class="navlink" href="creator.html">Creator</a>
-      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">1</span></a>
+      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
 
@@ -22,7 +22,7 @@
 
     <span class="pill">Checkout</span>
     <h1>Your cart</h1>
-    <p class="byline"><span id="itemCount">1</span> item &middot; digital plans, yours to keep</p>
+    <p class="byline"><span id="itemCount">0</span> <span id="itemWord">items</span> &middot; digital plans, yours to keep</p>
 
     <div id="cartArea">
       <div id="cartLines"></div>
@@ -33,7 +33,7 @@
         <div class="total-row"><span>Tax</span><span>$0.00</span></div>
         <div class="total-row"><span>Delivery</span><span>None &mdash; digital</span></div>
         <div class="total-row grand"><span>Total</span><span id="orderTotal">$12.99</span></div>
-        <button class="btn-primary" id="checkoutButton" onclick="checkout()">Place order</button>
+        <button class="btn-primary" id="checkoutButton">Place order</button>
         <p class="meta" style="margin:10px 0 0">
           This prototype does not take payment. Placing an order shows the confirmation a
           real checkout would produce.
@@ -51,6 +51,7 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
+  <script src="js/data.js"></script>
   <script src="js/common.js"></script>
   <script src="js/cart.js"></script>
 </body>

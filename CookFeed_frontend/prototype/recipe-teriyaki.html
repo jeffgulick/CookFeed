@@ -6,7 +6,7 @@
   <title>Chicken Teriyaki, the Real Way | Cookfeed</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body onload="startRecipePage(5)">
+<body data-recipe-id="5">
 
   <nav class="nav">
     <div class="nav-inner">
@@ -14,7 +14,7 @@
       <a class="navlink" href="index.html">Meal plan</a>
       <a class="navlink" href="reviews.html">Reviews</a>
       <a class="navlink" href="creator.html">Creator</a>
-      <a class="cart-chip" href="cart.html">Cart</a>
+      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
 
@@ -43,8 +43,8 @@
     <div class="buybar">
       <span class="meta">Serves 2 &middot; <span id="totalTime">20</span> min total &middot;
         <span id="saveCount">0</span> saves</span>
-      <button class="btn-primary" id="saveButton" onclick="saveThisRecipe()">Save recipe</button>
-      <button class="btn-secondary" onclick="askRecipeServings()">Cook for a different number</button>
+      <button class="btn-primary" id="saveButton">Save recipe</button>
+      <button class="btn-secondary" id="servingsButton">Cook for a different number</button>
     </div>
 
     <h2>Ingredients <span class="meta" style="font-weight:400">for <span id="servingsLabel">2</span></span></h2>
@@ -65,6 +65,7 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
+  <script src="js/data.js"></script>
   <script src="js/common.js"></script>
   <script src="js/recipe.js"></script>
 </body>

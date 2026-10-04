@@ -6,7 +6,7 @@
   <title>Reviews | Three Weeknights in Japan | Cookfeed</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body onload="startReviewsPage()">
+<body>
 
   <nav class="nav">
     <div class="nav-inner">
@@ -14,7 +14,7 @@
       <a class="navlink" href="index.html">Meal plan</a>
       <a class="navlink active" href="reviews.html">Reviews</a>
       <a class="navlink" href="creator.html">Creator</a>
-      <a class="cart-chip" href="cart.html">Cart</a>
+      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
 
@@ -37,46 +37,72 @@
         <div class="big-num" id="recommendPercent">0%</div>
         <div class="meta">would recommend this plan</div>
       </div>
+      <div class="breakdown" id="ratingBars" aria-label="Filter reviews by star rating"></div>
     </div>
 
     <h2>What cooks are saying</h2>
+    <div class="toolbar">
+      <label>Sort
+        <select id="sortReviews">
+          <option value="newest">Newest first</option>
+          <option value="highest">Highest rated</option>
+          <option value="lowest">Lowest rated</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="recommendOnly"> Recommends only</label>
+      <span class="showing">
+        <span id="showingText">Showing all reviews</span>
+        <button type="button" class="link-button" id="clearFilters" hidden>Clear filters</button>
+      </span>
+    </div>
     <div id="reviewList"></div>
 
     <h2>Leave your feedback</h2>
-    <div class="card">
+    <form class="card" id="reviewForm" novalidate>
 
       <div class="field">
         <label for="reviewerName">Your name</label>
-        <input type="text" id="reviewerName" placeholder="First name and last initial">
+        <input type="text" id="reviewerName" maxlength="80" autocomplete="name"
+               placeholder="First name and last initial">
+        <p class="field-error" id="nameError"></p>
       </div>
 
       <div class="field">
-        <label for="reviewRating">Rating</label>
-        <select id="reviewRating">
-          <option value="5">5 - Excellent</option>
-          <option value="4">4 - Good</option>
-          <option value="3">3 - Fine</option>
-          <option value="2">2 - Disappointing</option>
-          <option value="1">1 - Poor</option>
-        </select>
+        <label id="ratingLabel">Rating</label>
+        <div class="star-picker" id="starPicker" role="radiogroup" aria-labelledby="ratingLabel">
+          <button type="button" class="star" data-value="1" role="radio" aria-checked="false" aria-label="1 star">&#9733;</button>
+          <button type="button" class="star" data-value="2" role="radio" aria-checked="false" aria-label="2 stars">&#9733;</button>
+          <button type="button" class="star" data-value="3" role="radio" aria-checked="false" aria-label="3 stars">&#9733;</button>
+          <button type="button" class="star" data-value="4" role="radio" aria-checked="false" aria-label="4 stars">&#9733;</button>
+          <button type="button" class="star" data-value="5" role="radio" aria-checked="false" aria-label="5 stars">&#9733;</button>
+          <span class="star-label" id="starLabel">Choose a rating</span>
+        </div>
+        <p class="field-error" id="ratingError"></p>
       </div>
 
       <div class="field">
         <label>Would you recommend this plan to another home cook?</label>
         <div class="radio-row">
-          <label><input type="radio" name="recommend" id="recommendYes" checked> Yes</label>
-          <label><input type="radio" name="recommend" id="recommendNo"> No</label>
+          <label><input type="radio" name="recommend" id="recommendYes" value="yes" checked> Yes</label>
+          <label><input type="radio" name="recommend" id="recommendNo" value="no"> No</label>
         </div>
       </div>
 
       <div class="field">
         <label for="reviewComment">Your review</label>
-        <textarea id="reviewComment" placeholder="Did the plan save you a trip? Did the shopping list match what you actually needed?"></textarea>
+        <textarea id="reviewComment" maxlength="2000"
+                  placeholder="Did the plan save you a trip? Did the shopping list match what you actually needed?"></textarea>
+        <div class="field-hint">
+          <span id="commentHint">At least 15 characters</span>
+          <span id="commentCount">0 / 2000</span>
+        </div>
+        <p class="field-error" id="commentError"></p>
       </div>
 
-      <button class="btn-primary" onclick="addReview()">Post review</button>
+      <button type="submit" class="btn-primary" id="postButton" disabled>Post review</button>
+      <p class="meta" id="formStatus" style="margin:10px 0 0">Add your name, a rating and a few words to post.</p>
 
-    </div>
+    </form>
 
     <div class="cta-foot">
       <p><strong>Ready to cook these three?</strong></p>
@@ -87,6 +113,7 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
+  <script src="js/data.js"></script>
   <script src="js/common.js"></script>
   <script src="js/reviews.js"></script>
 </body>

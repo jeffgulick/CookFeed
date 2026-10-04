@@ -586,4 +586,246 @@ a.cart-chip:hover { background: #ffe3d1; }
   .card { border: none; box-shadow: none; padding: 0; }
   h1 { font-size: 20px; }
   table { font-size: 13px; }
+  .list-tools, .have-col, .list-progress { display: none !important; }
+  tr.have { display: none; }
 }
+
+/* =====================================================================
+   Homework 3 additions
+   ===================================================================== */
+
+/* ---------- toast message ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 20px);
+  max-width: calc(100% - 32px);
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font-weight: 600;
+  font-size: 15px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 50;
+}
+
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.error { background: #b42318; }
+
+/* ---------- servings stepper ---------- */
+
+.stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 4px;
+}
+
+.stepper-row label { margin: 0; }
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.stepper button {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 6px 14px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.stepper button:hover { background: var(--accent-soft); }
+.stepper button:disabled { background: transparent; color: #d8cec3; }
+
+.stepper input {
+  font: inherit;
+  font-weight: 700;
+  width: 52px;
+  text-align: center;
+  border: none;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  padding: 6px 0;
+  -moz-appearance: textfield;
+}
+
+.stepper input::-webkit-outer-spin-button,
+.stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: underline;
+}
+
+.link-button:hover { color: #a5360a; }
+
+/* ---------- inline messages under form fields ---------- */
+
+.field-error {
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 6px 0 0;
+  min-height: 0;
+}
+
+.field-error:empty { display: none; }
+.invalid { border-color: #e5a29b !important; }
+
+.field-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.field-hint .ok { color: var(--good); font-weight: 700; }
+
+/* ---------- recipe card hover preview ---------- */
+
+.recipe-card { position: relative; }
+.card-media { position: relative; display: block; }
+
+.preview {
+  position: absolute;
+  inset: 0;
+  background: rgba(36, 29, 22, .88);
+  color: #fff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  opacity: 0;
+  transition: opacity .18s ease;
+  pointer-events: none;
+}
+
+.recipe-card.previewing .preview { opacity: 1; }
+.preview b { color: #ffd9c2; }
+.preview .preview-step { color: #f0e6dc; font-style: italic; }
+
+.hover-hint { font-size: 13px; color: var(--muted); margin: -4px 0 12px; }
+
+/* ---------- shopping list checklist ---------- */
+
+.list-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.progress-track {
+  flex: 1;
+  min-width: 140px;
+  height: 8px;
+  background: #f1e8dd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--good);
+  transition: width .2s ease;
+}
+
+.have-col { width: 1%; white-space: nowrap; text-align: center; }
+.have-col input { width: 18px; height: 18px; accent-color: var(--good); cursor: pointer; }
+tr.have td:not(.have-col) { text-decoration: line-through; color: #b7a796; }
+tr.have td.aisle { text-decoration: none; }
+
+/* ---------- star picker ---------- */
+
+.star-picker { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+.star-picker .star {
+  background: none;
+  border: none;
+  padding: 2px 3px;
+  font-size: 30px;
+  line-height: 1;
+  color: #e3d6c6;
+  transition: transform .1s ease, color .1s ease;
+}
+
+.star-picker .star.lit { color: var(--star); }
+.star-picker .star:hover { transform: scale(1.15); }
+.star-picker .star:focus-visible { outline: 2px solid #f3bb9b; border-radius: 6px; }
+
+.star-label { margin-left: 10px; font-weight: 700; color: var(--muted); font-size: 15px; }
+.star-label.preview-label { color: var(--accent); }
+
+/* ---------- rating breakdown ---------- */
+
+.breakdown { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 4px; }
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 34px 1fr 24px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 3px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: left;
+}
+
+.bar-row:hover { background: var(--accent-soft); }
+.bar-row.active { background: var(--accent-soft); color: var(--accent); }
+
+.bar-track { height: 8px; background: #f1e8dd; border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--star); border-radius: 4px; }
+.bar-count { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- review toolbar ---------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.toolbar label { margin: 0; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.toolbar select { width: auto; padding: 6px 10px; }
+.toolbar input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+.toolbar .showing { margin-left: auto; color: var(--muted); font-size: 14px; }
+
+.review.fresh { border-color: var(--accent); background: var(--accent-soft); }
+.empty-reviews { color: var(--muted); text-align: center; padding: 24px; }

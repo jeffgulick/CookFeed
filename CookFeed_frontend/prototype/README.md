@@ -1,6 +1,7 @@
-# Cookfeed prototype (Homework 1)
+# Cookfeed prototype (Homework 1, extended in Homework 3)
 
-**Temporary folder.** This is the Homework 1 HTML/JavaScript prototype. It will be deleted
+**Temporary folder.** This is the HTML/JavaScript prototype from Homework 1, extended with
+event-driven JavaScript in Homework 3. It will be deleted
 when the Angular application is built in Assignment 4:
 
 ```
@@ -45,7 +46,8 @@ prototype/
   cart.html           cart and checkout page
   recipe-*.html       the three recipes in the plan
   css/styles.css      one stylesheet for all seven pages
-  js/common.js        functions used by more than one page
+  js/data.js          the store's data, shaped like the database rows
+  js/common.js        functions used by more than one page (cart, saves, storage, toast)
   js/product.js       product page behavior
   js/reviews.js       reviews page behavior
   js/creator.js       creator page behavior
@@ -55,12 +57,34 @@ prototype/
   NOTES.md            material for the written submission
 ```
 
+## Homework 3 additions
+
+All event handlers are attached with `addEventListener`; there are no inline `onclick` or
+`onload` attributes.
+
+**Product page (`index.html`)**
+- Servings stepper: type a number or use the minus and plus buttons, and the shopping list
+  rescales as you go. Numbers outside 1-20 get a message under the box.
+- Recipe card preview: point at a recipe (`mouseenter` / `mouseleave`) to see prep and cook
+  time, ingredient and step counts, and the first step.
+- "Have it" checklist: tick what is already in the kitchen. A progress bar counts what is left,
+  and printing leaves the ticked lines off the paper.
+- Add to cart and Save are remembered across pages and reloads.
+
+**Reviews page (`reviews.html`)**
+- The form checks itself as you type: inline messages, a live character counter, and a Post
+  button that stays disabled until the review is complete.
+- Star picker: hovering previews a rating, leaving restores the chosen one, clicking sets it.
+  Arrow keys work too.
+- Rating breakdown bars; click one to show only reviews with that many stars.
+- Sort by newest, highest or lowest, and a "Recommends only" filter.
+- Posted reviews survive a reload and can be removed by their author.
+
 ## Notes
 
-- Nothing is saved. Reviews added through the form live only until the page is reloaded,
-  and the cart resets when you navigate away. Because of that, the cart page starts with
-  the meal plan already in it instead of receiving it from the product page. Persistence
-  arrives with the database work.
+- Nothing is sent to a server. The cart, saved recipes, posted reviews and placed orders are
+  kept in the browser's `localStorage`, shaped like the matching database rows. Clearing site
+  data in the browser resets the prototype.
 - Send to Instacart and Send to Favor are marked Planned. They explain what the handover
   would do; no partner is connected. Print list is real and uses the browser's print
   dialog, with a print stylesheet that strips everything except the list.

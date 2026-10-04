@@ -48,6 +48,8 @@ erDiagram
     users ||--o{ orders : "places"
     orders ||--o{ order_items : "contains"
     products ||--o{ order_items : "purchased as"
+    products ||--o{ reviews : "reviewed in"
+    users ||--o{ reviews : "writes"
 ```
 
 The full attribute-level diagram is in `docs/ERDiagram.mermaid` (renders in GitHub, VS Code, and mermaid.live).
@@ -73,8 +75,11 @@ The full attribute-level diagram is in `docs/ERDiagram.mermaid` (renders in GitH
 | 15 | `cart_items` | The cart, one row per product | `(user_id, product_id)` |
 | 16 | `orders` | Order header | `id` |
 | 17 | `order_items` | Purchased products with price/title snapshot | `id`, unique `(order_id, product_id)` |
+| 18 | `reviews` | A user's star rating, recommendation and written review of a product (added in Assignment 3) | `id`, unique `(product_id, user_id)` |
 
 The proposal estimated 12–14 tables; the final count is 17. The three "extra" tables are `units` (the proposal folded units into ingredients; §6 explains why that was wrong), `recipe_steps` (steps were going to be a text column; splitting them lets each step carry a video timestamp), and `product_recipes` (a product must reference many recipes, which cannot be a column). Nothing was added for its own sake — each table exists because a column could not hold the data without repeating groups.
+
+**Assignment 3 addition: `reviews` (table 18).** The prototype's Reviews page shows a star rating, a recommend / do-not-recommend choice and written feedback for a product. None of the original 17 tables could hold that, so `reviews` was added. It stores `user_id`, not the reviewer's name, because the name already lives in `users.display_name` (3NF). The unique index on `(product_id, user_id)` allows one review per user per product. Rating is a `smallint` limited to 1–5 by `ck_reviews_rating_range`, and `body` is capped at 2000 characters, the same limits the prototype's form enforces in JavaScript.
 
 ---
 
@@ -116,10 +121,11 @@ Every relationship is a real foreign key. The delete behavior was chosen per rel
 | `ingredients`, `units` ← `recipe_ingredients` | **RESTRICT** | Catalog rows in use cannot be deleted. |
 | `products` ← `order_items` | **RESTRICT** | Same reason as recipes: purchased products stay. Use `is_active = false`. |
 | `products` ← `cart_items` | CASCADE | An unsold product vanishing from carts is fine. |
+| `products`, `users` ← `reviews` | CASCADE | A review is meaningless without its product or its author. Products with sales are never hard-deleted (`order_items` RESTRICT), so in practice this only removes reviews of unsold products or of deleted accounts. |
 | `roles` ← `user_roles` | RESTRICT | Roles are static lookup data. |
 | `units` ← `ingredients.preferred_shopping_unit_id` | SET NULL | A preference, not a requirement; the shopping list falls back to the base unit. |
 
-**Uniqueness** (all enforced by unique indexes, not application checks): `users.email`, `roles.name`, `creator_profiles.handle`, `units.name`, `units.abbreviation`, `ingredients.name`, `(recipe_id, step_number)`, `(user_id, week_start)` on meal plans, `(order_id, product_id)` on order items, plus every composite primary key.
+**Uniqueness** (all enforced by unique indexes, not application checks): `users.email`, `roles.name`, `creator_profiles.handle`, `units.name`, `units.abbreviation`, `ingredients.name`, `(recipe_id, step_number)`, `(user_id, week_start)` on meal plans, `(order_id, product_id)` on order items, `(product_id, user_id)` on reviews, plus every composite primary key.
 
 **Check constraints** encode invariants that would otherwise be scattered across validation code:
 
@@ -136,6 +142,7 @@ ck_products_price_nonnegative                price_cents >= 0
 ck_orders_total_nonnegative                  total_cents >= 0
 ck_order_items_price_nonnegative             unit_price_cents >= 0
 ck_creator_profiles_handle_slug              handle ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+ck_reviews_rating_range                      rating BETWEEN 1 AND 5
 ```
 
 `ck_recipes_servings_positive` matters more than it looks: the shopping list divides by `servings` to scale a recipe. A zero would be a division-by-zero in the query, so the database refuses it at insert.
@@ -231,6 +238,7 @@ Every read-side query is paired with the index that serves it in `docs/Queries.m
 - **Storefront:** unique `handle`; `recipes(creator_id)`; `products(creator_id, is_active)`.
 - **Shopping list:** composite PK `saved_recipes(user_id, recipe_id)`; unique `meal_plans(user_id, week_start)`; `meal_plan_entries(meal_plan_id, planned_date, slot)`; `recipe_ingredients(recipe_id, sort_order)`.
 - **Order history:** `orders(user_id, placed_at DESC)`; unique `order_items(order_id, product_id)`.
+- **Reviews page:** `reviews(product_id, created_at DESC)` returns a product's reviews newest first; the unique `(product_id, user_id)` index enforces one review per user; `reviews(user_id)` supports the foreign key.
 - **Every foreign key** has a supporting index so `RESTRICT`/`CASCADE` checks and reverse lookups ("recipes using this ingredient", "who bought this product") do not table-scan. PostgreSQL does not create these automatically; EF Core does, and the reference DDL lists them explicitly.
 
 No index was added speculatively. Each one corresponds to a `WHERE`, `JOIN`, or `ORDER BY` in a real query in this repository.

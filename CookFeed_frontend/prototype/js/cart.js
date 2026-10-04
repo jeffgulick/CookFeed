@@ -1,27 +1,35 @@
-/* Cookfeed prototype - cart and checkout page */
+/* Cookfeed prototype - cart and checkout page
 
-/* What the shopper is buying. A real cart is filled by the Add to cart button
-   on the product page and stored against the shopper's account; nothing is
-   stored yet, so the page starts with the plan already in it. */
-var cartItems = [
-  {
-    title: "Three Weeknights in Japan",
-    creator: "kenji-kitchen",
-    type: "Meal plan",
-    detail: "3 recipes, 3 videos, 1 shopping list",
-    priceCents: 1299,
-    image: "images/plan-hero.svg"
+   The cart is read from the browser's storage (see common.js), so whatever the
+   shopper added on the product page is here, even after a reload. */
+
+/* Look up a product by id. The prototype sells one plan; the real application
+   will read the products table instead. */
+function findProduct(productId) {
+  return productId === PRODUCT.id ? PRODUCT : null;
+}
+
+/* The cart rows joined to their products, skipping anything no longer sold. */
+function cartProducts() {
+  var cart = getCart();
+  var products = [];
+
+  for (var i = 0; i < cart.length; i = i + 1) {
+    var product = findProduct(cart[i].productId);
+    if (product !== null && product.isActive === true) {
+      products.push(product);
+    }
   }
-];
 
-var orderPlaced = false;
+  return products;
+}
 
 /* Add up what is in the cart. Digital plans are bought once each,
    so there is no quantity to multiply by. */
-function cartTotal() {
+function cartTotal(products) {
   var total = 0;
-  for (var i = 0; i < cartItems.length; i = i + 1) {
-    total = total + cartItems[i].priceCents;
+  for (var i = 0; i < products.length; i = i + 1) {
+    total = total + products[i].priceCents;
   }
   return total;
 }
@@ -29,97 +37,121 @@ function cartTotal() {
 /* Redraw the cart: the line items, the totals, and whichever message
    belongs with an empty or a filled cart. */
 function renderCart() {
+  var products = cartProducts();
   var html = "";
 
-  for (var i = 0; i < cartItems.length; i = i + 1) {
-    var item = cartItems[i];
+  for (var i = 0; i < products.length; i = i + 1) {
+    var product = products[i];
+    var typeLabel = product.type === "MealPlan" ? "Meal plan" : "Recipe collection";
+
     html = html + "<div class='line-item'>";
-    html = html + "<img src='" + item.image + "' alt='" + item.title + "'>";
+    html = html + "<img src='" + product.coverImageUrl + "' alt='" + escapeHtml(product.title) + "'>";
     html = html + "<div class='line-body'>";
-    html = html + "<span class='pill'>" + item.type + "</span>";
-    html = html + "<div class='recipe-title'>" + item.title + "</div>";
-    html = html + "<div class='meta'>by " + item.creator + " &middot; " + item.detail + "</div>";
-    html = html + "<button class='btn-small' onclick='removeItem(" + i + ")'>Remove</button>";
+    html = html + "<span class='pill'>" + typeLabel + "</span>";
+    html = html + "<div class='recipe-title'>" + product.title + "</div>";
+    html = html + "<div class='meta'>by " + CREATOR.handle + " &middot; " + product.recipes.length +
+                  " recipes, " + product.recipes.length + " videos, 1 shopping list</div>";
+    html = html + "<button class='btn-small remove-item' data-product-id='" + product.id + "'>Remove</button>";
     html = html + "</div>";
-    html = html + "<div class='line-price'>" + formatPrice(item.priceCents) + "</div>";
+    html = html + "<div class='line-price'>" + formatPrice(product.priceCents) + "</div>";
     html = html + "</div>";
   }
+
+  var total = cartTotal(products);
 
   document.getElementById("cartLines").innerHTML = html;
-  document.getElementById("cartCount").innerHTML = cartItems.length;
-  document.getElementById("itemCount").innerHTML = cartItems.length;
-  document.getElementById("subtotal").innerHTML = formatPrice(cartTotal());
-  document.getElementById("orderTotal").innerHTML = formatPrice(cartTotal());
+  document.getElementById("itemCount").textContent = products.length;
+  document.getElementById("itemWord").textContent = products.length === 1 ? "item" : "items";
+  document.getElementById("subtotal").textContent = formatPrice(total);
+  document.getElementById("orderTotal").textContent = formatPrice(total);
 
-  if (cartItems.length === 0) {
-    document.getElementById("emptyNote").innerHTML =
-      "Your cart is empty. <a href='index.html'>Back to the meal plan</a>.";
-    document.getElementById("checkoutButton").disabled = true;
-  } else {
-    document.getElementById("emptyNote").innerHTML = "";
-    document.getElementById("checkoutButton").disabled = false;
-  }
+  var isEmpty = products.length === 0;
+  document.getElementById("emptyNote").innerHTML = isEmpty
+    ? "Your cart is empty. <a href='index.html'>Back to the meal plan</a>."
+    : "";
+  document.getElementById("checkoutButton").disabled = isEmpty;
 }
 
 /* Take one plan back out of the cart, after checking that is what was meant. */
-function removeItem(index) {
-  var item = cartItems[index];
-  var sure = confirm("Remove " + item.title + " from your cart?");
-
-  if (sure === false) {
+function onCartClicked(event) {
+  var button = event.target.closest(".remove-item");
+  if (button === null) {
     return;
   }
 
-  cartItems.splice(index, 1);
+  var product = findProduct(Number(button.getAttribute("data-product-id")));
+  if (confirm("Remove " + product.title + " from your cart?") === false) {
+    return;
+  }
+
+  removeProductFromCart(product.id);
   renderCart();
-  alert(item.title + " was removed.");
+  showToast(product.title + " was removed.");
 }
 
-/* Make up an order number the way a receipt would show one. */
-function buildOrderNumber(total) {
-  var stamp = String(Date.now());
-  var tail = stamp.substring(stamp.length - 5, stamp.length);
-  return "CF-" + total + "-" + tail;
-}
-
-/* Place the order and swap the cart for a receipt. */
+/* Place the order. It is saved shaped like an orders row with order_items
+   snapshots: the title and price are copied, so the receipt still shows what
+   was paid even if the creator changes the product later. */
 function checkout() {
-  if (cartItems.length === 0) {
-    alert("There is nothing in your cart yet.");
+  var products = cartProducts();
+
+  if (products.length === 0) {
+    showToast("There is nothing in your cart yet.", "error");
     return;
   }
 
-  var total = cartTotal();
-  var goAhead = confirm("Place this order for " + formatPrice(total) + "?");
+  var total = cartTotal(products);
 
-  if (goAhead === false) {
+  if (confirm("Place this order for " + formatPrice(total) + "?") === false) {
     return;
   }
 
-  var orderNumber = buildOrderNumber(total);
-  var bought = cartItems.length;
+  var orders = loadJson(STORAGE_KEYS.orders, []);
+  var now = new Date().toISOString();
+  var order = {
+    id: orders.length + 1,
+    status: "Paid",
+    placedAt: now,
+    paidAt: now,
+    totalCents: total,
+    currency: "USD",
+    paymentReference: null,       // no payment provider in the prototype
+    items: products.map(function (product) {
+      return {
+        productId: product.id,
+        creatorId: product.creatorId,
+        productTitle: product.title,
+        unitPriceCents: product.priceCents
+      };
+    })
+  };
+
+  orders.push(order);
+  saveJson(STORAGE_KEYS.orders, orders);
+  clearCart();
+
+  var orderNumber = "CF-" + String(order.id).padStart(5, "0");
+  var word = products.length === 1 ? "plan" : "plans";
 
   var html = "";
   html = html + "<div class='receipt'>";
-  html = html + "<div class='receipt-check'>\u2713</div>";
+  html = html + "<div class='receipt-check'>✓</div>";
   html = html + "<h2 style='margin:6px 0'>Order confirmed</h2>";
   html = html + "<p class='meta'>Order " + orderNumber + "</p>";
-  html = html + "<p>You paid <strong>" + formatPrice(total) + "</strong> for " + bought + " plan.</p>";
+  html = html + "<p>You paid <strong>" + formatPrice(total) + "</strong> for " + products.length + " " + word + ".</p>";
   html = html + "<p>Every recipe in it is yours to keep, and its shopping list is ready whenever you are.</p>";
   html = html + "<p><a href='index.html'>Back to the meal plan</a> &middot; ";
   html = html + "<a href='reviews.html'>Leave a review</a></p>";
   html = html + "</div>";
 
   document.getElementById("cartArea").innerHTML = html;
-  document.getElementById("cartCount").innerHTML = "0";
-
-  orderPlaced = true;
-  cartItems = [];
-
-  alert("Thank you. Your order number is " + orderNumber + ".");
+  document.getElementById("itemCount").textContent = "0";
+  document.getElementById("itemWord").textContent = "items";
+  showToast("Thank you. Your order number is " + orderNumber + ".");
 }
 
-/* Draw the page in its starting state. */
-function startCartPage() {
+document.addEventListener("DOMContentLoaded", function () {
   renderCart();
-}
+  document.getElementById("cartLines").addEventListener("click", onCartClicked);
+  document.getElementById("checkoutButton").addEventListener("click", checkout);
+});

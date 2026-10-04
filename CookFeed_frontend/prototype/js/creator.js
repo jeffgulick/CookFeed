@@ -1,38 +1,43 @@
 /* Cookfeed prototype - creator storefront page (kenji-kitchen) */
 
-var followers = 18400;
+var followers = CREATOR.followerCount;
 var following = false;
 
-/* Kenji's published recipes. The draft miso soup is deliberately not here:
-   a storefront only shows what the creator has published. */
-var creatorRecipes = [
-  { title: "Chicken Teriyaki, the Real Way", saves: 733, published: "July 13, 2026", minutes: 20, image: "images/recipe-teriyaki.svg", page: "recipe-teriyaki.html" },
-  { title: "Onigiri Three Ways",             saves: 504, published: "July 17, 2026", minutes: 40, image: "images/recipe-onigiri.svg", page: "recipe-onigiri.html" },
-  { title: "10-Minute Ginger Garlic Stir-Fry", saves: 387, published: "July 23, 2026", minutes: 13, image: "images/recipe-stirfry.svg", page: "recipe-stirfry.html" }
-];
+/* Kenji's published recipes, read from data.js. The draft miso soup is
+   deliberately not in the data: a storefront only shows what is published. */
+function publishedRecipes() {
+  var list = [];
+  for (var id in RECIPES) {
+    if (RECIPES[id].creatorId === CREATOR.userId && RECIPES[id].isPublished === true) {
+      list.push(RECIPES[id]);
+    }
+  }
+  return list;
+}
 
 /* Sort the recipes and redraw them.
    Pass "saves" for the most saved first, or "newest" for the most recent. */
 function showRecipes(sortBy) {
-  var sorted = creatorRecipes.slice();
+  var sorted = publishedRecipes();
 
   if (sortBy === "saves") {
-    sorted.sort(function (a, b) { return b.saves - a.saves; });
+    sorted.sort(function (a, b) { return currentSaveCount(b) - currentSaveCount(a); });
   } else {
-    sorted.sort(function (a, b) { return new Date(b.published) - new Date(a.published); });
+    sorted.sort(function (a, b) { return new Date(b.publishedAt) - new Date(a.publishedAt); });
   }
 
   var html = "";
   for (var i = 0; i < sorted.length; i = i + 1) {
     var recipe = sorted[i];
     html = html + "<div class='recipe-card'>";
-    html = html + "<a href='" + recipe.page + "'>";
-    html = html + "<img src='" + recipe.image + "' alt='" + recipe.title + "'>";
+    html = html + "<a href='" + recipe.pageUrl + "'>";
+    html = html + "<img src='" + recipe.thumbnailUrl + "' alt='" + escapeHtml(recipe.title) + "'>";
     html = html + "</a>";
     html = html + "<div class='recipe-body'>";
-    html = html + "<div class='recipe-title'><a href='" + recipe.page + "'>" + recipe.title + "</a></div>";
-    html = html + "<div class='meta'>" + recipe.minutes + " min &middot; " + recipe.saves + " saves</div>";
-    html = html + "<div class='meta'>Published " + recipe.published + "</div>";
+    html = html + "<div class='recipe-title'><a href='" + recipe.pageUrl + "'>" + recipe.title + "</a></div>";
+    html = html + "<div class='meta'>" + (recipe.prepMinutes + recipe.cookMinutes) + " min &middot; " +
+                  currentSaveCount(recipe) + " saves</div>";
+    html = html + "<div class='meta'>Published " + formatDate(recipe.publishedAt) + "</div>";
     html = html + "</div></div>";
   }
 
@@ -46,24 +51,28 @@ function showRecipes(sortBy) {
 function followCreator() {
   var button = document.getElementById("followButton");
 
-  if (following === false) {
-    following = true;
-    followers = followers + 1;
-    button.innerHTML = "Following \u2713";
-    button.className = "btn-secondary";
-  } else {
-    following = false;
-    followers = followers - 1;
-    button.innerHTML = "Follow";
-    button.className = "btn-primary";
+  following = !following;
+  followers = following ? followers + 1 : followers - 1;
+  button.textContent = following ? "Following ✓" : "Follow";
+  button.className = following ? "btn-secondary" : "btn-primary";
+
+  document.getElementById("followerCount").textContent = followers.toLocaleString();
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  var recipes = publishedRecipes();
+  var totalSaves = 0;
+  for (var i = 0; i < recipes.length; i = i + 1) {
+    totalSaves = totalSaves + currentSaveCount(recipes[i]);
   }
 
-  document.getElementById("followerCount").innerHTML = followers.toLocaleString();
-}
-
-/* Draw the page in its starting state. */
-function startCreatorPage() {
-  document.getElementById("followerCount").innerHTML = followers.toLocaleString();
-  document.getElementById("planPrice").innerHTML = formatPrice(1299);
+  document.getElementById("followerCount").textContent = followers.toLocaleString();
+  document.getElementById("recipeCount").textContent = recipes.length;
+  document.getElementById("totalSaves").textContent = totalSaves.toLocaleString();
+  document.getElementById("planPrice").textContent = formatPrice(PRODUCT.priceCents);
   showRecipes("saves");
-}
+
+  document.getElementById("followButton").addEventListener("click", followCreator);
+  document.getElementById("sortSaves").addEventListener("click", function () { showRecipes("saves"); });
+  document.getElementById("sortNewest").addEventListener("click", function () { showRecipes("newest"); });
+});

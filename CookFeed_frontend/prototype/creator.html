@@ -6,7 +6,7 @@
   <title>kenji-kitchen | Cookfeed</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body onload="startCreatorPage()">
+<body>
 
   <nav class="nav">
     <div class="nav-inner">
@@ -14,7 +14,7 @@
       <a class="navlink" href="index.html">Meal plan</a>
       <a class="navlink" href="reviews.html">Reviews</a>
       <a class="navlink active" href="creator.html">Creator</a>
-      <a class="cart-chip" href="cart.html">Cart</a>
+      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
 
@@ -31,18 +31,18 @@
         </p>
         <div class="stat-row">
           <div class="stat"><b id="followerCount">18,400</b><span>followers</span></div>
-          <div class="stat"><b>3</b><span>published recipes</span></div>
-          <div class="stat"><b>1,624</b><span>total saves</span></div>
+          <div class="stat"><b id="recipeCount">3</b><span>published recipes</span></div>
+          <div class="stat"><b id="totalSaves">1,624</b><span>total saves</span></div>
         </div>
       </div>
-      <button class="btn-primary" id="followButton" onclick="followCreator()">Follow</button>
+      <button class="btn-primary" id="followButton">Follow</button>
     </div>
 
     <h2>Recipes</h2>
     <div class="sort-row">
       <span class="meta">Sort by:</span>
-      <button class="btn-small saved" id="sortSaves" onclick="showRecipes('saves')">Most saved</button>
-      <button class="btn-small" id="sortNewest" onclick="showRecipes('newest')">Newest</button>
+      <button class="btn-small saved" id="sortSaves">Most saved</button>
+      <button class="btn-small" id="sortNewest">Newest</button>
     </div>
     <div class="grid" id="creatorRecipes"></div>
 
@@ -66,6 +66,7 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
+  <script src="js/data.js"></script>
   <script src="js/common.js"></script>
   <script src="js/creator.js"></script>
 </body>

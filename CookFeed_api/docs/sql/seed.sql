@@ -315,6 +315,12 @@ INSERT INTO order_items (id, order_id, product_id, creator_id, product_title, un
   (4, 3, 2, 3, 'The Bread Box', 499),
   (5, 4, 4, 5, 'Family Week on a Budget', 999);
 
+-- Reviews of "Three Weeknights in Japan" (added for Assignment 3; same three reviews the prototype shows)
+INSERT INTO reviews (id, product_id, user_id, rating, recommends, body, created_at) VALUES
+  (1, 3, 1, 5, TRUE, 'I bought this on a Sunday and had all three dinners on the table by Wednesday. The shopping list is the whole reason it worked. One trip, nothing left over.', '2026-08-12 12:00:00+00'),
+  (2, 3, 2, 4, TRUE, 'Teriyaki alone was worth the price. I scaled the plan to six for my family and the quantities came out right. Taking one star off because I wanted a fourth night.', '2026-08-09 12:00:00+00'),
+  (3, 3, 5, 3, FALSE, 'Good recipes, but I already cook Japanese food most weeks so there was not much here I did not know. Better suited to someone just starting out.', '2026-08-02 12:00:00+00');
+
 -- Re-sync identity sequences after explicit-id inserts so the application can insert normally.
 SELECT setval(pg_get_serial_sequence('roles', 'id'), (SELECT MAX(id) FROM roles));
 SELECT setval(pg_get_serial_sequence('units', 'id'), (SELECT MAX(id) FROM units));
@@ -328,4 +334,5 @@ SELECT setval(pg_get_serial_sequence('meal_plans', 'id'), (SELECT MAX(id) FROM m
 SELECT setval(pg_get_serial_sequence('meal_plan_entries', 'id'), (SELECT MAX(id) FROM meal_plan_entries));
 SELECT setval(pg_get_serial_sequence('orders', 'id'), (SELECT MAX(id) FROM orders));
 SELECT setval(pg_get_serial_sequence('order_items', 'id'), (SELECT MAX(id) FROM order_items));
+SELECT setval(pg_get_serial_sequence('reviews', 'id'), (SELECT MAX(id) FROM reviews));
 COMMIT;

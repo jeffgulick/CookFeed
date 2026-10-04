@@ -1,85 +1,9 @@
 /* Cookfeed prototype - recipe pages.
-   All three recipes live in one object so the three pages can share this file.
-   Each page calls startRecipePage() with its own recipe id. */
-
-var recipeData = {
-  5: {
-    title: "Chicken Teriyaki, the Real Way",
-    servings: 2,
-    prep: 5,
-    cook: 15,
-    saves: 733,
-    seconds: 32,
-    image: "images/recipe-teriyaki.svg",
-    summary: "Four ingredients in the sauce. Skin-on thighs. That is the whole secret.",
-    ingredients: [
-      { qty: 500, unit: "g",     name: "boneless chicken thigh", note: "skin on" },
-      { qty: 3,   unit: "tbsp",  name: "soy sauce",              note: "" },
-      { qty: 3,   unit: "tbsp",  name: "mirin",                  note: "" },
-      { qty: 2,   unit: "tbsp",  name: "sake",                   note: "" },
-      { qty: 1,   unit: "tbsp",  name: "granulated sugar",       note: "" },
-      { qty: 1,   unit: "tbsp",  name: "vegetable oil",          note: "" },
-      { qty: 1,   unit: "bunch", name: "scallion",               note: "thinly sliced" }
-    ],
-    steps: [
-      { at: 8,  text: "Sear the thighs skin-side down in oil until deeply browned, about 6 minutes." },
-      { at: 16, text: "Flip, add soy, mirin, sake, and sugar, and simmer until the sauce reduces to a glaze." },
-      { at: 24, text: "Slice and spoon the glaze over. Garnish with scallions." }
-    ]
-  },
-  6: {
-    title: "Onigiri Three Ways",
-    servings: 4,
-    prep: 20,
-    cook: 20,
-    saves: 504,
-    seconds: 32,
-    image: "images/recipe-onigiri.svg",
-    summary: "Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.",
-    ingredients: [
-      { qty: 2, unit: "c",   name: "short-grain rice", note: "rinsed until the water runs clear" },
-      { qty: 1, unit: "tsp", name: "kosher salt",      note: "for your hands" },
-      { qty: 1, unit: "tsp", name: "sesame oil",       note: "" }
-    ],
-    steps: [
-      { at: 8,  text: "Cook the rice and let it cool until you can handle it." },
-      { at: 16, text: "Wet and salt your hands, scoop a handful of rice, press in a filling, and shape into a triangle." },
-      { at: 24, text: "Wrap with nori just before eating so it stays crisp." }
-    ]
-  },
-  7: {
-    title: "10-Minute Ginger Garlic Stir-Fry",
-    servings: 2,
-    prep: 5,
-    cook: 8,
-    saves: 387,
-    seconds: 32,
-    image: "images/recipe-stirfry.svg",
-    summary: "The one-pan dinner I make when I have nothing planned.",
-    ingredients: [
-      { qty: 300, unit: "g",     name: "chicken breast", note: "sliced thin" },
-      { qty: 1,   unit: "ea",    name: "broccoli",       note: "cut into florets" },
-      { qty: 1,   unit: "ea",    name: "bell pepper",    note: "sliced" },
-      { qty: 3,   unit: "clove", name: "garlic",         note: "minced" },
-      { qty: 15,  unit: "g",     name: "fresh ginger",   note: "minced" },
-      { qty: 2,   unit: "tbsp",  name: "soy sauce",      note: "" },
-      { qty: 1,   unit: "tbsp",  name: "cornstarch",     note: "" },
-      { qty: 2,   unit: "tbsp",  name: "vegetable oil",  note: "" },
-      { qty: 1,   unit: "tbsp",  name: "rice vinegar",   note: "" },
-      { qty: 1,   unit: "tsp",   name: "sesame oil",     note: "" }
-    ]
-    ,
-    steps: [
-      { at: 8,  text: "Toss the chicken with cornstarch and 1 tbsp soy sauce." },
-      { at: 16, text: "Stir-fry the chicken in vegetable oil over high heat until just cooked, then remove." },
-      { at: 24, text: "Stir-fry the vegetables, garlic, and ginger for 3 minutes, return the chicken, add the remaining soy, vinegar, and sesame oil, and toss." }
-    ]
-  }
-};
+   The recipes themselves live in data.js. Each page names its recipe with a
+   data-recipe-id attribute on <body>, and this file draws it. */
 
 var currentRecipe = null;
 var currentServings = 0;
-var recipeSaved = false;
 
 /* Turn a number of seconds into the clock format a video player shows. */
 function formatTime(seconds) {
@@ -97,30 +21,15 @@ function renderIngredients(people) {
 
   for (var i = 0; i < currentRecipe.ingredients.length; i = i + 1) {
     var item = currentRecipe.ingredients[i];
-    var amount = item.qty * people / currentRecipe.servings;
-    var note = "";
-
-    if (item.note !== "") {
-      note = ", " + item.note;
-    }
+    var amount = item.quantity * people / currentRecipe.servings;
+    var note = item.preparation === null ? "" : ", " + item.preparation;
 
     html = html + "<li><strong>" + formatQuantity(amount) + " " + item.unit + "</strong> ";
     html = html + item.name + note + "</li>";
   }
 
   document.getElementById("ingredientList").innerHTML = html;
-  document.getElementById("servingsLabel").innerHTML = people;
-}
-
-/* Cook this recipe for a different number of people. */
-function scaleRecipe(people) {
-  if (people < 1) {
-    alert("You need to cook for at least one person.");
-    return;
-  }
-
-  currentServings = people;
-  renderIngredients(people);
+  document.getElementById("servingsLabel").textContent = people;
 }
 
 /* Ask the cook how many people are eating, then rescale. */
@@ -133,22 +42,24 @@ function askRecipeServings() {
 
   var people = Number(answer);
 
-  if (answer === "" || isNaN(people) || people < 1 || people > 20) {
-    alert("Please enter a number of people between 1 and 20.");
+  if (answer.trim() === "" || isNaN(people) || people < LIMITS.servingsMin || people > LIMITS.servingsMax) {
+    showToast("Please enter a number of people between " + LIMITS.servingsMin + " and " +
+              LIMITS.servingsMax + ".", "error");
     return;
   }
 
-  scaleRecipe(Math.round(people));
+  currentServings = Math.round(people);
+  renderIngredients(currentServings);
 }
 
 /* Move the video to the moment a step happens and highlight that step. */
 function jumpToStep(seconds, stepNumber) {
-  var percent = (seconds / currentRecipe.seconds) * 100;
+  var percent = (seconds / currentRecipe.videoSeconds) * 100;
 
-  document.getElementById("videoTime").innerHTML =
-    formatTime(seconds) + " / " + formatTime(currentRecipe.seconds);
+  document.getElementById("videoTime").textContent =
+    formatTime(seconds) + " / " + formatTime(currentRecipe.videoSeconds);
   document.getElementById("videoProgress").style.width = percent + "%";
-  document.getElementById("videoLabel").innerHTML = "Step " + stepNumber + " of " + currentRecipe.steps.length;
+  document.getElementById("videoLabel").textContent = "Step " + stepNumber + " of " + currentRecipe.steps.length;
 
   for (var i = 1; i <= currentRecipe.steps.length; i = i + 1) {
     document.getElementById("step" + i).className = i === stepNumber ? "step playing" : "step";
@@ -161,47 +72,56 @@ function renderSteps() {
 
   for (var i = 0; i < currentRecipe.steps.length; i = i + 1) {
     var step = currentRecipe.steps[i];
-    var number = i + 1;
 
-    html = html + "<li class='step' id='step" + number + "'>";
-    html = html + "<div>" + step.text + "</div>";
-    html = html + "<button class='btn-small' onclick='jumpToStep(" + step.at + ", " + number + ")'>";
-    html = html + "Watch at " + formatTime(step.at) + "</button>";
+    html = html + "<li class='step' id='step" + step.stepNumber + "'>";
+    html = html + "<div>" + step.instruction + "</div>";
+    html = html + "<button class='btn-small' data-seconds='" + step.videoTimestampSeconds +
+                  "' data-step='" + step.stepNumber + "'>";
+    html = html + "Watch at " + formatTime(step.videoTimestampSeconds) + "</button>";
     html = html + "</li>";
   }
 
   document.getElementById("stepList").innerHTML = html;
 }
 
-/* Save or unsave this recipe and move its counter. */
-function saveThisRecipe() {
-  var button = document.getElementById("saveButton");
-  var counter = document.getElementById("saveCount");
-  var count = Number(counter.innerHTML);
-
-  if (recipeSaved === false) {
-    recipeSaved = true;
-    counter.innerHTML = count + 1;
-    button.innerHTML = "Saved \u2713";
-    button.className = "btn-secondary";
-    alert("Saved. Its ingredients will be added to your shopping list.");
-  } else {
-    recipeSaved = false;
-    counter.innerHTML = count - 1;
-    button.innerHTML = "Save recipe";
-    button.className = "btn-primary";
+/* One listener for every "Watch at" button. */
+function onStepClicked(event) {
+  var button = event.target.closest("button[data-step]");
+  if (button !== null) {
+    jumpToStep(Number(button.getAttribute("data-seconds")), Number(button.getAttribute("data-step")));
   }
 }
 
-/* Draw a recipe page in its starting state. */
-function startRecipePage(id) {
-  currentRecipe = recipeData[id];
+/* Make the save button and counter match whether this recipe is saved. */
+function renderSaveState() {
+  var saved = isSaved(currentRecipe.id);
+  var button = document.getElementById("saveButton");
+
+  document.getElementById("saveCount").textContent = currentSaveCount(currentRecipe);
+  button.textContent = saved ? "Saved ✓" : "Save recipe";
+  button.className = saved ? "btn-secondary" : "btn-primary";
+}
+
+/* Save or unsave this recipe. The product page reads the same saved list. */
+function saveThisRecipe() {
+  var nowSaved = toggleSave(currentRecipe.id);
+  renderSaveState();
+  showToast(nowSaved ? "Saved. Its ingredients will be added to your shopping list."
+                     : "Removed from your saved recipes.");
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  currentRecipe = RECIPES[Number(document.body.getAttribute("data-recipe-id"))];
   currentServings = currentRecipe.servings;
 
-  document.getElementById("saveCount").innerHTML = currentRecipe.saves;
-  document.getElementById("videoTime").innerHTML = "0:00 / " + formatTime(currentRecipe.seconds);
-  document.getElementById("totalTime").innerHTML = currentRecipe.prep + currentRecipe.cook;
+  document.getElementById("videoTime").textContent = "0:00 / " + formatTime(currentRecipe.videoSeconds);
+  document.getElementById("totalTime").textContent = currentRecipe.prepMinutes + currentRecipe.cookMinutes;
 
+  renderSaveState();
   renderIngredients(currentServings);
   renderSteps();
-}
+
+  document.getElementById("saveButton").addEventListener("click", saveThisRecipe);
+  document.getElementById("servingsButton").addEventListener("click", askRecipeServings);
+  document.getElementById("stepList").addEventListener("click", onStepClicked);
+});

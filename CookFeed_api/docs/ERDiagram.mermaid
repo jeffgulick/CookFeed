@@ -21,6 +21,8 @@ erDiagram
     users ||--o{ orders : "places"
     orders ||--o{ order_items : "contains"
     products ||--o{ order_items : "purchased as"
+    products ||--o{ reviews : "reviewed in"
+    users ||--o{ reviews : "writes"
 
     users {
         int id PK
@@ -155,4 +157,13 @@ erDiagram
         int creator_id "snapshot"
         varchar product_title "snapshot"
         int unit_price_cents "snapshot"
+    }
+    reviews {
+        int id PK
+        int product_id FK
+        int user_id FK
+        smallint rating "1..5"
+        boolean recommends
+        varchar body
+        timestamptz created_at
     }

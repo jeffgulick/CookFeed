@@ -6,7 +6,7 @@
   <title>Three Weeknights in Japan | Cookfeed</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body onload="startProductPage()">
+<body>
 
   <nav class="nav">
     <div class="nav-inner">
@@ -25,10 +25,11 @@
     </div>
 
     <span class="pill">Meal plan</span>
-    <h1>Three Weeknights in Japan</h1>
+    <h1 id="productTitle">Three Weeknights in Japan</h1>
     <p class="byline">
       by <a href="creator.html">kenji-kitchen</a>
       <span class="verified">&#10003; Verified creator</span>
+      &middot; <a href="reviews.html" id="ratingLink">reviews</a>
     </p>
 
     <p class="lede">
@@ -38,86 +39,62 @@
 
     <div class="buybar">
       <span class="price" id="priceTag">$12.99</span>
-      <button class="btn-primary" id="buyButton" onclick="addToCart('Three Weeknights in Japan', 1299)">
-        Add to cart
-      </button>
-      <button class="btn-secondary" onclick="askServings()">Cook for a different number of people</button>
+      <button class="btn-primary" id="buyButton">Add to cart</button>
     </div>
     <p class="price-note">One-time purchase &middot; yours to keep &middot; 3 recipes, 3 videos, 1 shopping list</p>
 
     <h2>What is included</h2>
-    <div class="grid">
-
-      <div class="recipe-card">
-        <a href="recipe-teriyaki.html"><img src="images/recipe-teriyaki.svg" alt="A bowl of chicken teriyaki over rice"></a>
-        <div class="recipe-body">
-          <div class="day">Monday</div>
-          <div class="recipe-title"><a href="recipe-teriyaki.html">Chicken Teriyaki, the Real Way</a></div>
-          <div class="meta">Serves 2 &middot; 20 min</div>
-          <div class="recipe-foot">
-            <span class="meta"><span id="saves5">733</span> saves</span>
-            <button class="btn-small" id="save5" onclick="saveRecipe(5)">Save</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="recipe-card">
-        <a href="recipe-stirfry.html"><img src="images/recipe-stirfry.svg" alt="A pan of ginger garlic chicken stir-fry"></a>
-        <div class="recipe-body">
-          <div class="day">Tuesday</div>
-          <div class="recipe-title"><a href="recipe-stirfry.html">10-Minute Ginger Garlic Stir-Fry</a></div>
-          <div class="meta">Serves 2 &middot; 13 min</div>
-          <div class="recipe-foot">
-            <span class="meta"><span id="saves7">387</span> saves</span>
-            <button class="btn-small" id="save7" onclick="saveRecipe(7)">Save</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="recipe-card">
-        <a href="recipe-onigiri.html"><img src="images/recipe-onigiri.svg" alt="Three onigiri rice triangles on a plate"></a>
-        <div class="recipe-body">
-          <div class="day">Wednesday</div>
-          <div class="recipe-title"><a href="recipe-onigiri.html">Onigiri Three Ways</a></div>
-          <div class="meta">Serves 4 &middot; 40 min</div>
-          <div class="recipe-foot">
-            <span class="meta"><span id="saves6">504</span> saves</span>
-            <button class="btn-small" id="save6" onclick="saveRecipe(6)">Save</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
+    <p class="hover-hint">Point at a recipe for a quick look at the time, the ingredients and how it starts.</p>
+    <div class="grid" id="planRecipes"></div>
 
     <h2>Everything you need to buy</h2>
     <div class="card">
       <div class="list-head">
         <h3 id="listHeading">Shopping list &mdash; as published</h3>
-        <button class="btn-small" onclick="askServings()">Change servings</button>
       </div>
+
+      <div class="stepper-row">
+        <label for="servingsInput">Cooking every night for</label>
+        <div class="stepper">
+          <button type="button" id="servingsDown" aria-label="One fewer person">&minus;</button>
+          <input type="number" id="servingsInput" min="1" max="20" step="1" value="2" inputmode="numeric">
+          <button type="button" id="servingsUp" aria-label="One more person">+</button>
+        </div>
+        <span class="meta">people</span>
+        <button type="button" class="link-button" id="servingsReset">Reset to as published</button>
+      </div>
+      <p class="field-error" id="servingsError"></p>
+
       <p class="meta" id="listNote">
         Teriyaki and stir-fry serve 2, onigiri serves 4. One list, one grocery trip.
       </p>
 
       <div class="send-row">
-        <button class="send" onclick="sendList('instacart')">
+        <button class="send" id="sendInstacart">
           <span class="send-icon">&#128722;</span>
           <span class="send-text">Send to Instacart</span>
           <span class="send-tag">Planned</span>
         </button>
-        <button class="send" onclick="sendList('favor')">
+        <button class="send" id="sendFavor">
           <span class="send-icon">&#128663;</span>
           <span class="send-text">Send to Favor</span>
           <span class="send-tag">Planned</span>
         </button>
-        <button class="send ready" onclick="printList()">
+        <button class="send ready" id="printButton">
           <span class="send-icon">&#128424;</span>
           <span class="send-text">Print list</span>
         </button>
       </div>
+
+      <div class="list-progress">
+        <span id="listProgressText">0 of 0 items still to buy</span>
+        <div class="progress-track"><div class="progress-fill" id="listProgressFill"></div></div>
+        <button type="button" class="link-button" id="clearHave">Uncheck all</button>
+      </div>
+
       <table>
         <thead>
-          <tr><th>Amount</th><th>Ingredient</th><th>Aisle</th></tr>
+          <tr><th class="have-col">Have it</th><th>Amount</th><th>Ingredient</th><th>Aisle</th></tr>
         </thead>
         <tbody id="shoppingRows"></tbody>
       </table>
@@ -132,6 +109,7 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
+  <script src="js/data.js"></script>
   <script src="js/common.js"></script>
   <script src="js/product.js"></script>
 </body>

@@ -138,3 +138,21 @@ JOIN product_recipes pr ON pr.product_id = p.id
 JOIN recipes r ON pr.recipe_id = r.id
 WHERE u.email = 'priya@example.com' AND o.status = 'Paid'
 ORDER BY p.title, r.title;
+
+-- Q12. (Assignment 3) Reviews for a product, newest first, with the reviewer's display name
+SELECT u.display_name AS reviewer, rv.rating, rv.recommends, rv.created_at::date AS posted, rv.body
+FROM reviews rv
+JOIN users u ON rv.user_id = u.id
+JOIN products p ON rv.product_id = p.id
+WHERE p.title = 'Three Weeknights in Japan'
+ORDER BY rv.created_at DESC;
+
+-- Q13. (Assignment 3) Review summary for a product: count, average rating, percent recommending
+SELECT p.title,
+       COUNT(rv.id) AS reviews,
+       ROUND(AVG(rv.rating), 1) AS average_rating,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE rv.recommends) / NULLIF(COUNT(rv.id), 0)) AS percent_recommend
+FROM products p
+LEFT JOIN reviews rv ON rv.product_id = p.id
+WHERE p.title = 'Three Weeknights in Japan'
+GROUP BY p.id, p.title;

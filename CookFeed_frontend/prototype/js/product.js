@@ -1,69 +1,93 @@
-/* Cookfeed prototype - product page (Three Weeknights in Japan) */
+/* Cookfeed prototype - product page (Three Weeknights in Japan)
 
-var PRODUCT_TITLE = "Three Weeknights in Japan";
-var PRODUCT_CENTS = 1299;
+   Homework 3 interactions on this page:
+     1. Servings stepper     - input, click and keyboard events rescale the list live
+     2. Recipe card preview  - mouseenter / mouseleave (and focus) show more detail
+     3. "Have it" checklist  - change events tick items off and update the progress bar
+     4. Add to cart and Save - click events, remembered across pages and reloads */
 
-var cartCount = 0;
+/* null means "show the list as each recipe was published". A number means every
+   night of the plan is cooked for that many people. */
+var currentPeople = null;
 
-/* Every ingredient in the plan, exactly as each recipe is written.
-   baseServings is how many people that recipe feeds as published, and it is
-   NOT the same for all three: the teriyaki and the stir-fry serve 2, the
-   onigiri serves 4. Each line therefore has to be scaled against its own
-   recipe, not against one number for the whole plan. */
-var shoppingRows = [
-  { name: "boneless chicken thigh", qty: 500, unit: "g",     aisle: "Meat",    baseServings: 2 },
-  { name: "chicken breast",         qty: 300, unit: "g",     aisle: "Meat",    baseServings: 2 },
-  { name: "soy sauce",              qty: 3,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "soy sauce",              qty: 2,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "mirin",                  qty: 3,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "sake",                   qty: 2,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "granulated sugar",       qty: 1,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "vegetable oil",          qty: 1,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "vegetable oil",          qty: 2,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "cornstarch",             qty: 1,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "rice vinegar",           qty: 1,   unit: "tbsp",  aisle: "Pantry",  baseServings: 2 },
-  { name: "sesame oil",             qty: 1,   unit: "tsp",   aisle: "Pantry",  baseServings: 2 },
-  { name: "sesame oil",             qty: 1,   unit: "tsp",   aisle: "Pantry",  baseServings: 4 },
-  { name: "short-grain rice",       qty: 2,   unit: "c",     aisle: "Pantry",  baseServings: 4 },
-  { name: "kosher salt",            qty: 1,   unit: "tsp",   aisle: "Spices",  baseServings: 4 },
-  { name: "scallion",               qty: 1,   unit: "bunch", aisle: "Produce", baseServings: 2 },
-  { name: "broccoli",               qty: 1,   unit: "ea",    aisle: "Produce", baseServings: 2 },
-  { name: "bell pepper",            qty: 1,   unit: "ea",    aisle: "Produce", baseServings: 2 },
-  { name: "garlic",                 qty: 3,   unit: "clove", aisle: "Produce", baseServings: 2 },
-  { name: "fresh ginger",           qty: 15,  unit: "g",     aisle: "Produce", baseServings: 2 }
-];
+/* Which shopping-list lines the shopper already has at home, keyed by line.
+   Kept separately from the list so ticks survive when the list is rescaled. */
+var haveItems = {};
 
-/* Rebuild the shopping list.
-   Pass a number of people to scale the plan, or pass 0 to show it the way
-   the creator published it. Two ingredients only merge into one line when
-   they share a name AND a unit, which is why the two soy sauce entries
-   become one row but the rice and the ginger never combine. */
-function changeServings(people) {
+/* ---------- building the shopping list ---------- */
+
+/* Every ingredient across the plan's recipes, each tagged with its own recipe's
+   servings. The recipes do not all serve the same number (teriyaki and stir-fry
+   serve 2, onigiri serves 4), so each line has to be scaled against its own recipe. */
+function collectIngredients() {
+  var rows = [];
+
+  for (var i = 0; i < PRODUCT.recipes.length; i = i + 1) {
+    var recipe = RECIPES[PRODUCT.recipes[i].recipeId];
+
+    for (var j = 0; j < recipe.ingredients.length; j = j + 1) {
+      var item = recipe.ingredients[j];
+      rows.push({
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        aisle: item.aisle,
+        baseServings: recipe.servings
+      });
+    }
+  }
+
+  return rows;
+}
+
+/* Add up the plan's ingredients for the chosen number of people.
+   Two lines only merge when they share a name AND a unit, which is why the two
+   soy sauce entries become one row but the rice and the ginger never combine.
+   The result is sorted by aisle so the list follows a walk through the store. */
+function buildShoppingList(people) {
+  var rows = collectIngredients();
   var totals = {};
-  var order = [];
-  var i;
+  var list = [];
 
-  for (i = 0; i < shoppingRows.length; i = i + 1) {
-    var row = shoppingRows[i];
+  for (var i = 0; i < rows.length; i = i + 1) {
+    var row = rows[i];
     var scale = 1;
 
-    if (people > 0) {
+    if (people !== null) {
       scale = people / row.baseServings;
     }
 
     var key = row.name + "|" + row.unit;
 
     if (totals[key] === undefined) {
-      totals[key] = { name: row.name, unit: row.unit, aisle: row.aisle, amount: 0 };
-      order.push(key);
+      totals[key] = { key: key, name: row.name, unit: row.unit, aisle: row.aisle, amount: 0 };
+      list.push(totals[key]);
     }
-    totals[key].amount = totals[key].amount + row.qty * scale;
+    totals[key].amount = totals[key].amount + row.quantity * scale;
   }
 
+  list.sort(function (a, b) {
+    if (a.aisle !== b.aisle) {
+      return a.aisle < b.aisle ? -1 : 1;
+    }
+    return a.name < b.name ? -1 : 1;
+  });
+
+  return list;
+}
+
+/* Draw the shopping list, keeping any "have it" ticks the shopper already made. */
+function renderShoppingList() {
+  var list = buildShoppingList(currentPeople);
   var html = "";
-  for (i = 0; i < order.length; i = i + 1) {
-    var line = totals[order[i]];
-    html = html + "<tr>";
+
+  for (var i = 0; i < list.length; i = i + 1) {
+    var line = list[i];
+    var have = haveItems[line.key] === true;
+
+    html = html + "<tr class='" + (have ? "have" : "") + "' data-key='" + escapeHtml(line.key) + "'>";
+    html = html + "<td class='have-col'><input type='checkbox' aria-label='I already have " +
+                  escapeHtml(line.name) + "'" + (have ? " checked" : "") + "></td>";
     html = html + "<td class='qty'>" + formatQuantity(line.amount) + " " + line.unit + "</td>";
     html = html + "<td>" + line.name + "</td>";
     html = html + "<td class='aisle'>" + line.aisle + "</td>";
@@ -72,131 +96,315 @@ function changeServings(people) {
 
   document.getElementById("shoppingRows").innerHTML = html;
 
-  if (people > 0) {
-    document.getElementById("listHeading").innerHTML = "Shopping list for " + people + " people";
-    document.getElementById("listNote").innerHTML =
-      "Scaled from the published servings. Every night is now cooked for " + people + ".";
+  var heading = document.getElementById("listHeading");
+  var note = document.getElementById("listNote");
+
+  if (currentPeople === null) {
+    heading.innerHTML = "Shopping list &mdash; as published";
+    note.textContent = "Teriyaki and stir-fry serve 2, onigiri serves 4. One list, one grocery trip.";
   } else {
-    document.getElementById("listHeading").innerHTML = "Shopping list &mdash; as published";
-    document.getElementById("listNote").innerHTML =
-      "Teriyaki and stir-fry serve 2, onigiri serves 4. One list, one grocery trip.";
+    var word = currentPeople === 1 ? "person" : "people";
+    heading.textContent = "Shopping list for " + currentPeople + " " + word;
+    note.textContent = "Scaled from the published servings. Every night is now cooked for " +
+                       currentPeople + " " + word + ".";
+  }
+
+  updateProgress();
+}
+
+/* ---------- 1. servings stepper ---------- */
+
+/* Check what the shopper typed. Returns an error message, or "" when the
+   value is a whole number of people inside the allowed range. */
+function servingsProblem(text) {
+  if (text.trim() === "") {
+    return "Enter how many people you are cooking for.";
+  }
+
+  var people = Number(text);
+
+  if (isNaN(people) || Math.floor(people) !== people) {
+    return "Use a whole number of people.";
+  }
+  if (people < LIMITS.servingsMin || people > LIMITS.servingsMax) {
+    return "Choose between " + LIMITS.servingsMin + " and " + LIMITS.servingsMax + " people.";
+  }
+  return "";
+}
+
+/* Read the box and, if it holds a sensible number, rescale the list. When it
+   does not, explain why under the box and leave the list as it was. */
+function applyServingsInput() {
+  var input = document.getElementById("servingsInput");
+  var error = document.getElementById("servingsError");
+  var problem = servingsProblem(input.value);
+
+  error.textContent = problem;
+
+  if (problem !== "") {
+    input.classList.add("invalid");
+    return;
+  }
+
+  input.classList.remove("invalid");
+  currentPeople = Number(input.value);
+  updateStepperButtons();
+  renderShoppingList();
+}
+
+/* Grey out minus at the bottom of the range and plus at the top. */
+function updateStepperButtons() {
+  var value = Number(document.getElementById("servingsInput").value);
+  document.getElementById("servingsDown").disabled = value <= LIMITS.servingsMin;
+  document.getElementById("servingsUp").disabled = value >= LIMITS.servingsMax;
+}
+
+/* Move the number up or down by one from the minus and plus buttons. */
+function stepServings(change) {
+  var input = document.getElementById("servingsInput");
+  var value = Number(input.value);
+
+  if (isNaN(value) || input.value.trim() === "") {
+    value = 2;
+  }
+
+  value = Math.min(LIMITS.servingsMax, Math.max(LIMITS.servingsMin, Math.round(value) + change));
+  input.value = value;
+  applyServingsInput();
+}
+
+/* Go back to the quantities exactly as the creator published them. */
+function resetServings() {
+  var input = document.getElementById("servingsInput");
+  input.value = 2;
+  input.classList.remove("invalid");
+  document.getElementById("servingsError").textContent = "";
+  currentPeople = null;
+  updateStepperButtons();
+  renderShoppingList();
+  showToast("Back to the quantities as published.");
+}
+
+/* ---------- 2. recipe cards and the hover preview ---------- */
+
+/* Draw one card per recipe in the plan. Each card carries a hidden preview with
+   the details a shopper wants before clicking through. */
+function renderRecipeCards() {
+  var html = "";
+
+  for (var i = 0; i < PRODUCT.recipes.length; i = i + 1) {
+    var placement = PRODUCT.recipes[i];
+    var recipe = RECIPES[placement.recipeId];
+    var minutes = recipe.prepMinutes + recipe.cookMinutes;
+    var saved = isSaved(recipe.id);
+
+    html = html + "<div class='recipe-card' data-recipe-id='" + recipe.id + "'>";
+    html = html + "<a class='card-media' href='" + recipe.pageUrl + "'>";
+    html = html + "<img src='" + recipe.thumbnailUrl + "' alt='" + escapeHtml(recipe.title) + "'>";
+    html = html + "<div class='preview' aria-hidden='true'>";
+    html = html + "<div><b>" + recipe.prepMinutes + " min prep &middot; " + recipe.cookMinutes + " min cook</b></div>";
+    html = html + "<div>" + recipe.ingredients.length + " ingredients &middot; " + recipe.steps.length + " steps</div>";
+    html = html + "<div class='preview-step'>First: " + recipe.steps[0].instruction + "</div>";
+    html = html + "</div></a>";
+    html = html + "<div class='recipe-body'>";
+    html = html + "<div class='day'>" + DAY_NAMES[placement.dayOffset] + " " + placement.slot.toLowerCase() + "</div>";
+    html = html + "<div class='recipe-title'><a href='" + recipe.pageUrl + "'>" + recipe.title + "</a></div>";
+    html = html + "<div class='meta'>Serves " + recipe.servings + " &middot; " + minutes + " min</div>";
+    html = html + "<div class='recipe-foot'>";
+    html = html + "<span class='meta'><span class='save-count'>" + currentSaveCount(recipe) + "</span> saves</span>";
+    html = html + "<button class='btn-small save-button" + (saved ? " saved" : "") + "'>" +
+                  (saved ? "Saved ✓" : "Save") + "</button>";
+    html = html + "</div></div></div>";
+  }
+
+  document.getElementById("planRecipes").innerHTML = html;
+
+  var cards = document.querySelectorAll("#planRecipes .recipe-card");
+
+  for (var k = 0; k < cards.length; k = k + 1) {
+    var card = cards[k];
+
+    /* Mouse events: show the preview while the pointer is over the card. */
+    card.addEventListener("mouseenter", showPreview);
+    card.addEventListener("mouseleave", hidePreview);
+
+    /* Keyboard users get the same preview when they tab onto the card's link. */
+    card.addEventListener("focusin", showPreview);
+    card.addEventListener("focusout", hidePreview);
+
+    card.querySelector(".save-button").addEventListener("click", saveRecipe);
   }
 }
 
-/* Ask the shopper how many people they are cooking for, check the answer,
-   and rescale the list. Anything that is not a sensible number is rejected
-   and the list is left alone. */
-function askServings() {
-  var answer = prompt("How many people are you cooking for?", "4");
-
-  if (answer === null) {
-    return;
-  }
-
-  var people = Number(answer);
-
-  if (answer === "" || isNaN(people) || people < 1 || people > 20) {
-    alert("Please enter a number of people between 1 and 20.");
-    return;
-  }
-
-  changeServings(Math.round(people));
+function showPreview(event) {
+  event.currentTarget.classList.add("previewing");
 }
 
-/* Add the plan to the cart after confirming the price with the shopper. */
-function addToCart(title, cents) {
-  var button = document.getElementById("buyButton");
-
-  if (cartCount > 0) {
-    alert(title + " is already in your cart. These are digital plans, so you only need one.");
-    return;
-  }
-
-  var wantsIt = confirm("Add " + title + " to your cart for " + formatPrice(cents) + "?");
-
-  if (wantsIt === false) {
-    return;
-  }
-
-  cartCount = cartCount + 1;
-  document.getElementById("cartCount").innerHTML = cartCount;
-  button.innerHTML = "In cart \u2713";
-  button.className = "btn-primary done";
-  alert("Added. Your shopping list is waiting in the cart.");
+function hidePreview(event) {
+  event.currentTarget.classList.remove("previewing");
 }
 
-/* Where the finished shopping list could be sent.
-   "ready" marks the ones this prototype can really do. The delivery partners
-   are on the roadmap: the list is already in the right shape to hand over,
-   but no account has been connected to a partner yet. */
+/* Save or unsave one recipe. The same saved list is read by the recipe pages. */
+function saveRecipe(event) {
+  var button = event.currentTarget;
+  var card = button.closest(".recipe-card");
+  var recipe = RECIPES[Number(card.getAttribute("data-recipe-id"))];
+  var nowSaved = toggleSave(recipe.id);
+
+  button.textContent = nowSaved ? "Saved ✓" : "Save";
+  button.classList.toggle("saved", nowSaved);
+  card.querySelector(".save-count").textContent = currentSaveCount(recipe);
+
+  showToast(nowSaved ? recipe.title + " saved." : recipe.title + " removed from your saves.");
+}
+
+/* ---------- 3. "have it" checklist ---------- */
+
+/* One listener on the table handles every checkbox, including the ones drawn
+   later when the list is rescaled (event delegation). */
+function onHaveChanged(event) {
+  if (event.target.type !== "checkbox") {
+    return;
+  }
+
+  var row = event.target.closest("tr");
+  var key = row.getAttribute("data-key");
+  var have = event.target.checked;
+
+  if (have) {
+    haveItems[key] = true;
+  } else {
+    delete haveItems[key];
+  }
+
+  row.classList.toggle("have", have);
+  updateProgress();
+}
+
+/* How many lines are still unticked. */
+function countRemaining() {
+  var boxes = document.querySelectorAll("#shoppingRows input[type='checkbox']");
+  var remaining = 0;
+  for (var i = 0; i < boxes.length; i = i + 1) {
+    if (boxes[i].checked === false) {
+      remaining = remaining + 1;
+    }
+  }
+  return remaining;
+}
+
+/* Rewrite "N of M items still to buy" and move the progress bar. */
+function updateProgress() {
+  var total = document.querySelectorAll("#shoppingRows tr").length;
+  var remaining = countRemaining();
+  var percentDone = total === 0 ? 0 : Math.round(((total - remaining) / total) * 100);
+  var text = document.getElementById("listProgressText");
+
+  if (remaining === 0 && total > 0) {
+    text.textContent = "You already have everything. Nothing to buy!";
+  } else {
+    text.textContent = remaining + " of " + total + " items still to buy";
+  }
+
+  document.getElementById("listProgressFill").style.width = percentDone + "%";
+}
+
+function clearHaveItems() {
+  haveItems = {};
+  renderShoppingList();
+}
+
+/* ---------- sending and printing the list ---------- */
+
 var sendTargets = {
-  instacart: {
-    name: "Instacart",
-    ready: false,
-    detail: "Every line below would be matched to a store item and dropped into an " +
-            "Instacart order for a nearby store, ready for you to review before checkout."
-  },
-  favor: {
-    name: "Favor",
-    ready: false,
-    detail: "The list would be handed to a Favor runner as a shopping request, " +
-            "with the quantities already scaled for your household."
-  }
+  instacart: { name: "Instacart" },
+  favor: { name: "Favor" }
 };
 
-/* Hand the shopping list to a delivery partner.
-   The partners are not connected yet, so this explains what the button will do
-   rather than pretending the order went through. */
+/* The delivery partners are not connected yet, so this says what the button
+   will do rather than pretending the order went through. */
 function sendList(target) {
   var partner = sendTargets[target];
-  var lineCount = document.getElementById("shoppingRows").getElementsByTagName("tr").length;
-
-  if (partner.ready === false) {
-    alert("Send to " + partner.name + " - planned feature.\n\n" +
-          partner.detail + "\n\n" +
-          "Your list of " + lineCount + " items is ready to hand over. " +
-          "The connection to " + partner.name + " is not built yet.");
-    return;
-  }
-
-  alert("Your list of " + lineCount + " items was sent to " + partner.name + ".");
+  var remaining = countRemaining();
+  showToast("Send to " + partner.name + " is planned. Your " + remaining +
+            " remaining items are ready to hand over.");
 }
 
-/* Print the shopping list. This one is real: it opens the browser's print
-   dialog, which is how a cook takes the list to the store today. */
+/* Printing is real: the print stylesheet leaves only the lines still to buy. */
 function printList() {
-  var heading = document.getElementById("listHeading").innerHTML;
-  var lineCount = document.getElementById("shoppingRows").getElementsByTagName("tr").length;
-  var goAhead = confirm("Print your " + lineCount + " item shopping list?");
-
-  if (goAhead === false) {
+  if (countRemaining() === 0) {
+    showToast("Every item is ticked off, so there is nothing to print.", "error");
     return;
   }
-
   window.print();
 }
 
-/* Save or unsave a single recipe and move its save counter,
-   the same way the counter on a real recipe card behaves. */
-function saveRecipe(id) {
-  var button = document.getElementById("save" + id);
-  var counter = document.getElementById("saves" + id);
-  var count = Number(counter.innerHTML);
+/* ---------- 4. add to cart ---------- */
 
-  if (button.innerHTML === "Save") {
-    button.innerHTML = "Saved \u2713";
-    button.className = "btn-small saved";
-    counter.innerHTML = count + 1;
+/* Make the buy button match the cart: "Add to cart" or "In cart, go to cart". */
+function renderBuyButton() {
+  var button = document.getElementById("buyButton");
+
+  if (isInCart(PRODUCT.id)) {
+    button.textContent = "In cart ✓ — go to cart";
+    button.className = "btn-primary done";
   } else {
-    button.innerHTML = "Save";
-    button.className = "btn-small";
-    counter.innerHTML = count - 1;
+    button.textContent = "Add to cart — " + formatPrice(PRODUCT.priceCents);
+    button.className = "btn-primary";
   }
 }
 
-/* Draw the page in its starting state. */
-function startProductPage() {
-  document.getElementById("priceTag").innerHTML = formatPrice(PRODUCT_CENTS);
-  document.getElementById("buyButton").innerHTML = "Add to cart \u2014 " + formatPrice(PRODUCT_CENTS);
-  changeServings(0);
+function onBuyClicked() {
+  if (isInCart(PRODUCT.id)) {
+    window.location.href = "cart.html";
+    return;
+  }
+
+  addProductToCart(PRODUCT.id);
+  renderBuyButton();
+  showToast(PRODUCT.title + " added. Your shopping list is waiting in the cart.");
 }
+
+/* Show the plan's average rating next to the creator's name. */
+function renderRatingLink() {
+  var reviews = getAllReviews(PRODUCT.id);
+  var link = document.getElementById("ratingLink");
+
+  if (reviews.length === 0) {
+    link.textContent = "no reviews yet";
+    return;
+  }
+
+  var total = 0;
+  for (var i = 0; i < reviews.length; i = i + 1) {
+    total = total + reviews[i].rating;
+  }
+  var average = total / reviews.length;
+  link.textContent = "★ " + average.toFixed(1) + " (" + reviews.length + " reviews)";
+}
+
+/* ---------- start ---------- */
+
+document.addEventListener("DOMContentLoaded", function () {
+  document.getElementById("priceTag").textContent = formatPrice(PRODUCT.priceCents);
+  renderBuyButton();
+  renderRatingLink();
+  renderRecipeCards();
+  renderShoppingList();
+  updateStepperButtons();
+
+  document.getElementById("buyButton").addEventListener("click", onBuyClicked);
+
+  var servingsInput = document.getElementById("servingsInput");
+  servingsInput.addEventListener("input", applyServingsInput);
+  document.getElementById("servingsDown").addEventListener("click", function () { stepServings(-1); });
+  document.getElementById("servingsUp").addEventListener("click", function () { stepServings(1); });
+  document.getElementById("servingsReset").addEventListener("click", resetServings);
+
+  document.getElementById("shoppingRows").addEventListener("change", onHaveChanged);
+  document.getElementById("clearHave").addEventListener("click", clearHaveItems);
+
+  document.getElementById("sendInstacart").addEventListener("click", function () { sendList("instacart"); });
+  document.getElementById("sendFavor").addEventListener("click", function () { sendList("favor"); });
+  document.getElementById("printButton").addEventListener("click", printList);
+});
