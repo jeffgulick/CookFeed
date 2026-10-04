@@ -840,3 +840,16 @@ tr.have td.aisle { text-decoration: none; }
 .line-actions .stepper input { width: 44px; padding: 4px 0; }
 .line-price { text-align: right; }
 .line-price .each { font-size: 13px; font-weight: 500; }
+
+/* ---------- storage notice ---------- */
+
+.storage-notice {
+  margin: 18px 0 0;
+  padding: 12px 16px;
+  border: 1px solid #f2c94c;
+  border-radius: var(--radius);
+  background: #fff8db;
+  color: #6b4e00;
+  font-size: 14px;
+  font-weight: 600;
+}

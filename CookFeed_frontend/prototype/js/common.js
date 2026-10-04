@@ -253,5 +253,44 @@ function showToast(message, kind) {
   }, 3200);
 }
 
-/* Every page shows the cart count as soon as it loads. */
-document.addEventListener("DOMContentLoaded", updateCartChip);
+/* ---------- storage check ----------
+   Some browsers are set to stop sites from saving data. The prototype still
+   works there, but the cart, saves and reviews reset on every page. Rather than
+   let that look like a bug, a notice explains it. */
+
+function storageWorks() {
+  try {
+    var key = "cookfeed.storage-test";
+    window.localStorage.setItem(key, "1");
+    var ok = window.localStorage.getItem(key) === "1";
+    window.localStorage.removeItem(key);
+    return ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+function showStorageNotice() {
+  var main = document.querySelector("main");
+  if (main === null || document.getElementById("storageNotice") !== null) {
+    return;
+  }
+
+  var notice = document.createElement("div");
+  notice.id = "storageNotice";
+  notice.className = "storage-notice";
+  notice.setAttribute("role", "note");
+  notice.textContent = "This browser is blocking sites from saving data, so the cart, saved " +
+    "recipes and new reviews reset when you change pages. Allow site data for this page, " +
+    "or open it in a different browser, to see them carry over.";
+  main.insertBefore(notice, main.firstChild);
+}
+
+/* Every page shows the cart count as soon as it loads, and the storage
+   notice when saving is blocked. */
+document.addEventListener("DOMContentLoaded", function () {
+  updateCartChip();
+  if (storageWorks() === false) {
+    showStorageNotice();
+  }
+});

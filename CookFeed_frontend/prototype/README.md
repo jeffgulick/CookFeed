@@ -20,6 +20,11 @@ the viewer hands the browser only the one file it clicked.
 Once extracted, double-click `index.html`, or drag it onto a browser window. Any modern
 browser works.
 
+**Seeing the Homework 1 version?** If you opened the Homework 1 prototype before in the same
+browser, it may show you its saved copy of the old pages. Press **Ctrl+Shift+R** (Cmd+Shift+R
+on a Mac) on each page to load the current files. The current product page has a "Cooking
+every night for" box with minus and plus buttons above the shopping list.
+
 The pages are plain HTML, CSS, and JavaScript, so they run straight from the file system
 with no web server and no internet connection. To serve them over HTTP instead, run
 `python3 -m http.server 8000` in this folder and open `http://localhost:8000`.
