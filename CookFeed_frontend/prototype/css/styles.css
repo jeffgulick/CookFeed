@@ -829,3 +829,14 @@ tr.have td.aisle { text-decoration: none; }
 
 .review.fresh { border-color: var(--accent); background: var(--accent-soft); }
 .empty-reviews { color: var(--muted); text-align: center; padding: 24px; }
+
+.totals .empty-cart { display: block; width: auto; margin: 12px auto 0; padding: 0; }
+.totals .empty-cart[hidden] { display: none; }
+
+/* ---------- cart quantity ---------- */
+
+.line-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.line-actions .stepper button { padding: 4px 12px; font-size: 16px; }
+.line-actions .stepper input { width: 44px; padding: 4px 0; }
+.line-price { text-align: right; }
+.line-price .each { font-size: 13px; font-weight: 500; }

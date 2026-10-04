@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your cart | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=4">
 </head>
 <body>
 
@@ -29,11 +29,12 @@
       <p class="meta" id="emptyNote"></p>
 
       <div class="card totals">
-        <div class="total-row"><span>Subtotal</span><span id="subtotal">$12.99</span></div>
+        <div class="total-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
         <div class="total-row"><span>Tax</span><span>$0.00</span></div>
         <div class="total-row"><span>Delivery</span><span>None &mdash; digital</span></div>
-        <div class="total-row grand"><span>Total</span><span id="orderTotal">$12.99</span></div>
-        <button class="btn-primary" id="checkoutButton">Place order</button>
+        <div class="total-row grand"><span>Total</span><span id="orderTotal">$0.00</span></div>
+        <button class="btn-primary" id="checkoutButton" disabled>Place order</button>
+        <button type="button" class="link-button empty-cart" id="emptyCartButton" hidden>Empty cart</button>
         <p class="meta" style="margin:10px 0 0">
           This prototype does not take payment. Placing an order shows the confirmation a
           real checkout would produce.
@@ -51,8 +52,8 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
-  <script src="js/data.js"></script>
-  <script src="js/common.js"></script>
-  <script src="js/cart.js"></script>
+  <script src="js/data.js?v=4"></script>
+  <script src="js/common.js?v=4"></script>
+  <script src="js/cart.js?v=4"></script>
 </body>
 </html>

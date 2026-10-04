@@ -80,6 +80,13 @@ All event handlers are attached with `addEventListener`; there are no inline `on
 - Sort by newest, highest or lowest, and a "Recommends only" filter.
 - Posted reviews survive a reload and can be removed by their author.
 
+**Cart page (`cart.html`)**
+- Minus and plus buttons, or typing a number, change how many copies of a plan are in the
+  cart (1-10). Line prices, totals and the cart chip update as the number changes.
+- Empty cart removes everything after a confirmation.
+- Quantity is a prototype-only feature. The database stores one row per product per cart,
+  because a digital plan is owned once.
+
 ## Notes
 
 - Nothing is sent to a server. The cart, saved recipes, posted reviews and placed orders are

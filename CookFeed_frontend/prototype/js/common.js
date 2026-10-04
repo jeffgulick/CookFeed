@@ -84,8 +84,12 @@ function saveJson(key, value) {
 }
 
 /* ---------- cart ----------
-   One entry per product, shaped like a cart_items row: { productId, addedAt }.
-   Plans are digital, so a product is either in the cart once or not at all. */
+   One entry per product, shaped like a cart_items row: { productId, addedAt },
+   plus a quantity. The quantity is a prototype-only feature for practising
+   number handling in JavaScript: the database design has no quantity column,
+   because a digital plan is owned once. */
+
+var CART_MAX_QUANTITY = 10;
 
 function getCart() {
   return loadJson(STORAGE_KEYS.cart, []);
@@ -107,7 +111,7 @@ function addProductToCart(productId) {
     return false;
   }
   var cart = getCart();
-  cart.push({ productId: productId, addedAt: new Date().toISOString() });
+  cart.push({ productId: productId, addedAt: new Date().toISOString(), quantity: 1 });
   saveJson(STORAGE_KEYS.cart, cart);
   updateCartChip();
   return true;
@@ -119,16 +123,49 @@ function removeProductFromCart(productId) {
   updateCartChip();
 }
 
+/* How many of one product are in the cart. Entries saved before quantities
+   existed have no quantity, which counts as 1. */
+function cartQuantity(item) {
+  return typeof item.quantity === "number" && item.quantity >= 1 ? item.quantity : 1;
+}
+
+/* Set a product's quantity, kept between 1 and CART_MAX_QUANTITY.
+   Returns the quantity actually stored. */
+function setCartQuantity(productId, quantity) {
+  var cart = getCart();
+  var stored = Math.min(CART_MAX_QUANTITY, Math.max(1, Math.round(quantity)));
+
+  for (var i = 0; i < cart.length; i = i + 1) {
+    if (cart[i].productId === productId) {
+      cart[i].quantity = stored;
+    }
+  }
+
+  saveJson(STORAGE_KEYS.cart, cart);
+  updateCartChip();
+  return stored;
+}
+
+/* Total number of units in the cart, adding up every line's quantity. */
+function cartUnitCount() {
+  var cart = getCart();
+  var units = 0;
+  for (var i = 0; i < cart.length; i = i + 1) {
+    units = units + cartQuantity(cart[i]);
+  }
+  return units;
+}
+
 function clearCart() {
   saveJson(STORAGE_KEYS.cart, []);
   updateCartChip();
 }
 
-/* Every page's nav has a cart chip. Show the real number of items in it. */
+/* Every page's nav has a cart chip. Show the real number of units in it. */
 function updateCartChip() {
   var chip = document.getElementById("cartCount");
   if (chip !== null) {
-    chip.textContent = getCart().length;
+    chip.textContent = cartUnitCount();
   }
 }
 
