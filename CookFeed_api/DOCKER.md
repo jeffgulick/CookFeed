@@ -126,10 +126,12 @@ expecting it to be empty.
 To start the fidelity test from a clean database:
 
 ```bash
-docker compose exec -T postgres psql -U postgres -d postgres -c "DROP DATABASE cookfeed WITH (FORCE); CREATE DATABASE cookfeed;"
+docker compose exec -T postgres psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS cookfeed WITH (FORCE);" -c "CREATE DATABASE cookfeed;"
 ```
-Drops and recreates the dev database in one statement. `WITH (FORCE)` disconnects anything still
-attached, which is usually a stray `dotnet run`.
+Drops and recreates the dev database. The two statements need separate `-c` flags: psql runs a
+single `-c` with several statements as one transaction, and `DROP DATABASE` is not allowed inside
+a transaction. `WITH (FORCE)` disconnects anything still attached, which is usually a stray
+`dotnet run` or a database viewer.
 
 ---
 

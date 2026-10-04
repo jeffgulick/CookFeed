@@ -141,6 +141,9 @@ application (Assignment 4), where they can be built against the real API and dat
   screens; today they wrap onto separate lines.
 - **Order history.** A "Your orders" page linked from the receipt, listing past orders and gift codes.
 - **Send to Instacart and Send to Favor.** Connect the delivery partners that are marked Coming soon.
+- **Custom confirmation pop-ups.** Replace every browser `confirm()` and `alert()` box (removing
+  a review, removing from the cart, emptying the cart, placing an order, posting a review) with
+  Cookfeed's own styled dialog, so confirmations match the site and are clearer to customers.
 
 ## Notes
 
