@@ -82,7 +82,6 @@ prototype/
   js/kitchen.js       My kitchen behavior
   js/recipe.js        all three recipes and the recipe page behavior
   images/             illustrations (SVG)
-  NOTES.md            material for the written submission
 ```
 
 ## Homework 3 additions
