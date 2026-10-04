@@ -98,7 +98,7 @@ psql -h localhost -p 5432 -U postgres -d cookfeed -f docs/sql/seed.sql
 
 ## The fidelity test
 
-CLAUDE.md requires the EF migration to produce a schema that the submitted seed and queries run
+The project requires the EF migration to produce a schema that the submitted seed and queries run
 against unchanged. After `dotnet ef database update`:
 
 ```bash

@@ -4,7 +4,7 @@
 # CookFeed_frontend/.gitignore.
 # ---------------------------------------------------------------------------
 
-# Claude Code project instructions and local state (local only, never committed)
+# Local editor instructions and settings (kept on this machine, never committed)
 CLAUDE.md
 .claude/
 
