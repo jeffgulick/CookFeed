@@ -6,6 +6,9 @@
      3. "Have it" checklist  - change events tick items off and update the progress bar
      4. Add to cart and Save - click events, remembered across pages and reloads */
 
+/* Tooltip on every Save button, so a first-time visitor knows what saving does. */
+var SAVE_HINT = "Saving keeps this recipe in your saved recipes and adds its ingredients to your shopping list";
+
 /* null means "show the list as each recipe was published". A number means every
    night of the plan is cooked for that many people. */
 var currentPeople = null;
@@ -211,9 +214,9 @@ function renderRecipeCards() {
     html = html + "<div class='recipe-title'><a href='" + recipe.pageUrl + "'>" + recipe.title + "</a></div>";
     html = html + "<div class='meta'>Serves " + recipe.servings + " &middot; " + minutes + " min</div>";
     html = html + "<div class='recipe-foot'>";
-    html = html + "<span class='meta'><span class='save-count'>" + currentSaveCount(recipe) + "</span> saves</span>";
-    html = html + "<button class='btn-small save-button" + (saved ? " saved" : "") + "'>" +
-                  (saved ? "Saved ✓" : "Save") + "</button>";
+    html = html + "<span class='meta'>saved by <span class='save-count'>" + currentSaveCount(recipe) + "</span> cooks</span>";
+    html = html + "<button class='btn-small save-button" + (saved ? " saved" : "") + "' title='" + SAVE_HINT + "'>" +
+                  (saved ? "Saved ✓" : "Save recipe") + "</button>";
     html = html + "</div></div></div>";
   }
 
@@ -251,11 +254,12 @@ function saveRecipe(event) {
   var recipe = RECIPES[Number(card.getAttribute("data-recipe-id"))];
   var nowSaved = toggleSave(recipe.id);
 
-  button.textContent = nowSaved ? "Saved ✓" : "Save";
+  button.textContent = nowSaved ? "Saved ✓" : "Save recipe";
   button.classList.toggle("saved", nowSaved);
   card.querySelector(".save-count").textContent = currentSaveCount(recipe);
 
-  showToast(nowSaved ? recipe.title + " saved." : recipe.title + " removed from your saves.");
+  showToast(nowSaved ? recipe.title + " saved. Its ingredients are now on your shopping list."
+                     : recipe.title + " removed from your saved recipes.");
 }
 
 /* ---------- 3. "have it" checklist ---------- */
@@ -326,7 +330,7 @@ var sendTargets = {
 function sendList(target) {
   var partner = sendTargets[target];
   var remaining = countRemaining();
-  showToast("Send to " + partner.name + " is planned. Your " + remaining +
+  showToast("Send to " + partner.name + " is coming soon. Your " + remaining +
             " remaining items are ready to hand over.");
 }
 

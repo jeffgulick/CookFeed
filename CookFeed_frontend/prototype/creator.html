@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>kenji-kitchen | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=5">
+  <link rel="stylesheet" href="css/styles.css?v=6">
 </head>
 <body>
 
@@ -23,7 +23,7 @@
     <div class="card creator-head" style="margin-top:24px">
       <img src="images/avatar-kenji.svg" alt="Profile picture for kenji-kitchen">
       <div>
-        <h1 style="margin:0">Kenji Watanabe <span class="verified">&#10003; Verified</span></h1>
+        <h1 style="margin:0">Kenji Watanabe <span class="verified" title="Cookfeed has confirmed this creator is who they say they are">&#10003; Verified creator</span></h1>
         <p class="handle">@kenji-kitchen</p>
         <p class="lede" style="margin:10px 0 0">
           Japanese home cooking with a weeknight clock. Everything under 30 minutes,
@@ -32,7 +32,7 @@
         <div class="stat-row">
           <div class="stat"><b id="followerCount">18,400</b><span>followers</span></div>
           <div class="stat"><b id="recipeCount">3</b><span>published recipes</span></div>
-          <div class="stat"><b id="totalSaves">1,624</b><span>total saves</span></div>
+          <div class="stat"><b id="totalSaves">1,624</b><span>times cooks saved his recipes</span></div>
         </div>
       </div>
       <button class="btn-primary" id="followButton">Follow</button>
@@ -41,7 +41,7 @@
     <h2>Recipes</h2>
     <div class="sort-row">
       <span class="meta">Sort by:</span>
-      <button class="btn-small saved" id="sortSaves">Most saved</button>
+      <button class="btn-small saved" id="sortSaves">Most popular</button>
       <button class="btn-small" id="sortNewest">Newest</button>
     </div>
     <div class="grid" id="creatorRecipes"></div>
@@ -66,8 +66,8 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
-  <script src="js/data.js?v=5"></script>
-  <script src="js/common.js?v=5"></script>
-  <script src="js/creator.js?v=5"></script>
+  <script src="js/data.js?v=6"></script>
+  <script src="js/common.js?v=6"></script>
+  <script src="js/creator.js?v=6"></script>
 </body>
 </html>

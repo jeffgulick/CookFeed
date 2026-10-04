@@ -16,7 +16,7 @@ function publishedRecipes() {
 }
 
 /* Sort the recipes and redraw them.
-   Pass "saves" for the most saved first, or "newest" for the most recent. */
+   Pass "saves" for the most saved (most popular) first, or "newest" for the most recent. */
 function showRecipes(sortBy) {
   var sorted = publishedRecipes();
 
@@ -36,7 +36,7 @@ function showRecipes(sortBy) {
     html = html + "<div class='recipe-body'>";
     html = html + "<div class='recipe-title'><a href='" + recipe.pageUrl + "'>" + recipe.title + "</a></div>";
     html = html + "<div class='meta'>" + (recipe.prepMinutes + recipe.cookMinutes) + " min &middot; " +
-                  currentSaveCount(recipe) + " saves</div>";
+                  "saved by " + currentSaveCount(recipe).toLocaleString() + " cooks</div>";
     html = html + "<div class='meta'>Published " + formatDate(recipe.publishedAt) + "</div>";
     html = html + "</div></div>";
   }

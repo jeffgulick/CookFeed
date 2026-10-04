@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Three Weeknights in Japan | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=5">
+  <link rel="stylesheet" href="css/styles.css?v=6">
 </head>
 <body>
 
@@ -28,7 +28,7 @@
     <h1 id="productTitle">Three Weeknights in Japan</h1>
     <p class="byline">
       by <a href="creator.html">kenji-kitchen</a>
-      <span class="verified">&#10003; Verified creator</span>
+      <span class="verified" title="Cookfeed has confirmed this creator is who they say they are">&#10003; Verified creator</span>
       &middot; <a href="reviews.html" id="ratingLink">reviews</a>
     </p>
 
@@ -44,7 +44,8 @@
     <p class="price-note">One-time purchase &middot; yours to keep &middot; 3 recipes, 3 videos, 1 shopping list</p>
 
     <h2>What is included</h2>
-    <p class="hover-hint">Point at a recipe for a quick look at the time, the ingredients and how it starts.</p>
+    <p class="hover-hint">Point at a recipe for a quick look at the time, the ingredients and how it starts.
+      Save a recipe to keep it in your saved recipes and add its ingredients to your shopping list.</p>
     <div class="grid" id="planRecipes"></div>
 
     <h2>Everything you need to buy</h2>
@@ -73,12 +74,12 @@
         <button class="send" id="sendInstacart">
           <span class="send-icon">&#128722;</span>
           <span class="send-text">Send to Instacart</span>
-          <span class="send-tag">Planned</span>
+          <span class="send-tag">Coming soon</span>
         </button>
         <button class="send" id="sendFavor">
           <span class="send-icon">&#128663;</span>
           <span class="send-text">Send to Favor</span>
-          <span class="send-tag">Planned</span>
+          <span class="send-tag">Coming soon</span>
         </button>
         <button class="send ready" id="printButton">
           <span class="send-icon">&#128424;</span>
@@ -94,7 +95,7 @@
 
       <table>
         <thead>
-          <tr><th class="have-col">Have it</th><th>Amount</th><th>Ingredient</th><th>Aisle</th></tr>
+          <tr><th class="have-col" title="Tick anything you already have at home">Already have</th><th>Amount</th><th>Ingredient</th><th>Aisle</th></tr>
         </thead>
         <tbody id="shoppingRows"></tbody>
       </table>
@@ -109,8 +110,8 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
-  <script src="js/data.js?v=5"></script>
-  <script src="js/common.js?v=5"></script>
-  <script src="js/product.js?v=5"></script>
+  <script src="js/data.js?v=6"></script>
+  <script src="js/common.js?v=6"></script>
+  <script src="js/product.js?v=6"></script>
 </body>
 </html>
