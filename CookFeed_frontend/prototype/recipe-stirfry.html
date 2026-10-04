@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>10-Minute Ginger Garlic Stir-Fry | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=6">
+  <link rel="stylesheet" href="css/styles.css?v=7">
 </head>
 <body data-recipe-id="7">
 
@@ -14,6 +14,7 @@
       <a class="navlink" href="index.html">Meal plan</a>
       <a class="navlink" href="reviews.html">Reviews</a>
       <a class="navlink" href="creator.html">Creator</a>
+      <a class="navlink" href="kitchen.html">My kitchen</a>
       <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
@@ -43,13 +44,23 @@
     <div class="buybar">
       <span class="meta">Serves 2 &middot; <span id="totalTime">20</span> min total &middot;
         saved by <span id="saveCount">0</span> cooks</span>
-      <button class="btn-primary" id="saveButton" title="Saving keeps this recipe in your saved recipes and adds its ingredients to your shopping list">Save recipe</button>
-      <button class="btn-secondary" id="servingsButton">Cook for a different number</button>
+      <button class="btn-primary" id="saveButton" title="Saving keeps this recipe in My kitchen and adds its ingredients to your shopping list there">Save recipe</button>
     </div>
-    <p class="price-note">Saving keeps this recipe in your saved recipes and adds its ingredients to your shopping list.</p>
+    <p class="price-note">Saving keeps this recipe in <a href="kitchen.html">My kitchen</a> and adds its ingredients to your shopping list there.</p>
 
     <h2>Ingredients <span class="meta" style="font-weight:400">for <span id="servingsLabel">2</span></span></h2>
     <div class="card">
+      <div class="stepper-row" style="margin-top:0">
+        <label for="servingsInput">Cooking for</label>
+        <div class="stepper">
+          <button type="button" id="servingsDown" aria-label="One fewer person">&minus;</button>
+          <input type="number" id="servingsInput" min="1" max="20" step="1" value="2" inputmode="numeric">
+          <button type="button" id="servingsUp" aria-label="One more person">+</button>
+        </div>
+        <span class="meta">people</span>
+        <button type="button" class="link-button" id="servingsReset">Reset to as written</button>
+      </div>
+      <p class="field-error" id="servingsError"></p>
       <ul class="ingredients" id="ingredientList"></ul>
     </div>
 
@@ -66,8 +77,8 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
 
-  <script src="js/data.js?v=6"></script>
-  <script src="js/common.js?v=6"></script>
-  <script src="js/recipe.js?v=6"></script>
+  <script src="js/data.js?v=7"></script>
+  <script src="js/common.js?v=7"></script>
+  <script src="js/recipe.js?v=7"></script>
 </body>
 </html>

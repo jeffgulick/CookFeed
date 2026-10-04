@@ -32,24 +32,47 @@ function renderIngredients(people) {
   document.getElementById("servingsLabel").textContent = people;
 }
 
-/* Ask the cook how many people are eating, then rescale. */
-function askRecipeServings() {
-  var answer = prompt("How many people are you cooking this for?", String(currentServings));
+/* ---------- servings box ----------
+   The same minus / plus box as the product page. Typing or clicking rescales
+   the ingredient list straight away; anything outside 1-20 gets a message. */
 
-  if (answer === null) {
+function updateServingsButtons() {
+  var value = Number(document.getElementById("servingsInput").value);
+  document.getElementById("servingsDown").disabled = value <= LIMITS.servingsMin;
+  document.getElementById("servingsUp").disabled = value >= LIMITS.servingsMax;
+}
+
+function applyRecipeServings() {
+  var input = document.getElementById("servingsInput");
+  var problem = servingsProblem(input.value);
+
+  document.getElementById("servingsError").textContent = problem;
+  input.classList.toggle("invalid", problem !== "");
+
+  if (problem !== "") {
     return;
   }
 
-  var people = Number(answer);
-
-  if (answer.trim() === "" || isNaN(people) || people < LIMITS.servingsMin || people > LIMITS.servingsMax) {
-    showToast("Please enter a number of people between " + LIMITS.servingsMin + " and " +
-              LIMITS.servingsMax + ".", "error");
-    return;
-  }
-
-  currentServings = Math.round(people);
+  currentServings = Number(input.value);
+  updateServingsButtons();
   renderIngredients(currentServings);
+}
+
+function stepRecipeServings(change) {
+  var input = document.getElementById("servingsInput");
+  var value = Number(input.value);
+
+  if (isNaN(value) || input.value.trim() === "") {
+    value = currentRecipe.servings;
+  }
+
+  input.value = Math.min(LIMITS.servingsMax, Math.max(LIMITS.servingsMin, Math.round(value) + change));
+  applyRecipeServings();
+}
+
+function resetRecipeServings() {
+  document.getElementById("servingsInput").value = currentRecipe.servings;
+  applyRecipeServings();
 }
 
 /* Move the video to the moment a step happens and highlight that step. */
@@ -106,7 +129,7 @@ function renderSaveState() {
 function saveThisRecipe() {
   var nowSaved = toggleSave(currentRecipe.id);
   renderSaveState();
-  showToast(nowSaved ? "Saved. Its ingredients will be added to your shopping list."
+  showToast(nowSaved ? "Saved to My kitchen, with its ingredients on your shopping list."
                      : "Removed from your saved recipes.");
 }
 
@@ -122,6 +145,13 @@ document.addEventListener("DOMContentLoaded", function () {
   renderSteps();
 
   document.getElementById("saveButton").addEventListener("click", saveThisRecipe);
-  document.getElementById("servingsButton").addEventListener("click", askRecipeServings);
+  document.getElementById("servingsInput").value = currentRecipe.servings;
+  document.getElementById("servingsReset").textContent = "Reset to " + currentRecipe.servings + " as written";
+  updateServingsButtons();
+
+  document.getElementById("servingsInput").addEventListener("input", applyRecipeServings);
+  document.getElementById("servingsDown").addEventListener("click", function () { stepRecipeServings(-1); });
+  document.getElementById("servingsUp").addEventListener("click", function () { stepRecipeServings(1); });
+  document.getElementById("servingsReset").addEventListener("click", resetRecipeServings);
   document.getElementById("stepList").addEventListener("click", onStepClicked);
 });

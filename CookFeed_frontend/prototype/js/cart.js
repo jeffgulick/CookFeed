@@ -71,6 +71,7 @@ function renderCart() {
     html = html + "<div class='meta'>by " + CREATOR.handle + " &middot; " + product.recipes.length +
                   " recipes, " + product.recipes.length + " videos, 1 shopping list</div>";
     html = html + "<div class='line-actions'>";
+    html = html + "<span class='meta copies-label'>Copies</span>";
     html = html + "<div class='stepper'>";
     html = html + "<button type='button' class='qty-down' aria-label='One fewer'" +
                   (quantity <= 1 ? " disabled" : "") + ">&minus;</button>";
@@ -81,6 +82,7 @@ function renderCart() {
     html = html + "</div>";
     html = html + "<button class='btn-small remove-item'>Remove</button>";
     html = html + "</div>";
+    html = html + "<div class='meta gift-note'>" + giftNote(quantity) + "</div>";
     html = html + "</div>";
     html = html + "<div class='line-price'>" + formatPrice(lineTotal(lines[i]));
     if (quantity > 1) {
@@ -105,6 +107,27 @@ function renderCart() {
     : "";
   document.getElementById("checkoutButton").disabled = isEmpty;
   document.getElementById("emptyCartButton").hidden = isEmpty;
+}
+
+/* Explain what the copies are for. A plan is owned once, so the first copy is
+   the shopper's and every extra copy is a gift with its own code. */
+function giftNote(quantity) {
+  if (quantity <= 1) {
+    return "Buying for a friend too? Add a copy and we will send a gift code with your receipt.";
+  }
+  var gifts = quantity - 1;
+  return "1 copy for you and " + gifts + " to give away. Each gift comes with its own code on your receipt.";
+}
+
+/* Make a gift code like GIFT-7K2QX. The prototype makes them up; the real
+   checkout would create them on the server. */
+function makeGiftCode() {
+  var letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  var code = "GIFT-";
+  for (var i = 0; i < 5; i = i + 1) {
+    code = code + letters.charAt(Math.floor(Math.random() * letters.length));
+  }
+  return code;
 }
 
 /* Which product a click or a typed number belongs to. */
@@ -234,6 +257,15 @@ function checkout() {
   saveJson(STORAGE_KEYS.orders, orders);
   clearCart();
 
+  var giftCodes = [];
+  for (var g = 0; g < lines.length; g = g + 1) {
+    for (var c = 1; c < lines[g].quantity; c = c + 1) {
+      giftCodes.push({ title: lines[g].product.title, code: makeGiftCode() });
+    }
+  }
+  order.giftCodes = giftCodes;
+  saveJson(STORAGE_KEYS.orders, orders);
+
   var orderNumber = "CF-" + String(order.id).padStart(5, "0");
   var word = units === 1 ? "plan" : "plans";
 
@@ -244,6 +276,13 @@ function checkout() {
   html = html + "<p class='meta'>Order " + orderNumber + "</p>";
   html = html + "<p>You paid <strong>" + formatPrice(total) + "</strong> for " + units + " " + word + ".</p>";
   html = html + "<p>Every recipe in it is yours to keep, and its shopping list is ready whenever you are.</p>";
+  if (giftCodes.length > 0) {
+    html = html + "<div class='gift-codes'><p><strong>Your gift codes</strong> &middot; send one to each friend:</p><ul>";
+    for (var k = 0; k < giftCodes.length; k = k + 1) {
+      html = html + "<li><code>" + giftCodes[k].code + "</code> &middot; " + giftCodes[k].title + "</li>";
+    }
+    html = html + "</ul></div>";
+  }
   html = html + "<p><a href='index.html'>Back to the meal plan</a> &middot; ";
   html = html + "<a href='reviews.html'>Leave a review</a></p>";
   html = html + "</div>";

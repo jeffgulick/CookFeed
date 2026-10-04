@@ -49,7 +49,7 @@ INSERT INTO user_roles (user_id, role_id) VALUES
 -- Creator profiles (1:1 with users)
 INSERT INTO creator_profiles (user_id, handle, bio, is_verified) VALUES
   (3, 'maria-cooks', 'Roman trattoria classics, filmed in a tiny Chicago kitchen. Weeknight pasta is a right, not a privilege.', TRUE),
-  (4, 'kenji-kitchen', 'Japanese home cooking with a weeknight clock. Everything under 30 minutes, everything shoppable.', TRUE),
+  (4, 'kenji-kitchen', 'Japanese home cooking with a weeknight clock. Most dinners under 30 minutes, everything shoppable.', TRUE),
   (5, 'dan-meal-preps', 'Dad of three. I cook on Sunday so we eat all week. No fancy gear.', FALSE);
 
 -- Canonical ingredients (density enables volume->mass conversion)
@@ -255,7 +255,7 @@ INSERT INTO recipe_ingredients (id, recipe_id, ingredient_id, unit_id, quantity,
 INSERT INTO products (id, creator_id, type, title, description, price_cents, currency, is_active, created_at) VALUES
   (1, 3, 'RecipeCollection', 'Roman Pasta Collection', 'Carbonara, marinara, and the techniques behind them, with shopping lists built in.', 799, 'USD', TRUE, '2026-07-18 12:00:00+00'),
   (2, 3, 'RecipeCollection', 'The Bread Box', 'Focaccia and friends.', 499, 'USD', TRUE, '2026-07-21 12:00:00+00'),
-  (3, 4, 'MealPlan', 'Three Weeknights in Japan', 'Monday, Tuesday, Wednesday dinners, all under 30 minutes.', 1299, 'USD', TRUE, '2026-07-19 12:00:00+00'),
+  (3, 4, 'MealPlan', 'Three Weeknights in Japan', 'Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less.', 1299, 'USD', TRUE, '2026-07-19 12:00:00+00'),
   (4, 5, 'MealPlan', 'Family Week on a Budget', 'Seven dinners, two breakfasts, one grocery trip.', 999, 'USD', TRUE, '2026-07-27 12:00:00+00'),
   (5, 5, 'RecipeCollection', 'Summer Grilling (retired)', NULL, 599, 'USD', FALSE, '2026-06-22 12:00:00+00');
 

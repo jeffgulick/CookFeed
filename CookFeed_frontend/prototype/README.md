@@ -37,6 +37,7 @@ with no web server and no internet connection. To serve them over HTTP instead, 
 | `reviews.html` | Customer reviews and the feedback form |
 | `creator.html` | Creator storefront for kenji-kitchen |
 | `cart.html` | Cart, totals and a simulated checkout |
+| `kitchen.html` | My kitchen - saved recipes and one shopping list for all of them |
 | `recipe-teriyaki.html` | Recipe: Chicken Teriyaki, the Real Way |
 | `recipe-stirfry.html` | Recipe: 10-Minute Ginger Garlic Stir-Fry |
 | `recipe-onigiri.html` | Recipe: Onigiri Three Ways |
@@ -49,6 +50,7 @@ prototype/
   reviews.html        reviews and feedback page
   creator.html        creator storefront page
   cart.html           cart and checkout page
+  kitchen.html        My kitchen: saved recipes and their shopping list
   recipe-*.html       the three recipes in the plan
   css/styles.css      one stylesheet for all seven pages
   js/data.js          the store's data, shaped like the database rows
@@ -57,6 +59,7 @@ prototype/
   js/reviews.js       reviews page behavior
   js/creator.js       creator page behavior
   js/cart.js          cart and checkout behavior
+  js/kitchen.js       My kitchen behavior
   js/recipe.js        all three recipes and the recipe page behavior
   images/             illustrations (SVG)
   NOTES.md            material for the written submission
@@ -75,6 +78,7 @@ All event handlers are attached with `addEventListener`; there are no inline `on
 - "Have it" checklist: tick what is already in the kitchen. A progress bar counts what is left,
   and printing leaves the ticked lines off the paper.
 - Add to cart and Save are remembered across pages and reloads.
+- "What your $12.99 gets you" spells out what the purchase includes beyond the free recipe text.
 
 **Reviews page (`reviews.html`)**
 - The form checks itself as you type: inline messages, a live character counter, and a Post
@@ -89,8 +93,34 @@ All event handlers are attached with `addEventListener`; there are no inline `on
 - Minus and plus buttons, or typing a number, change how many copies of a plan are in the
   cart (1-10). Line prices, totals and the cart chip update as the number changes.
 - Empty cart removes everything after a confirmation.
+- Extra copies are gifts: the cart says so, and the receipt lists one gift code per extra copy.
 - Quantity is a prototype-only feature. The database stores one row per product per cart,
   because a digital plan is owned once.
+
+**My kitchen (`kitchen.html`)**
+- Lists every recipe the shopper saved, newest first, and builds one shopping list from all of
+  them with the same function the product page uses. Removing a recipe shrinks the list at once.
+
+**Recipe pages**
+- The servings pop-up is replaced by the same minus / plus box as the product page.
+
+**Wording for first-time visitors**
+- "saved by 733 cooks" instead of "733 saves", "Coming soon" instead of "Planned", "Already have"
+  instead of "Have it", and tooltips explaining saving and verified creators.
+
+## Planned for the Angular production build
+
+These came out of a first-time-customer review of the prototype. They are deferred to the Angular
+application (Assignment 4), where they can be built against the real API and database.
+
+- **Shop in real units.** Large scaled amounts read oddly ("15 tbsp soy sauce"). Show them in cups
+  or millilitres, the way the database design already converts units for the shopping list.
+- **Review trust labels.** Mark reviews from buyers as "Verified purchase", and label reviews written
+  by other Cookfeed creators, using the orders and creator profile data.
+- **Creator page header layout.** Keep the avatar, name and Follow button on one row on laptop-width
+  screens; today they wrap onto separate lines.
+- **Order history.** A "Your orders" page linked from the receipt, listing past orders and gift codes.
+- **Send to Instacart and Send to Favor.** Connect the delivery partners that are marked Coming soon.
 
 ## Notes
 

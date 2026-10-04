@@ -7,7 +7,10 @@
      4. Add to cart and Save - click events, remembered across pages and reloads */
 
 /* Tooltip on every Save button, so a first-time visitor knows what saving does. */
-var SAVE_HINT = "Saving keeps this recipe in your saved recipes and adds its ingredients to your shopping list";
+/* The ids of the recipes in the plan, in plan order. */
+function planRecipeIds() {
+  return PRODUCT.recipes.map(function (placement) { return placement.recipeId; });
+}
 
 /* null means "show the list as each recipe was published". A number means every
    night of the plan is cooked for that many people. */
@@ -17,71 +20,9 @@ var currentPeople = null;
    Kept separately from the list so ticks survive when the list is rescaled. */
 var haveItems = {};
 
-/* ---------- building the shopping list ---------- */
-
-/* Every ingredient across the plan's recipes, each tagged with its own recipe's
-   servings. The recipes do not all serve the same number (teriyaki and stir-fry
-   serve 2, onigiri serves 4), so each line has to be scaled against its own recipe. */
-function collectIngredients() {
-  var rows = [];
-
-  for (var i = 0; i < PRODUCT.recipes.length; i = i + 1) {
-    var recipe = RECIPES[PRODUCT.recipes[i].recipeId];
-
-    for (var j = 0; j < recipe.ingredients.length; j = j + 1) {
-      var item = recipe.ingredients[j];
-      rows.push({
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        aisle: item.aisle,
-        baseServings: recipe.servings
-      });
-    }
-  }
-
-  return rows;
-}
-
-/* Add up the plan's ingredients for the chosen number of people.
-   Two lines only merge when they share a name AND a unit, which is why the two
-   soy sauce entries become one row but the rice and the ginger never combine.
-   The result is sorted by aisle so the list follows a walk through the store. */
-function buildShoppingList(people) {
-  var rows = collectIngredients();
-  var totals = {};
-  var list = [];
-
-  for (var i = 0; i < rows.length; i = i + 1) {
-    var row = rows[i];
-    var scale = 1;
-
-    if (people !== null) {
-      scale = people / row.baseServings;
-    }
-
-    var key = row.name + "|" + row.unit;
-
-    if (totals[key] === undefined) {
-      totals[key] = { key: key, name: row.name, unit: row.unit, aisle: row.aisle, amount: 0 };
-      list.push(totals[key]);
-    }
-    totals[key].amount = totals[key].amount + row.quantity * scale;
-  }
-
-  list.sort(function (a, b) {
-    if (a.aisle !== b.aisle) {
-      return a.aisle < b.aisle ? -1 : 1;
-    }
-    return a.name < b.name ? -1 : 1;
-  });
-
-  return list;
-}
-
 /* Draw the shopping list, keeping any "have it" ticks the shopper already made. */
 function renderShoppingList() {
-  var list = buildShoppingList(currentPeople);
+  var list = buildShoppingList(planRecipeIds(), currentPeople);
   var html = "";
 
   for (var i = 0; i < list.length; i = i + 1) {
@@ -116,24 +57,6 @@ function renderShoppingList() {
 }
 
 /* ---------- 1. servings stepper ---------- */
-
-/* Check what the shopper typed. Returns an error message, or "" when the
-   value is a whole number of people inside the allowed range. */
-function servingsProblem(text) {
-  if (text.trim() === "") {
-    return "Enter how many people you are cooking for.";
-  }
-
-  var people = Number(text);
-
-  if (isNaN(people) || Math.floor(people) !== people) {
-    return "Use a whole number of people.";
-  }
-  if (people < LIMITS.servingsMin || people > LIMITS.servingsMax) {
-    return "Choose between " + LIMITS.servingsMin + " and " + LIMITS.servingsMax + " people.";
-  }
-  return "";
-}
 
 /* Read the box and, if it holds a sensible number, rescale the list. When it
    does not, explain why under the box and leave the list as it was. */
@@ -258,7 +181,7 @@ function saveRecipe(event) {
   button.classList.toggle("saved", nowSaved);
   card.querySelector(".save-count").textContent = currentSaveCount(recipe);
 
-  showToast(nowSaved ? recipe.title + " saved. Its ingredients are now on your shopping list."
+  showToast(nowSaved ? recipe.title + " saved to My kitchen, with its ingredients on your shopping list."
                      : recipe.title + " removed from your saved recipes.");
 }
 

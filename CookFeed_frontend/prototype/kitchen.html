@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My kitchen | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=7">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Meal plan</a>
+      <a class="navlink" href="reviews.html">Reviews</a>
+      <a class="navlink" href="creator.html">Creator</a>
+      <a class="navlink active" href="kitchen.html">My kitchen</a>
+      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+
+    <span class="pill">My kitchen</span>
+    <h1>Your saved recipes</h1>
+    <p class="byline" id="kitchenSummary">Recipes you save show up here, with one shopping list for all of them.</p>
+
+    <div class="grid" id="savedRecipes"></div>
+    <div class="card empty-kitchen" id="emptyKitchen" hidden>
+      <p><strong>You have not saved any recipes yet.</strong></p>
+      <p class="meta">Press <strong>Save recipe</strong> on any recipe and it will appear here, and its
+        ingredients will be added to the shopping list below.</p>
+      <p><a href="index.html">Browse the recipes in Three Weeknights in Japan &rarr;</a></p>
+    </div>
+
+    <h2>Your shopping list</h2>
+    <div class="card">
+      <div class="list-head">
+        <h3 id="kitchenListHeading">Everything for your saved recipes</h3>
+        <button class="send ready" id="kitchenPrint">
+          <span class="send-icon">&#128424;</span>
+          <span class="send-text">Print list</span>
+        </button>
+      </div>
+      <p class="meta" id="kitchenListNote">
+        Quantities are as each recipe was published. Matching ingredients are combined into one line.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Amount</th><th>Ingredient</th><th>For</th><th>Aisle</th></tr>
+        </thead>
+        <tbody id="kitchenRows"></tbody>
+      </table>
+    </div>
+
+    <div class="cta-foot">
+      <p><strong>Want all three dinners planned for you?</strong></p>
+      <p><a href="index.html">See Three Weeknights in Japan &rarr;</a></p>
+    </div>
+
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+
+  <script src="js/data.js?v=7"></script>
+  <script src="js/common.js?v=7"></script>
+  <script src="js/kitchen.js?v=7"></script>
+</body>
+</html>

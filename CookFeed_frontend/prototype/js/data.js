@@ -19,7 +19,7 @@ var CREATOR = {
   userId: 4,
   handle: "kenji-kitchen",
   displayName: "Kenji Watanabe",
-  bio: "Japanese home cooking with a weeknight clock. Everything under 30 minutes, everything shoppable.",
+  bio: "Japanese home cooking with a weeknight clock. Most dinners under 30 minutes, everything shoppable.",
   avatarUrl: "images/avatar-kenji.svg",
   isVerified: true,
   followerCount: 18400            // prototype only - there is no followers table yet
@@ -31,7 +31,7 @@ var PRODUCT = {
   creatorId: 4,
   type: "MealPlan",
   title: "Three Weeknights in Japan",
-  description: "Monday, Tuesday, Wednesday dinners, all under 30 minutes.",
+  description: "Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less.",
   coverImageUrl: "images/plan-hero.svg",
   priceCents: 1299,
   currency: "USD",
