@@ -15,7 +15,8 @@ and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is bui
 | Integration tests for the database | Done — 45 tests, all passing |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 24 tests; SQL verified in `docs/Queries.md` §2 |
-| Order history, shopping list | Next, one feature at a time, test-first |
+| Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
+| Shopping list | Next, test-first |
 
 ## Layout
 

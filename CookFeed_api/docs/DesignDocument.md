@@ -374,7 +374,11 @@ No index was added speculatively. Each one corresponds to a `WHERE`, `JOIN`, or 
 
 ## 9. Deliberately out of scope for this assignment
 
-- **Authentication.** `password_hash` is stored (never plaintext), but login, JWTs, and authorization arrive with the Angular work in Assignment 4. The API identifies the viewer by an `X-User-Id` header for now; the role checks in §3.1 are applied against that identity until real authentication replaces it.
+- **Authentication.** `password_hash` is stored (never plaintext), but login, JWTs, and authorization arrive with the Angular work in Assignment 4. Until then the API takes the caller from an `X-User-Id` header, and the role checks in §3.1 will be applied against that identity until real authentication replaces it. Two conventions are fixed now so that login changes nothing else:
+  - **A user's own data lives under `/api/me/…`** (`/api/me/orders`, and next `/api/me/shopping-list`). No route takes a user id, so no request can name another user's data, whatever the caller sends. On these routes the header is required: missing, non-numeric or below 1 is a 400. An id that names no user simply has no data, so it gets an empty result and learns nothing.
+  - **On public routes** (the feed, storefronts) the header is optional and only marks the caller's own state (`savedByViewer`, `ownedByViewer`, `viewerIsCreator`).
+
+  When login arrives, ASP.NET Core's JWT authentication sets the caller from the token's user-id claim, the controllers read it from there instead of the header, and the routes, services, repositories and queries stay as they are. Building a custom header-authentication handler now was considered and rejected: it would be deleted then.
 - **Payments.** Checkout creates a `Paid` order with a simulated `payment_reference`. A Stripe-style provider would move the order through `Pending → Paid` and populate the reference.
 - **Ingredient aliases and creator-side ingredient entry** (§7.1).
 - **Video storage.** `video_url` is a URL; upload/transcoding is infrastructure, not schema.

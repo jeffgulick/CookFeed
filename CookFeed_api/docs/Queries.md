@@ -1,6 +1,6 @@
 # Cookfeed — Core Queries, Generated SQL, and Indexes
 
-> **Status: §1 (feed) and §2 (storefront) are verified: their SQL is what EF Core logged. The other sections are still
+> **Status: §1 (feed), §2 (storefront) and §4 (order history) are verified: their SQL is what EF Core logged. §3 is still
 > expected output, not yet captured output;** they were written alongside the design, before the code
 > existed. As each vertical slice is built, the block for that
 > query gets replaced with the statement actually logged by
@@ -478,36 +478,105 @@ Covered in `DesignDocument.md` §7.3–7.5. Volume↔Mass via density *toward th
 
 ---
 
-## 4. Order history
+## 4. Order history — *verified 2026-10-11*
 
-**Endpoint:** `GET /api/users/{id}/orders`
+**Endpoint:** `GET /api/me/orders`, **required** header `X-User-Id`.
+
+**Code:** `MyOrdersController` → `OrderHistoryService` → `OrderRepository.GetOrderHistoryAsync`.
+
+- **The caller.** The user id comes from the caller, never from the route: `/api/me/…` routes take no
+  user id, so no request can name someone else's orders. Until login exists (Assignment 4), the caller
+  is the `X-User-Id` header.
+- **Validation.** The header is `[BindRequired]` with `[Range(1, int.MaxValue)]`, so a missing,
+  non-numeric or zero value is a 400 before any SQL runs.
+- **An id that names no user** gets an empty list, which reveals nothing (DesignDocument.md §9).
 
 ```csharp
 db.Orders.AsNoTracking()
-  .Where(o => o.UserId == userId)
-  .OrderByDescending(o => o.PlacedAt)
-  .Select(o => new OrderDto(o.Id, o.Status, o.PlacedAt, o.PaidAt, o.TotalCents, o.Currency,
-      o.Items.OrderBy(i => i.Id)
-             .Select(i => new OrderItemDto(i.ProductId, i.ProductTitle, i.UnitPriceCents, i.Product.Creator.Handle))
-             .ToList()))
+    .Where(o => o.UserId == userId)
+    .OrderByDescending(o => o.PlacedAt).ThenByDescending(o => o.Id)
+    .Select(o => new OrderDto(
+        o.Id, ToContract(o.Status), o.PlacedAt, o.PaidAt, o.TotalCents, o.Currency,
+        o.Items
+            .OrderBy(i => i.Id)
+            .Select(i => new OrderItemDto(
+                i.ProductId, i.ProductTitle, i.UnitPriceCents,                                   // the checkout snapshot
+                db.CreatorProfiles.Where(c => c.UserId == i.CreatorId).Select(c => c.Handle).FirstOrDefault()))
+            .ToList()))
+    .ToListAsync(cancellationToken);
 ```
 
-**Generated SQL:**
+**Generated SQL, as logged:**
 
 ```sql
-SELECT o.id, o.status, o.placed_at, o.paid_at, o.total_cents, o.currency,
-       oi.product_id, oi.product_title, oi.unit_price_cents, c.handle, oi.id
-FROM orders o
-LEFT JOIN (
-    order_items oi
-    JOIN products p ON oi.product_id = p.id
-    JOIN creator_profiles c ON p.creator_id = c.user_id
-) ON o.id = oi.order_id
+SELECT o.id, o.status, o.placed_at, o.paid_at, o.total_cents, o.currency, o0.product_id, o0.product_title, o0.unit_price_cents, (
+    SELECT c.handle
+    FROM creator_profiles AS c
+    WHERE c.user_id = o0.creator_id
+    LIMIT 1), o0.id
+FROM orders AS o
+LEFT JOIN order_items AS o0 ON o.id = o0.order_id
 WHERE o.user_id = @userId
-ORDER BY o.placed_at DESC, o.id, oi.id
+ORDER BY o.placed_at DESC, o.id DESC, o0.id
 ```
 
-**Indexes:** `ix_orders_user_id_placed_at (user_id, placed_at DESC)` — the filter and the sort are the same index, read in order, so no sort node. Unique `ix_order_items_order_id_product_id (order_id, product_id)` serves the join on `order_id` through its leading column. The product/creator joins are PK lookups and exist only to produce the current `handle`; `product_title` and `unit_price_cents` come from the snapshot columns on `order_items`, not from `products`, which is the point of the snapshot.
+**Reviewed:**
+
+1. **One statement, and that is right here.** Orders → items is a *single* collection, so the
+   `LEFT JOIN` returns one row per item (plus one per order with no items), with no multiplication. Contrast
+   §2, where two *sibling* collections multiplied each other's rows and `AsSplitQuery()` was needed.
+   Splitting here would only add a round trip.
+2. **The seller follows the snapshot.** The design-time version joined `order_items → products →
+   creator_profiles` for the seller's handle; that reads today's owner of the product. The code follows
+   Q9 instead and looks up `order_items.creator_id`, the seller *at checkout*. That column deliberately
+   has no foreign key (DesignDocument.md §6), so EF Core has no navigation for it; the correlated subquery
+   is a primary-key probe. `SellerHandle` is nullable for the case where that creator no longer has a
+   storefront.
+3. **Title and price never touch `products`.** They come from `order_items.product_title` and
+   `unit_price_cents`. `OrderHistoryEndpointTests` proves it: on a database of its own, it renames and
+   reprices the Roman Pasta Collection, and Alex's history still shows the original title at 799.
+4. **Status is mapped in C#.** `ToContract` is a static method EF Core cannot translate, so it runs on the
+   fetched `status` value in the final projection. That is the only kind of client evaluation EF Core
+   allows, and it costs nothing here.
+
+**Plan** (`EXPLAIN ANALYZE`, `enable_seqscan = off`, Alex = user 1):
+
+```
+Incremental Sort (actual rows=4 loops=1)
+  Sort Key: o.placed_at DESC, o.id DESC, o0.id
+  Presorted Key: o.placed_at
+  ->  Nested Loop Left Join (actual rows=4 loops=1)
+        ->  Index Scan using ix_orders_user_id_placed_at on orders o (actual rows=3 loops=1)
+              Index Cond: (user_id = 1)
+        ->  Index Scan using ix_order_items_order_id_product_id on order_items o0 (actual rows=1 loops=3)
+              Index Cond: (order_id = o.id)
+        SubPlan 1
+          ->  Limit -> Index Scan using pk_creator_profiles on creator_profiles c (actual rows=1 loops=4)
+                Index Cond: (user_id = o0.creator_id)
+```
+
+**Indexes, and why:**
+
+- `ix_orders_user_id_placed_at (user_id, placed_at DESC)`: the filter and the sort are the same index,
+  read in order. The incremental sort only orders ties on `placed_at` by `id` and then the items. Every
+  other user's orders are never read.
+- Unique `ix_order_items_order_id_product_id (order_id, product_id)`: serves the join on `order_id`
+  through its leading column. Its uniqueness is also the rule "a product appears once per order".
+- `pk_creator_profiles`: one probe per item for the seller's handle.
+- **No paging yet.** A user's history is small. If it grows, keyset paging on
+  `(placed_at, id) < (@last_placed_at, @last_id)` uses the same index without `OFFSET`.
+
+**Tests:**
+
+- `tests/Cookfeed.Application.Tests/Orders/OrderHistoryServiceTests.cs`
+- `tests/Cookfeed.IntegrationTests/Api/OrderHistoryEndpointTests.cs`, over HTTP:
+  - Alex's lines equal `queries.sql` **Q9**.
+  - Users 1, 2 and 5 each see exactly their own orders, newest first.
+  - No orders (user 7) and no such user (999) both give an empty list.
+  - Every `totalCents` equals the sum of its items (the check DesignDocument.md §6 promised).
+  - The snapshot survives a rename and reprice.
+  - Status is sent as a name.
+  - A missing, non-numeric or zero `X-User-Id` is a 400.
 
 ---
 

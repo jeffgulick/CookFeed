@@ -18,6 +18,7 @@ public static class DependencyInjection
         // Scoped: one repository per HTTP request, sharing that request's DbContext.
         services.AddScoped<IRecipeRepository, RecipeRepository>();
         services.AddScoped<ICreatorRepository, CreatorRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
         return services;
     }
 
