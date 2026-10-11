@@ -7,9 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />
-    <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,6 +16,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Cookfeed.Infrastructure\Cookfeed.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The reference SQL in docs/ is the specification these tests check the EF Core database against.
+         It is copied next to the test binaries, not duplicated, so there is one copy to keep up to date. -->
+    <None Include="..\..\docs\schema.sql" Link="Sql\schema.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\sql\seed.sql" Link="Sql\seed.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\docs\sql\queries.sql" Link="Sql\queries.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
