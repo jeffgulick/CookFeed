@@ -82,6 +82,8 @@ cart" on a creator's own product, ProductOnly recipes, no shop controls for the 
   - No line-by-line narration of what the code obviously does.
 - **Before showing work:** `dotnet build Cookfeed.slnx` with zero warnings (warnings are errors), and
   `dotnet test --solution Cookfeed.slnx` passing, or failing only where the step says it should.
+- **Before merging:** the pull request's "API tests" check (GitHub Actions) is green. It runs the same
+  restore, build and tests on a clean machine, so it also catches anything that only worked locally.
 
 ---
 
@@ -98,6 +100,7 @@ cart" on a creator's own product, ProductOnly recipes, no shop controls for the 
 | Enums | Stored as their names in varchar columns | `CookfeedDbContext.ConfigureConventions`, `DesignDocument.md` §5 |
 | Caller identity | `X-User-Id` header until login (Assignment 4). A user's own data is under `/api/me/…`, where the header is required (400 if missing); no route takes a user id. No custom authentication handler: JWT replaces the header then | `DesignDocument.md` §9 |
 | Tests | xUnit v3 on Microsoft.Testing.Platform (run with `dotnet test --solution`); NSubstitute for fakes; integration tests create and drop throwaway databases and roll back their changes | `DesignDocument.md` §1 "Tests" |
+| CI | GitHub Actions on every PR and push to `main` that touches `CookFeed_api/`: locked restore, build (warnings are errors), all tests against a `postgres:16.15` service. A PR is ready to merge only when its "API tests" check is green | `.github/workflows/api-tests.yml`, `DesignDocument.md` §1 "Continuous integration" |
 
 ---
 
@@ -108,6 +111,7 @@ cart" on a creator's own product, ProductOnly recipes, no shop controls for the 
 | .NET SDK | 10.0.112 (Ubuntu: `sudo apt install dotnet-sdk-10.0`) | `global.json` |
 | `dotnet-ef` | 10.0.11 | `dotnet-tools.json` |
 | PostgreSQL | 16.15 | `docker-compose.yml` |
+| CI runner | GitHub-hosted `ubuntu-24.04`, `actions/checkout@v4`, `actions/setup-dotnet@v4` (SDK from `global.json`), `postgres:16.15` service | `.github/workflows/api-tests.yml` |
 | NuGet packages | see file | `Directory.Packages.props` + `packages.lock.json` |
 
 In a claude.ai cloud session (a fresh Ubuntu 24.04 container each time), the same versions install with
