@@ -9,7 +9,7 @@ and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is bui
 
 ## Deliverable 2
 
-Every item is in `main` and checked by the tests on every pull request.
+Every item is in `main`, and the tests check it on every pull request that touches the API.
 
 | Item | Where it lives |
 |---|---|
