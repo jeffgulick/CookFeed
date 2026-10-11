@@ -13,7 +13,8 @@ and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is bui
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
 | Integration tests for the database | Done — 45 tests, all passing |
-| Repositories, services, controllers, DTOs | Next, one feature at a time, test-first |
+| Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
+| Storefront, order history, shopping list | Next, one feature at a time, test-first |
 
 ## Layout
 
@@ -21,14 +22,14 @@ and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is bui
 Cookfeed.slnx
 src/
   Cookfeed.Domain/           entities and enums; no framework references
-  Cookfeed.Contracts/        request and response DTOs (empty until the first feature)
-  Cookfeed.Application/      services and repository interfaces (empty until the first feature)
-  Cookfeed.Infrastructure/   CookfeedDbContext, table mappings, migrations, DbSeeder
-  Cookfeed.Api/              the web host; controllers arrive with the first feature
+  Cookfeed.Contracts/        request and response DTOs
+  Cookfeed.Application/      services and repository interfaces
+  Cookfeed.Infrastructure/   CookfeedDbContext, table mappings, migrations, DbSeeder, repositories
+  Cookfeed.Api/              the web host and its controllers
 tests/
-  Cookfeed.IntegrationTests/ xUnit tests against real PostgreSQL
+  Cookfeed.IntegrationTests/ xUnit tests against real PostgreSQL, including the API over HTTP
   Cookfeed.Domain.Tests/     xUnit; first tests come with the shopping-list logic
-  Cookfeed.Application.Tests/ xUnit + NSubstitute; first tests come with the first service
+  Cookfeed.Application.Tests/ xUnit + NSubstitute: service rules against fake repositories
 docs/                        design document, ER diagrams, schema.sql, seed.sql, queries.sql
 ```
 

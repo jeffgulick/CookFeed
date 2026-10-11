@@ -9,7 +9,9 @@ session; update **Where we are** and **Next steps** at the end of each step, in 
 
 *Last updated 2026-10-11.*
 
-The **database layer** is built, tested and merged into `main` (PR #2). Nothing above it exists yet.
+The **database layer** is built, tested and merged into `main` (PR #2). The first feature on top of it,
+**the recipe feed** (`GET /api/feed`), is built on the `feed-endpoint` branch: the first controller, service,
+repository and DTOs, and the pattern the other three core queries will follow.
 
 | Done | Where |
 |---|---|
@@ -20,9 +22,12 @@ The **database layer** is built, tested and merged into `main` (PR #2). Nothing 
 | `DbSeeder`: the same rows and ids as `seed.sql`; runs at startup in Development | `Persistence/Seed/` |
 | 45 integration tests against real PostgreSQL, all passing | `tests/Cookfeed.IntegrationTests/` |
 | Docs updated to match | `README.md`, `DOCKER.md`, `docs/DesignDocument.md` §1 |
+| Feed: `FeedController` → `FeedService` → `RecipeRepository.GetFeedAsync`, DTOs in `Contracts/Feed/` | `src/*/Feed/`, `Persistence/Repositories/`, `Api/Controllers/` |
+| Feed tests: 7 service tests with NSubstitute, 14 HTTP tests with `WebApplicationFactory` (66 tests in all) | `tests/Cookfeed.Application.Tests/Feed/`, `tests/Cookfeed.IntegrationTests/Api/` |
+| Feed SQL captured from the EF Core log, with `EXPLAIN ANALYZE`, and marked verified | `docs/Queries.md` §1 |
 
-Not built yet: repositories, services, controllers, DTOs, `ShoppingListAggregator`, and the Domain and
-Application tests.
+Not built yet: the storefront, order history and shopping-list endpoints, `ShoppingListAggregator`, and
+the Domain tests.
 
 ---
 
@@ -91,6 +96,10 @@ cart" on a creator's own product, ProductOnly recipes, no shop controls for the 
 | PostgreSQL | 16.15 | `docker-compose.yml` |
 | NuGet packages | see file | `Directory.Packages.props` + `packages.lock.json` |
 
+In a claude.ai cloud session (a fresh Ubuntu 24.04 container each time), the same versions install with
+`apt-get install dotnet-sdk-10.0=10.0.112-0ubuntu1~24.04.1`, then `dotnet tool restore`; PostgreSQL 16.15 is
+already there and starts with `pg_ctlcluster 16 main start`.
+
 Commands to migrate, run and test: [`README.md`](../README.md#getting-started) and
 [`DOCKER.md`](../DOCKER.md).
 
@@ -98,16 +107,20 @@ Commands to migrate, run and test: [`README.md`](../README.md#getting-started) a
 
 ## Next steps
 
-1. **Comment the existing database-layer code** to the commenting rule above. Mainly the 19
-   configurations, `DependencyInjection.cs`, `CookfeedDbContext.cs` and `Program.cs`; fill small gaps
-   elsewhere. Comments only — the build and the 45 tests must be unchanged.
-2. **First feature, stepped through together: the recipe feed**, `GET /api/feed`.
-   `FeedController` → `FeedService` → `IRecipeRepository.GetFeedAsync` → DTOs in Contracts. Test-first:
-   Application tests with NSubstitute, an integration test over HTTP with `WebApplicationFactory`. The
-   planned LINQ and its index are in `docs/Queries.md` §1.
-3. **Before the first write feature (saves, cart):** decide how the API knows who is calling — the
-   `X-User-Id` header alone, or `/api/users/{id}/…` in the route checked against it. Routes that take a user
-   id without that check would let one user read or change another's data.
+Deliverable 2 is due **Oct 17**; steps 1–4 are what it still needs.
+
+1. **Creator storefront**, `GET /api/creators/{handle}`, the same pattern as the feed. Planned LINQ and
+   indexes: `docs/Queries.md` §2.
+2. **Decide how the API knows who is calling** before the first per-user read. Proposed: the `X-User-Id`
+   header, with per-user routes under `/api/me/…` so no route takes another user's id. (The feed reads
+   `X-User-Id` already, but only to mark the caller's own saves.)
+3. **Order history**, `GET /api/me/orders` (`docs/Queries.md` §4).
+4. **Shopping list**, `GET /api/me/shopping-list`: the repository's per-category aggregation plus
+   `ShoppingListAggregator` in Domain, tested line for line against `queries.sql` Q8 (`docs/Queries.md` §3,
+   `DesignDocument.md` §7.5).
+5. **Comment the existing database-layer code** to the commenting rule above (moved here from first, to
+   protect the deadline). Mainly the 19 configurations, `CookfeedDbContext.cs` and `Program.cs`. Comments
+   only: the build and the tests must be unchanged.
 
 ## Business rules the API still has to enforce
 
@@ -123,7 +136,7 @@ them off here as they land. The status codes are proposals, to confirm when each
 | A creator cannot add their own product to the cart: the service refuses it with a clear message before the `cart_items_refuse_self_purchase` trigger would. | §3.1, `Queries.md` "Add to cart" | Cart | 400 |
 | Checkout refuses a self-purchase the same way (the `order_items_refuse_self_purchase` trigger stays as the last line of defence). | §3.1 | Checkout | 400 |
 | A database refusal (`check_violation` with a `ck_…` constraint name, or a unique violation) that slips past a service becomes a 4xx with a readable message, never a 500. | §5 | First write feature (saves or cart) | 400 / 409 |
-| The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed (first feature), storefront | — |
+| The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront | — |
 | A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14. | §3.3 | Recipe detail | 404 (do not reveal it exists) |
 | Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
 | Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |

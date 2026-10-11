@@ -1,7 +1,8 @@
 # Cookfeed — Core Queries, Generated SQL, and Indexes
 
-> **Status: the SQL in this document is expected output, not yet captured output.** It was written
-> alongside the design, before the code existed. As each vertical slice is built, the block for that
+> **Status: §1 (feed) is verified: its SQL is what EF Core logged. The other sections are still
+> expected output, not yet captured output;** they were written alongside the design, before the code
+> existed. As each vertical slice is built, the block for that
 > query gets replaced with the statement actually logged by
 > `Microsoft.EntityFrameworkCore.Database.Command`. Until a section says *verified*, treat its SQL as
 > a prediction of the query shape, not a transcript.
@@ -30,45 +31,130 @@ is what the aggregator will be tested against line for line.
 
 ---
 
-## 1. Feed
+## 1. Feed — *verified 2026-10-11*
 
-**Endpoint:** `GET /api/feed?sort=Newest|Trending&page=1&pageSize=20`
+**Endpoint:** `GET /api/feed?sort=Newest|Trending&page=1&pageSize=20`, optional header `X-User-Id`
+
+**Code:** `FeedController` → `FeedService` → `RecipeRepository.GetFeedAsync`. `1 ≤ page ≤ 42,949,672` (the most whose offset still fits in an int) and
+`1 ≤ pageSize ≤ 50` are `[Range]` checks on the controller, so a bad value is a 400 before any SQL runs.
+`FeedService` asks for `pageSize + 1` rows and uses the extra one only to set `hasMore`, which avoids the
+`SELECT COUNT(*)` that offset pagination normally needs.
 
 ```csharp
-db.Recipes.AsNoTracking()
-  .Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public)   // ProductOnly recipes never reach the feed
-  .OrderByDescending(r => r.PublishedAt).ThenByDescending(r => r.Id)
-  .Skip((page - 1) * pageSize)
-  .Take(pageSize + 1)                       // +1 row => HasMore without a COUNT(*)
-  .Select(r => new FeedItemDto(
-      r.Id, r.Title, r.VideoUrl, r.ThumbnailUrl, r.Servings,
-      /* total minutes */, r.SaveCount, r.PublishedAt!.Value,
-      r.Creator.Handle, r.Creator.User.DisplayName, r.Creator.IsVerified,
-      viewerId != null && r.Saves.Any(s => s.UserId == viewerId)))
+var recipes = db.Recipes.AsNoTracking()
+    .Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public);   // ProductOnly and drafts never reach the feed
+
+var ordered = sort switch
+{
+    FeedSort.Newest   => recipes.OrderByDescending(r => r.PublishedAt).ThenByDescending(r => r.Id),
+    FeedSort.Trending => recipes.OrderByDescending(r => r.SaveCount)
+                                .ThenByDescending(r => r.PublishedAt).ThenByDescending(r => r.Id),
+};
+
+return await ordered
+    .Skip(skip).Take(take)                    // take = pageSize + 1
+    .Select(r => new FeedItemDto(
+        r.Id, r.Title, r.VideoUrl, r.ThumbnailUrl, r.Servings,
+        r.PrepMinutes == null && r.CookMinutes == null ? null : (r.PrepMinutes ?? 0) + (r.CookMinutes ?? 0),
+        r.SaveCount, r.PublishedAt!.Value,
+        r.Creator.Handle, r.Creator.User.DisplayName, r.Creator.IsVerified,
+        viewerId != null && r.SavedBy.Any(s => s.UserId == viewerId)))
+    .ToListAsync(cancellationToken);
 ```
 
-**Generated SQL (Newest):**
+**Generated SQL, as logged** (`sort=Trending`, with `X-User-Id`):
 
 ```sql
-SELECT r.id, r.title, r.video_url, r.thumbnail_url, r.servings,
-       CASE WHEN r.prep_minutes IS NULL AND r.cook_minutes IS NULL THEN NULL
-            ELSE COALESCE(r.prep_minutes, 0) + COALESCE(r.cook_minutes, 0) END,
-       r.save_count, r.published_at,
-       c.handle, u.display_name, c.is_verified,
-       CASE WHEN @viewerId IS NOT NULL AND EXISTS (
-            SELECT 1 FROM saved_recipes s WHERE s.recipe_id = r.id AND s.user_id = @viewerId)
-            THEN TRUE ELSE FALSE END
-FROM recipes AS r
-INNER JOIN creator_profiles AS c ON r.creator_id = c.user_id
+SELECT r0.id, r0.title, r0.video_url, r0.thumbnail_url, r0.servings, CASE
+    WHEN r0.prep_minutes IS NULL AND r0.cook_minutes IS NULL THEN NULL
+    ELSE COALESCE(r0.prep_minutes, 0) + COALESCE(r0.cook_minutes, 0)
+END, r0.save_count, r0.published_at, c.handle, u.display_name, c.is_verified, EXISTS (
+    SELECT 1
+    FROM saved_recipes AS s
+    WHERE r0.id = s.recipe_id AND s.user_id = @viewerId)
+FROM (
+    SELECT r.id, r.cook_minutes, r.creator_id, r.prep_minutes, r.published_at, r.save_count, r.servings, r.thumbnail_url, r.title, r.video_url
+    FROM recipes AS r
+    WHERE r.is_published AND r.visibility = 'Public'
+    ORDER BY r.save_count DESC, r.published_at DESC, r.id DESC
+    LIMIT @p1 OFFSET @p
+) AS r0
+INNER JOIN creator_profiles AS c ON r0.creator_id = c.user_id
 INNER JOIN users AS u ON c.user_id = u.id
-WHERE r.is_published AND r.visibility = 'Public'
-ORDER BY r.published_at DESC, r.id DESC
-LIMIT @take OFFSET @skip
+ORDER BY r0.save_count DESC, r0.published_at DESC, r0.id DESC
 ```
 
-**Index:** `ix_recipes_is_published_visibility_published_at (is_published, visibility, published_at DESC)`. Both leading columns are equality predicates, so the `ORDER BY published_at DESC` + `LIMIT` shape is served by walking this index forward from the top and stopping after `pageSize + 1` rows: no sort node, no scan of unpublished drafts or product-only recipes. `Trending` uses the sibling index `(is_published, visibility, save_count DESC)` with the same plan shape. The creator/user joins are PK lookups. The `EXISTS` for `SavedByViewer` hits the composite PK of `saved_recipes(user_id, recipe_id)`.
+`sort=Newest` is the same statement with `ORDER BY r.published_at DESC, r.id DESC` in both places. With no
+`X-User-Id`, EF Core compiles a separate statement for a null `viewerId` that has no `EXISTS` at all.
 
-**Reviewed:** the `Take(pageSize + 1)` trick avoids the separate `SELECT COUNT(*)` that offset pagination normally needs. At scale, keyset pagination (`WHERE published_at < @last`) would replace `OFFSET`; the index is already the right one for that.
+**Reviewed.** Three differences from the SQL predicted before the code existed, all improvements:
+
+1. **Page first, then join.** EF Core puts `LIMIT/OFFSET` in a subquery over `recipes` alone, so only the
+   page's rows (at most 51) are joined to `creator_profiles` and `users`. The prediction had a flat join
+   with `LIMIT` at the end. The outer `ORDER BY` re-sorts at most 51 rows.
+2. **Only the columns the card needs.** The `Select` into `FeedItemDto` means no `description`, no
+   `created_at` and no entity tracking (`AsNoTracking`).
+3. **No `EXISTS` for an anonymous viewer.** `viewerId != null && …` is folded away when the parameter is
+   null, instead of being sent as `@viewerId IS NOT NULL AND EXISTS (…)`.
+
+**Plan** (`EXPLAIN ANALYZE` on the seeded development database; `Newest`, inner page query):
+
+```
+Limit (actual rows=10 loops=1)
+  ->  Incremental Sort (actual rows=10 loops=1)
+        Sort Key: published_at DESC, id DESC
+        Presorted Key: published_at
+        ->  Index Scan using ix_recipes_is_published_visibility_published_at on recipes r (actual rows=10 loops=1)
+              Index Cond: ((is_published = true) AND ((visibility)::text = 'Public'::text))
+```
+
+and for the full statement, joins and viewer check:
+
+```
+Nested Loop
+  ->  Nested Loop
+        ->  Limit -> Incremental Sort -> Index Scan using ix_recipes_is_published_visibility_published_at
+        ->  Memoize (Cache Key: r.creator_id) -> Index Scan using pk_creator_profiles  (Index Cond: user_id = r.creator_id)
+  ->  Index Scan using pk_users  (Index Cond: id = c.user_id)
+  SubPlan 2
+    ->  Bitmap Heap Scan on saved_recipes s  ->  Bitmap Index Scan on pk_saved_recipes  (Index Cond: user_id = 1)
+```
+
+**Indexes, and why:**
+
+- `ix_recipes_is_published_visibility_published_at (is_published, visibility, published_at DESC)` serves
+  `Newest`. Both leading columns are equality predicates, so the index returns the matching rows already
+  in `published_at DESC` order. PostgreSQL chose it even on 13 seeded rows, with default planner
+  settings.
+- **Sort cost.** The plan has no full Sort, only an *Incremental Sort*, whose `Presorted Key` is
+  `published_at`. It sorts by `id` only within a group of equal `published_at`, and `Limit` stops it
+  after one page. The `id` tie-break is there so pages never overlap or skip a row when two recipes
+  publish at the same instant.
+- **Not added: `id` in the index.** Adding `id DESC` to the index would remove even the incremental sort.
+  But the ties it handles are rare, and the change would need a new migration plus a matching
+  `schema.sql` change. Not worth it.
+- `ix_recipes_is_published_visibility_save_count (is_published, visibility, save_count DESC)` serves
+  `Trending` the same way. Presorted key `save_count`; ties on save count are common, and the incremental
+  sort orders those by `published_at, id`.
+- **Joins.** The creator and user joins are primary-key lookups. `Memoize` caches the creator because a
+  page has few distinct creators (3 misses, 7 hits here).
+- **The viewer's saves.** `SavedByViewer` uses the composite primary key `saved_recipes(user_id,
+  recipe_id)`. With `user_id` leading, PostgreSQL reads the viewer's saves once (`SubPlan`, `loops=1`)
+  instead of probing once per card.
+- **At scale.** Keyset pagination (`WHERE (published_at, id) < (@last_published_at, @last_id)`) would
+  replace `OFFSET`, so deep pages do not read and discard the rows before them. The same index serves it.
+
+**Tests:**
+
+- `tests/Cookfeed.Application.Tests/Feed/FeedServiceTests.cs`: the `pageSize + 1` / `hasMore` rule, with a
+  fake repository.
+- `tests/Cookfeed.IntegrationTests/Api/FeedEndpointTests.cs`, over HTTP:
+  - `Newest` matches `queries.sql` Q1 id for id; `Trending` matches Q3.
+  - ProductOnly recipes and drafts are absent.
+  - Pages join up with no gaps or repeats.
+  - `savedByViewer` matches the viewer's `saved_recipes` rows.
+  - Out-of-range paging (including a page whose offset would overflow), an unknown sort or a non-numeric
+    `X-User-Id` gets a 400.
 
 ---
 

@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
+    <!-- Starts the API in memory, so tests can call its endpoints over HTTP. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 
   <ItemGroup>
@@ -15,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Cookfeed.Api\Cookfeed.Api.csproj" />
     <ProjectReference Include="..\..\src\Cookfeed.Infrastructure\Cookfeed.Infrastructure.csproj" />
   </ItemGroup>
 

@@ -1,4 +1,6 @@
+using Cookfeed.Application.Abstractions.Persistence;
 using Cookfeed.Infrastructure.Persistence;
+using Cookfeed.Infrastructure.Persistence.Repositories;
 using Cookfeed.Infrastructure.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +14,9 @@ public static class DependencyInjection
     {
         services.AddDbContext<CookfeedDbContext>(options => options.UseCookfeedDatabase(connectionString));
         services.AddScoped<DbSeeder>();
+
+        // Scoped: one repository per HTTP request, sharing that request's DbContext.
+        services.AddScoped<IRecipeRepository, RecipeRepository>();
         return services;
     }
 

@@ -4,4 +4,9 @@
     <ProjectReference Include="..\Cookfeed.Domain\Cookfeed.Domain.csproj" />
     <ProjectReference Include="..\Cookfeed.Contracts\Cookfeed.Contracts.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- IServiceCollection, for AddApplication(); the abstractions only, not the container itself. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
 </Project>
