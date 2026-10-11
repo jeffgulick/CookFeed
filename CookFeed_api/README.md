@@ -1,9 +1,49 @@
 # Cookfeed API
 
+[![API tests](https://github.com/jeffgulick/CookFeed/actions/workflows/api-tests.yml/badge.svg)](https://github.com/jeffgulick/CookFeed/actions/workflows/api-tests.yml)
+
 The back end of Cookfeed, a short-video recipe marketplace: ASP.NET Core 10 with controllers, EF Core 10
 and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is built this way, is in
 [`docs/DesignDocument.md`](docs/DesignDocument.md); where the build stands and what comes next is in
 [`docs/BuildLog.md`](docs/BuildLog.md).
+
+## Deliverable 2
+
+Every item is in `main` and checked by the tests on every pull request.
+
+| Item | Where it lives |
+|---|---|
+| **1. ER diagram and 3NF schema** as EF Core entities and migrations: users and roles, recipes and steps, ingredients and recipe quantities, saves, meal plans, products, cart, orders and order items | Diagrams: [`docs/ERDiagram.svg`](docs/ERDiagram.svg), [`docs/EERDiagram.svg`](docs/EERDiagram.svg), [`docs/ThirdNormalForm.svg`](docs/ThirdNormalForm.svg). Reference DDL: [`docs/schema.sql`](docs/schema.sql). Entities: `src/Cookfeed.Domain/Entities/`. Mappings: `src/Cookfeed.Infrastructure/Persistence/Configurations/`. Migration, with the four triggers: `Persistence/Migrations/`. The table inventory is in DesignDocument.md §2 |
+| **2. Seed data** that builds the database from scratch with realistic content | [`docs/sql/seed.sql`](docs/sql/seed.sql), and the same rows in C# in `Persistence/Seed/DbSeeder.cs`. In Development the API seeds an empty database at startup |
+| **3. Core queries in LINQ**, with the generated SQL reviewed and the indexes chosen and justified | [`docs/Queries.md`](docs/Queries.md) gives, for each query, the LINQ, the SQL EF Core logged, the `EXPLAIN ANALYZE` plan and the reasoning for each index. Code: `Persistence/Repositories/`. Reference SQL: [`docs/sql/queries.sql`](docs/sql/queries.sql) |
+| **4. Design document**: normalization, constraints and referential integrity, denormalization, and the ingredient and unit model | [`docs/DesignDocument.md`](docs/DesignDocument.md): §4 normalization, §5 constraints, §6 where I denormalized, §7 canonical ingredients, unit categories, density and the preferred shopping unit |
+| **5. ASP.NET Core API with tests** over these queries, for the Angular work in Assignment 4 | Controllers: `src/Cookfeed.Api/Controllers/`. Endpoints and tests are listed below |
+
+The four endpoints:
+
+| Query | Endpoint | Queries.md |
+|---|---|---|
+| Feed | `GET /api/feed?sort=Newest\|Trending&page=&pageSize=` | §1 |
+| Creator storefront | `GET /api/creators/{handle}` | §2 |
+| Order history | `GET /api/me/orders` | §4 |
+| Shopping-list aggregation | `GET /api/me/shopping-list?weekStart=` | §3 |
+
+**How it is checked.** Each endpoint is tested over HTTP against what the reference queries in
+`queries.sql` return on the same seeded database (Q1, Q2, Q3, Q5, Q8, Q9). For example, the shopping list
+must equal Q8 line for line: 41 lines, with "2 cups flour" and "500 g flour" merged into flour 1,032.91 g.
+GitHub Actions runs the build and all 130 tests on every pull request.
+
+**What reviewing the generated SQL changed** (each is written up in `docs/Queries.md`):
+- **Storefront: split query.** In one statement, the recipe list and the product list multiplied each
+  other's rows; `AsSplitQuery()` sends three small statements instead.
+- **Shopping list: explicit joins.** Summing through navigation properties made EF Core run a correlated
+  subquery per output line. Explicit `join`s give one plain `GROUP BY`.
+- **Shopping list: rounding inside the `SUM`.** PostgreSQL's exact division for serving scale overflowed
+  .NET's `decimal`, so each line is rounded to 6 places inside the `SUM`.
+- **Order history: the seller at checkout.** The seller is the snapshot `creator_id` on `order_items`, not
+  today's owner of the product.
+- **Not every query needed changing.** The feed pages before it joins; order history is one statement,
+  because a single collection multiplies no rows.
 
 ## Status
 
@@ -12,7 +52,7 @@ and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is bui
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Integration tests for the database | Done — 45 tests, all passing |
+| Tests | 130, all passing: Domain 14, Application 16, Integration 100 (45 for the database, 55 for the API over HTTP) |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 24 tests; SQL verified in `docs/Queries.md` §2 |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |

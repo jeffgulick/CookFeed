@@ -9,14 +9,19 @@ session; update **Where we are** and **Next steps** at the end of each step, in 
 
 *Last updated 2026-10-11.*
 
-The **database layer** and **all four core queries** are built. Three are merged into `main`:
-- the recipe feed (`GET /api/feed`)
-- the creator storefront (`GET /api/creators/{handle}`)
-- order history (`GET /api/me/orders`)
+**Deliverable 2 is complete and merged into `main`.** It contains the database layer and all four core
+queries:
 
-These came in PRs #6, #7 and #8. The **shopping list** (`GET /api/me/shopping-list`) is on the
-`shopping-list` branch. Each query is controller → service → repository → Contracts DTOs, and each has
-its generated SQL verified in `docs/Queries.md`.
+| Query | Endpoint | PR |
+|---|---|---|
+| Recipe feed | `GET /api/feed` | #7 |
+| Creator storefront | `GET /api/creators/{handle}` | #6 |
+| Order history | `GET /api/me/orders` | #8 |
+| Shopping list | `GET /api/me/shopping-list` | #9 |
+
+CI followed in #10, with its docs in #11. Each query is controller → service → repository → Contracts
+DTOs, and each has its generated SQL verified in `docs/Queries.md`. The deliverable is mapped item by item
+in the [README](../README.md#deliverable-2).
 
 | Done | Where |
 |---|---|
@@ -36,7 +41,6 @@ its generated SQL verified in `docs/Queries.md`.
 | Order history tests: 2 service tests, 12 HTTP tests (104 tests in all), incl. the snapshot and order-total checks; SQL verified | `tests/*/Order*`, `docs/Queries.md` §4 |
 | Shopping list: `MyShoppingListController` → `ShoppingListService` → `ShoppingListRepository` (SQL half) + `ShoppingListAggregator` in Domain (C# half) | `src/*/ShoppingList/`, `Persistence/Repositories/`, `Api/Controllers/` |
 | Shopping-list tests: 14 Domain tests for the aggregator, 3 service tests, 9 HTTP tests checked against `queries.sql` Q8 (130 tests in all); SQL verified and rewritten after review | `tests/*/ShoppingList*`, `docs/Queries.md` §3 |
-
 | CI: `.github/workflows/api-tests.yml` runs a locked restore, the build and all tests against a `postgres:16.15` service on every PR and push to `main` that touches `CookFeed_api/` | `.github/workflows/` |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
@@ -125,20 +129,106 @@ Commands to migrate, run and test: [`README.md`](../README.md#getting-started) a
 
 ## Next steps
 
-Deliverable 2 (due **Oct 17**) is complete once the `shopping-list` branch is merged. After that:
+Deliverable 2 (due **Oct 17**) is complete and merged. What comes next:
 
 1. **Comment the existing database-layer code** to the commenting rule above. Mainly the 19
    configurations, `CookfeedDbContext.cs` and `Program.cs`. Comments only: the build and the tests must be
    unchanged.
-2. **Assignment 4:** the Angular app against these endpoints, and login (JWT) replacing the `X-User-Id`
-   header (`DesignDocument.md` §9). Then the write features (saves, cart, checkout, reviews) and the
-   business rules below.
+2. **Assignment 4:** the Angular app against these endpoints, and the API work it needs, in the order of
+   the **API roadmap** below.
+
+## API roadmap (after Deliverable 2)
+
+Every endpoint built so far only reads, so the API cannot yet change anything. The Angular app in
+Assignment 4 needs the rest. These are listed in the order to build them, each test-first and in its own
+PR, with the same pattern as the first four: controller → service → repository → Contracts DTOs.
+
+Each item records:
+- **its endpoints**, under `/api/me/…` for the caller's own data, per Decisions so far;
+- **the rules from the next section that land with it**;
+- **what its tests check.**
+
+Tick items off here as they merge.
+
+**A. Needed before Angular can call the API**
+
+1. **CORS.** The Angular dev server (`http://localhost:4200`) is a different origin, so the browser blocks
+   its calls until the API allows it. A named policy in `Program.cs`, with the allowed origins from
+   configuration so production can differ.
+   - *Test:* a request with `Origin: http://localhost:4200` gets `Access-Control-Allow-Origin` back, and
+     another origin does not.
+2. **OpenAPI description** (optional but useful). `Microsoft.AspNetCore.OpenApi`, built into .NET 10,
+   serves `/openapi/v1.json` in Development: every endpoint and DTO, from which the Angular client types
+   can be generated.
+   - *Test:* the document is served and lists the endpoints.
+
+**B. Reads still missing**
+
+3. **Recipe detail**, `GET /api/recipes/{id}`: the recipe, its steps and its ingredient lines (Q4). The
+   planned LINQ is in `docs/Queries.md` §1b.
+   - *Rules:* a `ProductOnly` recipe opens only for a viewer whose Paid snapshot contains it (Q14),
+     reading the snapshot, never the live bundle. Everyone else gets **404**, so its existence isn't
+     revealed. Drafts are 404 too.
+   - *Tests:* Q4's lines; Q14's access matrix.
+4. **My purchases**, `GET /api/me/purchases`: the recipes the caller owns through Paid orders, grouped by
+   the product they came with (Q11).
+   - *Rules:* reads `order_item_recipes`, so a later bundle edit changes nothing (Q15's drift case).
+   - *Tests:* equal to Q11.
+5. **Reviews for a product**, `GET /api/products/{id}/reviews`: newest first, with the reviewer's name
+   (Q12), plus a summary of count, average rating and percent recommending (Q13).
+   - *Tests:* equal to Q12 and Q13.
+
+**C. Writes**
+
+6. **Saves.** `PUT /api/me/saves/{recipeId}` and `DELETE /api/me/saves/{recipeId}`, both idempotent, plus
+   `GET /api/me/saves` (Q6). This is the first write feature, so it also brings item 12.
+   - *Rules:* a `ProductOnly` recipe can be saved only with the same access as opening it (404 otherwise).
+   - *Tests:* the `save_count` trigger keeps the feed's count right (Q16 stays empty).
+7. **Meal plans.** `GET /api/me/meal-plans/{weekStart}` (Q7), `PUT` to create the week's plan (one per
+   user per week), `POST …/entries` to add a recipe on a day and slot with an optional servings override,
+   and `DELETE …/entries/{id}`. Today the shopping list reads plans, but nothing can create one through
+   the API.
+   - *Rules:* an entry's date falls inside its week; the same recipe may appear on several days
+     (DesignDocument.md §3.2).
+   - *Tests:* after adding entries, the shopping list changes the way Q8 says it should.
+8. **Cart.** `GET /api/me/cart`, `PUT /api/me/cart/{productId}`, `DELETE /api/me/cart/{productId}`.
+   - *Rules:* a creator cannot add their own product (**400**, a readable message before the trigger
+     would refuse it); only active products can be added.
+9. **Checkout**, `POST /api/me/checkout`, in one transaction (DesignDocument.md §6):
+   - creates the `Paid` order (payment simulated, §9);
+   - writes each item's title, price and seller snapshot;
+   - copies every `product_recipes` row into `order_item_recipes`;
+   - sets `total_cents` to the sum of the lines;
+   - empties the cart.
+   - *Rules:* no self-purchase (**400**), and an empty cart is a **400**.
+   - *Tests:* the new order appears in `GET /api/me/orders`; its recipes open through recipe detail; a
+     failure part-way leaves nothing behind.
+10. **Reviews**, `POST /api/products/{id}/reviews`.
+    - *Rules:* requires a Paid order item for that product by the caller (**403**); one review per user
+      per product (**409**).
+
+**D. Cross-cutting**
+
+11. **Login (JWT) and roles.** Replaces the `X-User-Id` header (DesignDocument.md §9). Controllers read
+    the caller from the token's user-id claim, and the routes, services and repositories stay as they
+    are.
+    - *Rules:* saves, meal plans, cart, checkout and reviews require the `HomeCook` role. Every creator
+      holds it and the admin does not, so the admin gets **403** on all of them with no special case.
+    - *Tests:* each write endpoint, called as the admin, returns 403.
+12. **Database refusals become readable 4xx responses**, built with the first write feature (item 6).
+    A `check_violation` (`ck_…`), unique violation or trigger refusal that gets past a service becomes a
+    400 or 409 ProblemDetails naming the rule, never a 500.
+    - *Tests:* the trigger refusals that `TriggerTests` already provoke, sent through the API, come back
+      as 4xx.
+
+Housekeeping alongside: step 1 above (comments on the database layer), and keeping `docs/Queries.md`
+verified for every new query, with its logged SQL, plan and indexes.
 
 ## Business rules the API still has to enforce
 
 The Assignment 2 feedback (Abraham) is answered in `DesignDocument.md` §3, and every rule the **database**
 enforces is already proven by the integration tests. The rules below are the ones §3 assigns to the
-**API**: they are not built yet. Each one is built, test-first, with the feature it belongs to — a service
+**API**: they are not built yet. Each one lands with a roadmap item above and is built, test-first, with the feature it belongs to — a service
 test with NSubstitute for the rule itself and an integration test over HTTP for the status code. Tick
 them off here as they land. The status codes are proposals, to confirm when each feature is built.
 
@@ -157,6 +247,8 @@ them off here as they land. The status codes are proposals, to confirm when each
 
 ## Open items
 
-- **Old branch:** the auto-named branch ending in `relaxed-newton-gutkwp` is still on GitHub and can be
-  deleted (its work is in `main`). This environment cannot delete branches; do it under **Branches** on
-  GitHub.
+- **Merged branches to delete:** their work is all in `main`. This environment cannot delete branches;
+  do it under **Branches** on GitHub.
+  - `feed-endpoint`, `creator-storefront`, `order-history`, `shopping-list`
+  - `ci-workflow`, `ci-docs`, `deliverable-2-docs` (the last once its PR is merged)
+  - the auto-named branch ending in `relaxed-newton-gutkwp`
