@@ -19,7 +19,9 @@ namespace Cookfeed.IntegrationTests.Support;
 /// <item><see cref="ReferenceWithSeedScriptAsync"/>: <c>docs/schema.sql</c>, then <c>docs/sql/seed.sql</c>.</item>
 /// <item><see cref="EfWithDbSeederAsync"/>: the EF Core migration, then <c>DbSeeder</c>.</item>
 /// </list>
-/// Tests that change rows do so inside a transaction they roll back, so these databases stay as built.
+/// Tests that change rows do so inside a transaction they roll back, so these databases keep the rows they
+/// were built with. Only the EF Core + seed.sql database is written to that way; the reference databases are
+/// only ever read, so their id sequences also stay exactly as built.
 /// </summary>
 public sealed class DatabaseFixture : IAsyncLifetime
 {

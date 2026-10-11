@@ -4,7 +4,9 @@ namespace Cookfeed.IntegrationTests.Support;
 
 /// <summary>
 /// A connection with an open transaction that is always rolled back. A test can insert, update and delete
-/// freely, and the shared database is unchanged afterwards, so tests cannot affect one another.
+/// freely, and the shared database's rows are unchanged afterwards, so tests cannot affect one another.
+/// The one exception is id sequences: PostgreSQL never rolls them back, so an insert here moves the table's
+/// next id on even though the row itself disappears.
 /// </summary>
 public sealed class RolledBackConnection : IAsyncDisposable
 {
