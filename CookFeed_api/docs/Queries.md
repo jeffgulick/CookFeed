@@ -15,9 +15,9 @@ leaves the repository (`DesignDocument.md` §1). In the LINQ below, `db` is the 
 `CookfeedDbContext`. This document shows the LINQ, the SQL EF Core is expected to produce for it, and
 the index that makes it cheap (aliases shortened for readability).
 
-Once the API exists, `appsettings.Development.json` will turn on
-`Microsoft.EntityFrameworkCore.Database.Command` logging at `Information` so the exact statement is
-printed on every request — run `dotnet run`, hit the endpoint, and paste what it logs over the block here.
+`src/Cookfeed.Api/appsettings.Development.json` turns on `Microsoft.EntityFrameworkCore.Database.Command`
+logging at `Information`, so the exact statement is printed on every request. As each repository is built,
+run `dotnet run --project src/Cookfeed.Api`, hit the endpoint, and paste what it logs over the block here.
 
 To see the planner's choice, prefix any statement with `EXPLAIN (ANALYZE, BUFFERS)` in `psql`.
 
