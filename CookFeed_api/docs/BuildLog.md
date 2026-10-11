@@ -109,6 +109,27 @@ Commands to migrate, run and test: [`README.md`](../README.md#getting-started) a
    `X-User-Id` header alone, or `/api/users/{id}/…` in the route checked against it. Routes that take a user
    id without that check would let one user read or change another's data.
 
+## Business rules the API still has to enforce
+
+The Assignment 2 feedback (Abraham) is answered in `DesignDocument.md` §3, and every rule the **database**
+enforces is already proven by the integration tests. The rules below are the ones §3 assigns to the
+**API**: they are not built yet. Each one is built, test-first, with the feature it belongs to — a service
+test with NSubstitute for the rule itself and an integration test over HTTP for the status code. Tick
+them off here as they land. The status codes are proposals, to confirm when each feature is built.
+
+| Rule | Design doc | Feature it lands with | Refused with |
+|---|---|---|---|
+| Saving, cart, checkout, meal plans and reviews require the `HomeCook` role. Every creator holds it; the admin does not, so the admin is shut out of all of them with no special case. | §3.1 | Each of those features, through the caller-identity decision in Next steps 3 | 403 |
+| A creator cannot add their own product to the cart: the service refuses it with a clear message before the `cart_items_refuse_self_purchase` trigger would. | §3.1, `Queries.md` "Add to cart" | Cart | 400 |
+| Checkout refuses a self-purchase the same way (the `order_items_refuse_self_purchase` trigger stays as the last line of defence). | §3.1 | Checkout | 400 |
+| A database refusal (`check_violation` with a `ck_…` constraint name, or a unique violation) that slips past a service becomes a 4xx with a readable message, never a 500. | §5 | First write feature (saves or cart) | 400 / 409 |
+| The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed (first feature), storefront | — |
+| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14. | §3.3 | Recipe detail | 404 (do not reveal it exists) |
+| Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
+| Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |
+| Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Recipe detail, My kitchen / purchases | — |
+| A review requires a `Paid` order item for that product by the same user; one review per user per product. | §3.5 | Reviews | 403 / 409 |
+
 ## Open items
 
 - **CI:** a GitHub Actions workflow that runs `dotnet test` with a `postgres:16.15` service, so every pull
