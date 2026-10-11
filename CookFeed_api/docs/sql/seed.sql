@@ -49,26 +49,28 @@ INSERT INTO users (id, email, display_name, password_hash, created_at) VALUES
 
 -- User roles. Every buyer holds HomeCook; creators hold HomeCook + Creator; the admin holds Admin alone
 -- (the user_roles_admin_only trigger refuses any other combination).
-INSERT INTO user_roles (user_id, role_id) VALUES
-  (1, 1),
-  (2, 1),
-  (3, 1),
-  (3, 2),
-  (4, 1),
-  (4, 2),
-  (5, 1),
-  (5, 2),
-  (6, 3),
-  (7, 1),
-  (8, 1),
-  (9, 1),
-  (10, 1);
+-- Each role is granted when the account signs up (users.created_at).
+INSERT INTO user_roles (user_id, role_id, granted_at) VALUES
+  (1, 1, '2026-08-01 12:00:00+00'),
+  (2, 1, '2026-08-04 12:00:00+00'),
+  (3, 1, '2026-07-02 12:00:00+00'),
+  (3, 2, '2026-07-02 12:00:00+00'),
+  (4, 1, '2026-07-07 12:00:00+00'),
+  (4, 2, '2026-07-07 12:00:00+00'),
+  (5, 1, '2026-07-22 12:00:00+00'),
+  (5, 2, '2026-07-22 12:00:00+00'),
+  (6, 3, '2026-06-02 12:00:00+00'),
+  (7, 1, '2026-08-06 12:00:00+00'),
+  (8, 1, '2026-08-08 12:00:00+00'),
+  (9, 1, '2026-08-10 12:00:00+00'),
+  (10, 1, '2026-08-12 12:00:00+00');
 
 -- Creator profiles (1:1 with users)
-INSERT INTO creator_profiles (user_id, handle, bio, is_verified) VALUES
-  (3, 'maria-cooks', 'Roman trattoria classics, filmed in a tiny Chicago kitchen. Weeknight pasta is a right, not a privilege.', TRUE),
-  (4, 'kenji-kitchen', 'Japanese home cooking with a weeknight clock. Most dinners under 30 minutes, everything shoppable.', TRUE),
-  (5, 'dan-meal-preps', 'Dad of three. I cook on Sunday so we eat all week. No fancy gear.', FALSE);
+-- Image paths are app-relative: the front end serves the same files (images/creators/{handle}.svg).
+INSERT INTO creator_profiles (user_id, handle, bio, avatar_url, is_verified) VALUES
+  (3, 'maria-cooks', 'Roman trattoria classics, filmed in a tiny Chicago kitchen. Weeknight pasta is a right, not a privilege.', 'images/creators/maria-cooks.svg', TRUE),
+  (4, 'kenji-kitchen', 'Japanese home cooking with a weeknight clock. Most dinners under 30 minutes, everything shoppable.', 'images/creators/kenji-kitchen.svg', TRUE),
+  (5, 'dan-meal-preps', 'Dad of three. I cook on Sunday so we eat all week. No fancy gear.', 'images/creators/dan-meal-preps.svg', FALSE);
 
 -- Canonical ingredients (density enables volume->mass conversion)
 INSERT INTO ingredients (id, name, category, density_g_per_ml, preferred_shopping_unit_id) VALUES
@@ -121,25 +123,33 @@ INSERT INTO ingredients (id, name, category, density_g_per_ml, preferred_shoppin
   (47, 'baby spinach', 'Produce', NULL, 7),
   (48, 'bell pepper', 'Produce', NULL, 11),
   (49, 'broccoli', 'Produce', NULL, 11),
-  (50, 'cornstarch', 'Pantry', 0.54, 7);
+  (50, 'cornstarch', 'Pantry', 0.54, 7),
+  -- Onigiri Three Ways' fillings and wrapper (salmon, umeboshi, tuna-mayo, nori).
+  (51, 'salmon fillet', 'Seafood', NULL, 7),
+  (52, 'umeboshi', 'Pantry', NULL, 11),
+  (53, 'canned tuna', 'Pantry', NULL, 13),
+  (54, 'mayonnaise', 'Pantry', 0.91, 7),
+  (55, 'nori', 'Pantry', NULL, 11);
 
 -- Recipes (12 published + 1 draft). created_at shown equal to published_at for brevity.
 -- save_count is deliberately absent: the saved_recipes trigger computes it from the saves inserted below.
 -- Recipes 4 (Chicken Parm) and 6 (Onigiri) are ProductOnly: published, but reachable only by buying the
 -- product that contains them (Roman Pasta Collection / Three Weeknights in Japan).
+-- Thumbnails are app-relative images (images/recipes/{id}.svg); the draft has none yet. Videos stay on the
+-- CDN placeholder, because the player is a mock.
 INSERT INTO recipes (id, creator_id, title, description, video_url, thumbnail_url, servings, prep_minutes, cook_minutes, is_published, visibility, created_at, published_at) VALUES
-  (1, 3, '15-Minute Spaghetti Carbonara', 'No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.', 'https://cdn.cookfeed.app/videos/001.mp4', 'https://cdn.cookfeed.app/thumbs/001.jpg', 4, 5, 12, TRUE, 'Public', '2026-07-12 12:00:00+00', '2026-07-12 12:00:00+00'),
-  (2, 3, 'Sunday Marinara from Scratch', 'One can of tomatoes, one onion, one hour. Freezes beautifully.', 'https://cdn.cookfeed.app/videos/002.mp4', 'https://cdn.cookfeed.app/thumbs/002.jpg', 6, 10, 60, TRUE, 'Public', '2026-07-14 12:00:00+00', '2026-07-14 12:00:00+00'),
-  (3, 3, 'No-Knead Focaccia', 'Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.', 'https://cdn.cookfeed.app/videos/003.mp4', 'https://cdn.cookfeed.app/thumbs/003.jpg', 8, 15, 25, TRUE, 'Public', '2026-07-20 12:00:00+00', '2026-07-20 12:00:00+00'),
-  (4, 3, 'Weeknight Chicken Parm', 'Thin cutlets, quick fry, broiled with marinara and mozzarella.', 'https://cdn.cookfeed.app/videos/004.mp4', 'https://cdn.cookfeed.app/thumbs/004.jpg', 4, 15, 20, TRUE, 'ProductOnly', '2026-07-26 12:00:00+00', '2026-07-26 12:00:00+00'),
-  (5, 4, 'Chicken Teriyaki, the Real Way', 'Four ingredients in the sauce. Skin-on thighs. That''s the whole secret.', 'https://cdn.cookfeed.app/videos/005.mp4', 'https://cdn.cookfeed.app/thumbs/005.jpg', 2, 5, 15, TRUE, 'Public', '2026-07-13 12:00:00+00', '2026-07-13 12:00:00+00'),
-  (6, 4, 'Onigiri Three Ways', 'Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.', 'https://cdn.cookfeed.app/videos/006.mp4', 'https://cdn.cookfeed.app/thumbs/006.jpg', 4, 20, 20, TRUE, 'ProductOnly', '2026-07-17 12:00:00+00', '2026-07-17 12:00:00+00'),
-  (7, 4, '10-Minute Ginger Garlic Stir-Fry', 'The one-pan dinner I make when I have nothing planned.', 'https://cdn.cookfeed.app/videos/007.mp4', 'https://cdn.cookfeed.app/thumbs/007.jpg', 2, 5, 8, TRUE, 'Public', '2026-07-23 12:00:00+00', '2026-07-23 12:00:00+00'),
-  (8, 5, 'Saturday Buttermilk-Style Pancakes', 'Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.', 'https://cdn.cookfeed.app/videos/008.mp4', 'https://cdn.cookfeed.app/thumbs/008.jpg', 4, 10, 15, TRUE, 'Public', '2026-07-24 12:00:00+00', '2026-07-24 12:00:00+00'),
-  (9, 5, 'Five-Day Overnight Oats', 'One mixing bowl on Sunday, five breakfasts done.', 'https://cdn.cookfeed.app/videos/009.mp4', 'https://cdn.cookfeed.app/thumbs/009.jpg', 5, 10, 0, TRUE, 'Public', '2026-07-25 12:00:00+00', '2026-07-25 12:00:00+00'),
-  (10, 5, 'Weeknight Beef Tacos', 'Skip the packet. Cumin, chili powder, and a squeeze of lime.', 'https://cdn.cookfeed.app/videos/010.mp4', 'https://cdn.cookfeed.app/thumbs/010.jpg', 4, 10, 15, TRUE, 'Public', '2026-07-28 12:00:00+00', '2026-07-28 12:00:00+00'),
-  (11, 5, 'Smooth Hummus', 'Peel the chickpeas. Yes, really. It''s worth it.', 'https://cdn.cookfeed.app/videos/011.mp4', 'https://cdn.cookfeed.app/thumbs/011.jpg', 6, 15, 0, TRUE, 'Public', '2026-07-29 12:00:00+00', '2026-07-29 12:00:00+00'),
-  (12, 5, 'Brown Butter Chocolate Chip Cookies', 'Brown the butter. Chill the dough. Thank me later.', 'https://cdn.cookfeed.app/videos/012.mp4', 'https://cdn.cookfeed.app/thumbs/012.jpg', 24, 20, 12, TRUE, 'Public', '2026-07-30 12:00:00+00', '2026-07-30 12:00:00+00'),
+  (1, 3, '15-Minute Spaghetti Carbonara', 'No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.', 'https://cdn.cookfeed.app/videos/001.mp4', 'images/recipes/1.svg', 4, 5, 12, TRUE, 'Public', '2026-07-12 12:00:00+00', '2026-07-12 12:00:00+00'),
+  (2, 3, 'Sunday Marinara from Scratch', 'One can of tomatoes, one onion, one hour. Freezes beautifully.', 'https://cdn.cookfeed.app/videos/002.mp4', 'images/recipes/2.svg', 6, 10, 60, TRUE, 'Public', '2026-07-14 12:00:00+00', '2026-07-14 12:00:00+00'),
+  (3, 3, 'No-Knead Focaccia', 'Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.', 'https://cdn.cookfeed.app/videos/003.mp4', 'images/recipes/3.svg', 8, 15, 25, TRUE, 'Public', '2026-07-20 12:00:00+00', '2026-07-20 12:00:00+00'),
+  (4, 3, 'Weeknight Chicken Parm', 'Thin cutlets, quick fry, broiled with marinara and mozzarella.', 'https://cdn.cookfeed.app/videos/004.mp4', 'images/recipes/4.svg', 4, 15, 20, TRUE, 'ProductOnly', '2026-07-26 12:00:00+00', '2026-07-26 12:00:00+00'),
+  (5, 4, 'Chicken Teriyaki, the Real Way', 'Four ingredients in the sauce. Skin-on thighs. That''s the whole secret.', 'https://cdn.cookfeed.app/videos/005.mp4', 'images/recipes/5.svg', 2, 5, 15, TRUE, 'Public', '2026-07-13 12:00:00+00', '2026-07-13 12:00:00+00'),
+  (6, 4, 'Onigiri Three Ways', 'Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.', 'https://cdn.cookfeed.app/videos/006.mp4', 'images/recipes/6.svg', 4, 20, 20, TRUE, 'ProductOnly', '2026-07-17 12:00:00+00', '2026-07-17 12:00:00+00'),
+  (7, 4, '10-Minute Ginger Garlic Stir-Fry', 'The one-pan dinner I make when I have nothing planned.', 'https://cdn.cookfeed.app/videos/007.mp4', 'images/recipes/7.svg', 2, 5, 8, TRUE, 'Public', '2026-07-23 12:00:00+00', '2026-07-23 12:00:00+00'),
+  (8, 5, 'Saturday Buttermilk-Style Pancakes', 'Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.', 'https://cdn.cookfeed.app/videos/008.mp4', 'images/recipes/8.svg', 4, 10, 15, TRUE, 'Public', '2026-07-24 12:00:00+00', '2026-07-24 12:00:00+00'),
+  (9, 5, 'Five-Day Overnight Oats', 'One mixing bowl on Sunday, five breakfasts done.', 'https://cdn.cookfeed.app/videos/009.mp4', 'images/recipes/9.svg', 5, 10, 0, TRUE, 'Public', '2026-07-25 12:00:00+00', '2026-07-25 12:00:00+00'),
+  (10, 5, 'Weeknight Beef Tacos', 'Skip the packet. Cumin, chili powder, and a squeeze of lime.', 'https://cdn.cookfeed.app/videos/010.mp4', 'images/recipes/10.svg', 4, 10, 15, TRUE, 'Public', '2026-07-28 12:00:00+00', '2026-07-28 12:00:00+00'),
+  (11, 5, 'Smooth Hummus', 'Peel the chickpeas. Yes, really. It''s worth it.', 'https://cdn.cookfeed.app/videos/011.mp4', 'images/recipes/11.svg', 6, 15, 0, TRUE, 'Public', '2026-07-29 12:00:00+00', '2026-07-29 12:00:00+00'),
+  (12, 5, 'Brown Butter Chocolate Chip Cookies', 'Brown the butter. Chill the dough. Thank me later.', 'https://cdn.cookfeed.app/videos/012.mp4', 'images/recipes/12.svg', 24, 20, 12, TRUE, 'Public', '2026-07-30 12:00:00+00', '2026-07-30 12:00:00+00'),
   (13, 4, 'Miso Soup (draft)', NULL, 'https://cdn.cookfeed.app/videos/draft-miso.mp4', NULL, 2, NULL, NULL, FALSE, 'Public', '2026-07-31 12:00:00+00', NULL);
 
 -- Recipe steps
@@ -219,8 +229,8 @@ INSERT INTO recipe_ingredients (id, recipe_id, ingredient_id, unit_id, quantity,
   (30, 5, 30, 2, 1, NULL, NULL, 6, FALSE),
   (31, 5, 26, 14, 1, NULL, 'sliced, to garnish', 7, FALSE),
   (32, 6, 27, 3, 2, 'short-grain (sushi) rice', 'rinsed', 1, FALSE),
-  (33, 6, 11, 1, 1, NULL, NULL, 2, FALSE),
-  (34, 6, 29, 1, 1, NULL, 'for the hands', 3, FALSE),
+  (33, 6, 11, 1, 1, NULL, 'for the hands', 2, FALSE),
+  (34, 6, 29, 1, 1, NULL, NULL, 3, FALSE),
   (35, 7, 20, 7, 300, NULL, 'sliced thin', 1, FALSE),
   (36, 7, 49, 11, 1, 'head of broccoli', 'cut into florets', 2, FALSE),
   (37, 7, 48, 11, 1, NULL, 'sliced', 3, FALSE),
@@ -270,15 +280,20 @@ INSERT INTO recipe_ingredients (id, recipe_id, ingredient_id, unit_id, quantity,
   (81, 12, 1, 3, 2.25, 'all-purpose flour', NULL, 6, FALSE),
   (82, 12, 39, 1, 1, NULL, NULL, 7, FALSE),
   (83, 12, 11, 1, 1, NULL, NULL, 8, FALSE),
-  (84, 12, 41, 7, 340, NULL, NULL, 9, FALSE);
+  (84, 12, 41, 7, 340, NULL, NULL, 9, FALSE),
+  (85, 6, 51, 7, 150, NULL, 'cooked and flaked', 4, FALSE),
+  (86, 6, 52, 11, 4, NULL, 'pitted', 5, FALSE),
+  (87, 6, 53, 13, 1, '5 oz can tuna', 'drained', 6, FALSE),
+  (88, 6, 54, 2, 2, 'Japanese mayonnaise', 'mixed into the tuna', 7, FALSE),
+  (89, 6, 55, 11, 4, 'nori sheets', 'cut into strips', 8, FALSE);
 
 -- Products (collections and meal plans)
-INSERT INTO products (id, creator_id, type, title, description, price_cents, currency, is_active, created_at) VALUES
-  (1, 3, 'RecipeCollection', 'Roman Pasta Collection', 'Carbonara, marinara, and the techniques behind them, with shopping lists built in.', 799, 'USD', TRUE, '2026-07-18 12:00:00+00'),
-  (2, 3, 'RecipeCollection', 'The Bread Box', 'Focaccia and friends.', 499, 'USD', TRUE, '2026-07-21 12:00:00+00'),
-  (3, 4, 'MealPlan', 'Three Weeknights in Japan', 'Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less.', 1299, 'USD', TRUE, '2026-07-19 12:00:00+00'),
-  (4, 5, 'MealPlan', 'Family Week on a Budget', 'Seven dinners, two breakfasts, one grocery trip.', 999, 'USD', TRUE, '2026-07-27 12:00:00+00'),
-  (5, 5, 'RecipeCollection', 'Summer Grilling (retired)', NULL, 599, 'USD', FALSE, '2026-06-22 12:00:00+00');
+INSERT INTO products (id, creator_id, type, title, description, cover_image_url, price_cents, currency, is_active, created_at) VALUES
+  (1, 3, 'RecipeCollection', 'Roman Pasta Collection', 'Carbonara, marinara, and the techniques behind them, with shopping lists built in.', 'images/products/1.svg', 799, 'USD', TRUE, '2026-07-18 12:00:00+00'),
+  (2, 3, 'RecipeCollection', 'The Bread Box', 'Focaccia and friends.', 'images/products/2.svg', 499, 'USD', TRUE, '2026-07-21 12:00:00+00'),
+  (3, 4, 'MealPlan', 'Three Weeknights in Japan', 'Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less.', 'images/products/3.svg', 1299, 'USD', TRUE, '2026-07-19 12:00:00+00'),
+  (4, 5, 'MealPlan', 'Family Week on a Budget', 'Seven dinners, two breakfasts, one grocery trip.', 'images/products/4.svg', 999, 'USD', TRUE, '2026-07-27 12:00:00+00'),
+  (5, 5, 'RecipeCollection', 'Summer Grilling (retired)', NULL, 'images/products/5.svg', 599, 'USD', FALSE, '2026-06-22 12:00:00+00');
 
 -- Product contents (meal plans carry day_offset and slot). No explicit ids: the surrogate key is generated.
 -- "Family Week on a Budget" schedules Five-Day Overnight Oats twice (Monday and Thursday) — the reason
@@ -343,8 +358,8 @@ INSERT INTO saved_recipes (user_id, recipe_id, saved_at) VALUES
   (10, 8, '2026-08-26 12:00:00+00');
 
 -- Meal plans
-INSERT INTO meal_plans (id, user_id, name, week_start) VALUES
-  (1, 1, 'Week of Sept 21', '2026-09-21');
+INSERT INTO meal_plans (id, user_id, name, week_start, created_at) VALUES
+  (1, 1, 'Week of Sept 21', '2026-09-21', '2026-09-19 12:00:00+00');
 
 -- Meal plan entries (teriyaki scaled 2->4 servings; tacos planned but not saved; carbonara saved AND planned)
 INSERT INTO meal_plan_entries (id, meal_plan_id, recipe_id, planned_date, slot, servings_override) VALUES
@@ -354,8 +369,9 @@ INSERT INTO meal_plan_entries (id, meal_plan_id, recipe_id, planned_date, slot, 
   (4, 1, 9, '2026-09-21', 'Breakfast', NULL);
 
 -- Cart
-INSERT INTO cart_items (user_id, product_id) VALUES
-  (1, 2);
+-- Alex added The Bread Box back to his cart the day after cancelling his order for it (order 3).
+INSERT INTO cart_items (user_id, product_id, added_at) VALUES
+  (1, 2, '2026-09-06 12:00:00+00');
 
 -- Orders. Priya and Dan each buy "Three Weeknights in Japan" so that every reviewer below owns the product;
 -- Dan is a creator buying another creator's work, which the model allows. No order contains the buyer's own product.

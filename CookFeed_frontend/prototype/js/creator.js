@@ -1,8 +1,5 @@
 /* Cookfeed prototype - creator storefront page (kenji-kitchen) */
 
-var followers = CREATOR.followerCount;
-var following = false;
-
 /* Kenji's published recipes, read from data.js. The draft miso soup is
    deliberately not in the data: a storefront only shows what is published. */
 function publishedRecipes() {
@@ -47,18 +44,6 @@ function showRecipes(sortBy) {
   document.getElementById("sortNewest").className = sortBy === "newest" ? "btn-small saved" : "btn-small";
 }
 
-/* Follow or unfollow the creator and move the follower count. */
-function followCreator() {
-  var button = document.getElementById("followButton");
-
-  following = !following;
-  followers = following ? followers + 1 : followers - 1;
-  button.textContent = following ? "Following ✓" : "Follow";
-  button.className = following ? "btn-secondary" : "btn-primary";
-
-  document.getElementById("followerCount").textContent = followers.toLocaleString();
-}
-
 document.addEventListener("DOMContentLoaded", function () {
   var recipes = publishedRecipes();
   var totalSaves = 0;
@@ -66,13 +51,11 @@ document.addEventListener("DOMContentLoaded", function () {
     totalSaves = totalSaves + currentSaveCount(recipes[i]);
   }
 
-  document.getElementById("followerCount").textContent = followers.toLocaleString();
   document.getElementById("recipeCount").textContent = recipes.length;
   document.getElementById("totalSaves").textContent = totalSaves.toLocaleString();
   document.getElementById("planPrice").textContent = formatPrice(PRODUCT.priceCents);
   showRecipes("saves");
 
-  document.getElementById("followButton").addEventListener("click", followCreator);
   document.getElementById("sortSaves").addEventListener("click", function () { showRecipes("saves"); });
   document.getElementById("sortNewest").addEventListener("click", function () { showRecipes("newest"); });
 });

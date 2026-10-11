@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=8">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Meal plan</a>
+      <a class="navlink" href="reviews.html">Reviews</a>
+      <a class="navlink" href="creator.html">Creator</a>
+      <a class="navlink" href="kitchen.html">My kitchen</a>
+      <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+
+    <span class="pill">Account</span>
+    <h1>Sign in</h1>
+    <p class="byline">This prototype has no passwords: pick one of the store's accounts to see Cookfeed the way
+      that person does. Each account is a real row in the project database.</p>
+
+    <div class="card signin-status" id="signinStatus" role="status" aria-live="polite"></div>
+
+    <h2>Home cooks</h2>
+    <p class="meta">Save recipes, plan meals, buy plans and review the plans they bought.</p>
+    <div class="account-grid" id="homeCooks"></div>
+
+    <h2>Creators</h2>
+    <p class="meta">Publish recipes and sell plans. Every creator is also a home cook, so they shop like anyone
+      else, but never buy or review their own plans.</p>
+    <div class="account-grid" id="creators"></div>
+
+    <h2>Admin</h2>
+    <p class="meta">Runs the site. The admin account holds no other role, so it cannot save, buy or review.</p>
+    <div class="account-grid" id="admins"></div>
+
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+
+  <script src="js/seed-data.js?v=8"></script>
+  <script src="js/data.js?v=8"></script>
+  <script src="js/common.js?v=8"></script>
+  <script src="js/signin.js?v=8"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Three beef tacos with lettuce, tomato, cheese and a lime wedge">
+  <rect width="400" height="300" fill="#fdf4e4"/>
+  <circle cx="200" cy="140" r="108" fill="#f8e5c4"/>
+  <ellipse cx="200" cy="234" rx="150" ry="28" fill="#e9d2aa"/>
+  <ellipse cx="200" cy="226" rx="138" ry="24" fill="#fffdf6"/>
+  <g id="taco">
+    <path d="M70 214 A50 50 0 0 1 170 214 Z" fill="#e8b45e"/>
+    <path d="M80 206 q10 -26 40 -32 q30 6 40 32 Z" fill="#7a3e1d"/>
+    <g fill="#5e9020"><circle cx="92" cy="186" r="8"/><circle cx="110" cy="176" r="8"/><circle cx="132" cy="178" r="8"/><circle cx="148" cy="190" r="8"/></g>
+    <g fill="#c2410c"><rect x="100" y="182" width="8" height="8" rx="2"/><rect x="126" y="186" width="8" height="8" rx="2"/></g>
+    <g fill="#fbd34d"><rect x="114" y="170" width="3" height="12" rx="1"/><rect x="138" y="176" width="3" height="12" rx="1"/></g>
+    <path d="M70 214 A50 50 0 0 1 170 214" stroke="#c98a3f" stroke-width="5" fill="none"/>
+  </g>
+  <use href="#taco" x="80" y="-8"/>
+  <use href="#taco" x="160"/>
+  <path d="M300 236 l40 -24 a26 26 0 0 1 -40 24 Z" fill="#84cc16"/>
+</svg>

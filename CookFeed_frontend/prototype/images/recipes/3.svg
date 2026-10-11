@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A tray of dimpled focaccia with rosemary and olive oil">
+  <rect width="400" height="300" fill="#fbf3e2"/>
+  <circle cx="200" cy="140" r="108" fill="#f4e4c2"/>
+  <ellipse cx="200" cy="246" rx="140" ry="14" fill="#e2cfa6"/>
+  <rect x="70" y="120" width="260" height="120" rx="14" fill="#55555d"/>
+  <rect x="80" y="112" width="240" height="116" rx="18" fill="#e8b45e"/>
+  <rect x="88" y="118" width="224" height="100" rx="16" fill="#f0c674"/>
+  <g fill="#d99a3e">
+    <circle cx="116" cy="142" r="7"/><circle cx="160" cy="138" r="7"/><circle cx="204" cy="144" r="7"/>
+    <circle cx="248" cy="138" r="7"/><circle cx="288" cy="146" r="7"/><circle cx="132" cy="186" r="7"/>
+    <circle cx="178" cy="180" r="7"/><circle cx="222" cy="188" r="7"/><circle cx="268" cy="182" r="7"/>
+  </g>
+  <g stroke="#4d7c0f" stroke-width="3" stroke-linecap="round">
+    <path d="M138 160 l14 -8"/><path d="M196 162 l14 -8"/><path d="M248 162 l14 -8"/><path d="M110 204 l14 -8"/><path d="M286 204 l14 -8"/>
+  </g>
+  <g fill="#fff6d8" opacity=".8"><circle cx="150" cy="200" r="3"/><circle cx="240" cy="156" r="3"/><circle cx="200" cy="206" r="3"/></g>
+</svg>

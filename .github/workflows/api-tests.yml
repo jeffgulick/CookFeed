@@ -6,11 +6,17 @@ on:
   pull_request:
     paths:
       - "CookFeed_api/**"
+      # The prototype's data is checked against the seeded database (PrototypeDataTests).
+      - "CookFeed_frontend/prototype/js/seed-data.js"
+      - "CookFeed_frontend/tools/**"
       - ".github/workflows/api-tests.yml"
   push:
     branches: [main]
     paths:
       - "CookFeed_api/**"
+      # The prototype's data is checked against the seeded database (PrototypeDataTests).
+      - "CookFeed_frontend/prototype/js/seed-data.js"
+      - "CookFeed_frontend/tools/**"
       - ".github/workflows/api-tests.yml"
 
 permissions:
