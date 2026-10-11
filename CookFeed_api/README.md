@@ -17,6 +17,7 @@ and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is bui
 | Creator storefront, `GET /api/creators/{handle}` | Done: 24 tests; SQL verified in `docs/Queries.md` §2 |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
 | Shopping list, `GET /api/me/shopping-list` | Done: 26 tests, incl. 14 Domain tests for `ShoppingListAggregator`; SQL verified in `docs/Queries.md` §3 |
+| Continuous integration | Done: GitHub Actions runs the build and all 130 tests on every pull request (`.github/workflows/api-tests.yml`) |
 
 ## Layout
 

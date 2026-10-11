@@ -14,15 +14,28 @@ Cookfeed is a short-video recipe marketplace: home cooks discover recipes throug
 |---|---|---|
 | 1. ER diagram and normalized (3NF) schema | Done | `docs/ERDiagram.mermaid` (+ `.svg`, `.png`), `docs/EERDiagram.*`, `docs/ThirdNormalForm.*`, `docs/schema.sql` |
 | 2. Seed data | Done | `docs/sql/seed.sql` |
-| 3. Core queries, with the indexes that serve them | Done in SQL | `docs/sql/queries.sql`, `docs/Queries.md` |
+| 3. Core queries, with the indexes that serve them | Done | `docs/sql/queries.sql` (reference SQL), `docs/Queries.md` |
 | 4. Design document | Done | this file |
 | 5. Schema as EF Core entities and migration | Done | `src/Cookfeed.Domain/Entities/*.cs`, `src/Cookfeed.Infrastructure/Persistence/CookfeedDbContext.cs`, `Persistence/Configurations/*.cs`, `Persistence/Migrations/` |
 | 6. Seed data in C# | Done | `src/Cookfeed.Infrastructure/Persistence/Seed/DbSeeder.cs` and `SeedData.cs` (mirror `docs/sql/seed.sql`) |
-| 7. Core queries in LINQ, generated SQL reviewed | Planned | `src/Cookfeed.Infrastructure/Persistence/Repositories/*Repository.cs`, `docs/Queries.md` |
-| 8. ASP.NET Core API | Planned | `src/Cookfeed.Api/Controllers/*Controller.cs` over services in `src/Cookfeed.Application/Services` |
-| 9. xUnit test suite | Database tests done; the rest planned | `tests/Cookfeed.IntegrationTests` (45 tests, passing), `tests/Cookfeed.Domain.Tests`, `tests/Cookfeed.Application.Tests` |
+| 7. Core queries in LINQ, generated SQL reviewed, indexes justified | Done | `src/Cookfeed.Infrastructure/Persistence/Repositories/*Repository.cs`; the logged SQL, query plans and index reasoning for each in `docs/Queries.md` |
+| 8. ASP.NET Core API | Done for the four core queries | `src/Cookfeed.Api/Controllers/*Controller.cs` over the services in `src/Cookfeed.Application/` |
+| 9. xUnit test suite | Done: 130 tests, passing | `tests/Cookfeed.Domain.Tests` (14), `tests/Cookfeed.Application.Tests` (16), `tests/Cookfeed.IntegrationTests` (100: the database, and the API over HTTP) |
+| 10. Continuous integration | Done | `.github/workflows/api-tests.yml`: every pull request runs the build and all 130 tests on GitHub Actions |
 
-Rows 1–6 are in this repository and run today. The EF Core migration builds the same database as `schema.sql`, `DbSeeder` loads the same rows as `seed.sql`, and the integration tests prove both on every run (see "Tests" below and `DOCKER.md`). Rows 7–8 and the domain and service tests in row 9 are planned: the repositories, services, controllers, DTOs and `ShoppingListAggregator` named in this document do not exist yet, and statements about what "the API" does describe how it will be built. The API is built one feature at a time, test-first.
+Everything in this table is in the repository and runs today:
+
+- **The database.** The EF Core migration builds the same database as `schema.sql`, `DbSeeder` loads the same rows as `seed.sql`, and the integration tests prove both on every run (see "Tests" below and `DOCKER.md`).
+- **The API.** It serves the four core queries, each test-first and checked against the reference SQL in `queries.sql`:
+
+  | Query | Endpoint |
+  |---|---|
+  | Feed | `GET /api/feed` |
+  | Creator storefront | `GET /api/creators/{handle}` |
+  | Order history | `GET /api/me/orders` |
+  | Shopping list | `GET /api/me/shopping-list` |
+
+- **Not yet built.** The write features (saves, cart, checkout, reviews) and the API-side business rules of §3 come with Assignment 4, together with login. Where this document says what "the API" does about them, it describes how they will be built; `docs/BuildLog.md` tracks them.
 
 **Stack:** ASP.NET Core 10 Web API with controllers, EF Core 10, Npgsql, PostgreSQL 16, laid out as Clean Architecture. Table and column names use `snake_case` via the `EFCore.NamingConventions` package so the SQL reads naturally in `psql`. Angular (Assignment 4) will consume the API.
 
@@ -32,19 +45,27 @@ Rows 1–6 are in this repository and run today. The EF Core migration builds th
 |---|---|---|
 | `Cookfeed.Domain` | Entities (one per table), enums, and pure business logic such as `ShoppingListAggregator` (§7.5) | nothing |
 | `Cookfeed.Contracts` | Request and response DTOs: the API's public shape, which the Angular client mirrors | nothing |
-| `Cookfeed.Application` | Services (`FeedService`, `RecipeService`, `CreatorService`, `CartService`, `CheckoutService`, `OrderService`, `ReviewService`, `ShoppingListService`) and the repository interfaces they depend on | Domain, Contracts |
+| `Cookfeed.Application` | Services and the repository interfaces they depend on (`Abstractions/Persistence/`). Built: `FeedService`, `StorefrontService`, `OrderHistoryService`, `ShoppingListService`; the cart, checkout and review services come with the write features | Domain, Contracts |
 | `Cookfeed.Infrastructure` | `CookfeedDbContext`, entity configurations, migrations (with the triggers), `DbSeeder`, and the repository implementations | Application, Domain, Contracts |
-| `Cookfeed.Api` | Controllers, the `X-User-Id` authentication handler (§9), the mapping from database errors to HTTP responses, and dependency-injection wiring | Application, Contracts, Infrastructure (wiring only) |
+| `Cookfeed.Api` | Controllers (`FeedController`, `CreatorsController`, `MyOrdersController`, `MyShoppingListController`) and dependency-injection wiring. The caller comes from the `X-User-Id` header until login (§9); mapping database refusals to 4xx responses comes with the first write feature | Application, Contracts, Infrastructure (wiring only) |
 
-A request runs controller → service → repository → EF Core. Controllers only translate HTTP: bind the request, call one service method, return the result. Services hold the business rules (§3) and the use-case logic. Repositories are the only classes that touch `CookfeedDbContext`; there is one per area (recipes, creators, products, cart, orders, reviews, saves and meal plans) rather than a generic `Repository<T>`, because the `DbContext` already provides generic add, find and save. Read methods project straight into `Contracts` DTOs, so the SQL in `docs/Queries.md` is what runs; write methods work with entities and save with a single `SaveChanges`, which EF Core wraps in one transaction (§6 relies on that for checkout).
+A request runs controller → service → repository → EF Core. Controllers only translate HTTP: bind the request, call one service method, return the result. Services hold the business rules (§3) and the use-case logic. Repositories are the only classes that touch `CookfeedDbContext`. There is one per area rather than a generic `Repository<T>`, because the `DbContext` already provides generic add, find and save. Built: `RecipeRepository`, `CreatorRepository`, `OrderRepository` and `ShoppingListRepository`; areas such as the cart and reviews get theirs with the write features. Read methods project straight into `Contracts` DTOs, so the SQL in `docs/Queries.md` is what runs; write methods work with entities and save with a single `SaveChanges`, which EF Core wraps in one transaction (§6 relies on that for checkout).
 
-**Tests.** All three test projects use xUnit, and each layer is tested at the level where its mistakes would show. The integration tests for the database exist and pass; the rest arrive with the features they test:
+**Tests.** All three test projects use xUnit, and each layer is tested at the level where its mistakes would show. 130 tests, all passing:
 
 | Project | What it proves | How |
 |---|---|---|
-| `Cookfeed.Domain.Tests` | The pure logic is right: the flour example totals ~1,033 g (±0.5 g), milk stays in millilitres, an ingredient without a density stays as two unmerged lines, scaling and the saved-versus-planned rules of §7.6 hold | xUnit only; no database, no mocks |
-| `Cookfeed.Application.Tests` | The services enforce the business rules of §3: a creator cannot add their own product to the cart, a review needs a `Paid` order for the product, a `ProductOnly` recipe opens only for a buyer whose snapshot holds it, checkout copies every `product_recipes` row into the snapshot and totals the lines | xUnit with NSubstitute fakes of the repository interfaces, so each rule is tested without a database |
-| `Cookfeed.IntegrationTests` | **Built:** the EF Core migration creates exactly the schema in `schema.sql` (tables, columns, indexes, check constraints, keys, triggers); `seed.sql` loads unchanged and Q1–Q16 return the same rows as on the `schema.sql` database; the four triggers and the delete rules refuse what §3 and §5 say they refuse; Q16 stays empty after save, unsave and account deletion; `DbSeeder` produces exactly the rows and id sequences of `seed.sql`. **Planned:** routes and status codes, the `HomeCook` authorization, and `orders.total_cents` equal to the sum of its lines | xUnit against PostgreSQL in Docker (`DOCKER.md`); each run creates throwaway databases and drops them afterwards. HTTP tests will add `WebApplicationFactory<Program>` |
+| `Cookfeed.Domain.Tests` (14) | `ShoppingListAggregator` applies the §7 policy: the flour example totals 1,032.91 g, milk converts toward millilitres, an ingredient without a density stays as two unmerged lines, count never merges with mass, the base-unit fallbacks, rounding and sorting | xUnit only; no database, no mocks |
+| `Cookfeed.Application.Tests` (16) | The services' own rules: the feed's one-extra-row paging, the storefront's lower-cased handle lookup, the caller passed through for order history and the shopping list, and the aggregator's output reaching the response. The §3 write rules (no self-purchase in the cart, a review needs a `Paid` order, `ProductOnly` access, the checkout snapshot) get their tests here with those features | xUnit with NSubstitute fakes of the repository interfaces, so each rule is tested without a database |
+| `Cookfeed.IntegrationTests` (100) | **The database:** the EF Core migration creates exactly the schema in `schema.sql` (tables, columns, indexes, check constraints, keys, triggers); `seed.sql` loads unchanged and Q1–Q16 return the same rows as on the `schema.sql` database; the four triggers and the delete rules refuse what §3 and §5 say they refuse; Q16 stays empty after save, unsave and account deletion; `DbSeeder` produces exactly the rows and id sequences of `seed.sql`. **The API over HTTP:** each endpoint returns what the reference queries return on the same database (Q1, Q2, Q3, Q5, Q8, Q9); ProductOnly recipes and drafts never reach the feed or storefront; the order-history snapshot survives a product rename; `orders.total_cents` equals the sum of its lines; bad input is a 400 | xUnit against real PostgreSQL; each run creates throwaway databases and drops them afterwards. HTTP tests start the API in memory with `WebApplicationFactory<Program>` |
+
+**Continuous integration.** `.github/workflows/api-tests.yml` runs on every pull request, and every push to `main`, that touches `CookFeed_api/`. Each run gets a fresh GitHub-hosted Ubuntu 24.04 machine and a `postgres:16.15` service container, the same version as `docker-compose.yml`, and takes about a minute. It has three steps:
+
+1. Restore with `--locked-mode`, so a stale `packages.lock.json` fails the run.
+2. Build, with warnings as errors.
+3. Run all 130 tests.
+
+The result shows as a check on the pull request, so a change that breaks a query, a rule or the schema is red before it reaches `main`.
 
 The repositories are what make the middle project possible: because services depend only on repository interfaces, every business rule can be tested in milliseconds, and the slower integration tests are kept for what only a real database can prove.
 
