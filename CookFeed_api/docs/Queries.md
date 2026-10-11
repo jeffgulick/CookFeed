@@ -1,33 +1,38 @@
 # Cookfeed — Core Queries, Generated SQL, and Indexes
 
-> **Status: §1 (feed), §2 (storefront) and §4 (order history) are verified: their SQL is what EF Core logged. §3 is still
-> expected output, not yet captured output;** they were written alongside the design, before the code
-> existed. As each vertical slice is built, the block for that
-> query gets replaced with the statement actually logged by
-> `Microsoft.EntityFrameworkCore.Database.Command`. Until a section says *verified*, treat its SQL as
-> a prediction of the query shape, not a transcript.
+> **Status: all four sections are verified.** Each SQL block is the statement EF Core logged when the
+> endpoint ran (2026-10-11), not a prediction. Each section also says where that statement differs from the
+> design-time version and why it was changed.
 
-Each core query will be one LINQ expression inside a repository in
-`src/Cookfeed.Infrastructure/Persistence/Repositories/` (`RecipeRepository` for the feed and recipe
-detail, `CreatorRepository`, `ShoppingListRepository`, `OrderRepository`), implementing the matching
-interface in `src/Cookfeed.Application/Abstractions/Persistence/`. A controller calls a service, the
-service calls the repository, and read methods return `Cookfeed.Contracts` DTOs; `IQueryable` never
-leaves the repository (`DesignDocument.md` §1). In the LINQ below, `db` is the repository's
-`CookfeedDbContext`. This document shows the LINQ, the SQL EF Core is expected to produce for it, and
-the index that makes it cheap (aliases shortened for readability).
+Each core query is one LINQ query inside a repository in
+`src/Cookfeed.Infrastructure/Persistence/Repositories/`:
 
-`src/Cookfeed.Api/appsettings.Development.json` turns on `Microsoft.EntityFrameworkCore.Database.Command`
-logging at `Information`, so the exact statement is printed on every request. As each repository is built,
-run `dotnet run --project src/Cookfeed.Api`, hit the endpoint, and paste what it logs over the block here.
+| Section | Repository |
+|---|---|
+| §1 feed | `RecipeRepository` |
+| §2 storefront | `CreatorRepository` |
+| §3 shopping list | `ShoppingListRepository` |
+| §4 order history | `OrderRepository` |
 
-To see the planner's choice, prefix any statement with `EXPLAIN (ANALYZE, BUFFERS)` in `psql`.
+Each implements the matching interface in `src/Cookfeed.Application/Abstractions/Persistence/`. A
+controller calls a service, the service calls the repository, and read methods return `Cookfeed.Contracts`
+DTOs; `IQueryable` never leaves the repository (`DesignDocument.md` §1). In the LINQ below, `db` is the
+repository's `CookfeedDbContext`. Every section shows the LINQ, the SQL EF Core produced for it, the
+query plan, and the indexes that make it cheap.
 
-The shopping-list section below is the one place where the SQL is deliberately only half the algorithm:
-the repository aggregates per (ingredient, unit category), and `ShoppingListService` passes the result
-to the pure-C# `ShoppingListAggregator` in `Cookfeed.Domain` for the density conversion, preferred-unit
-presentation, and unmerged-line policy. See `DesignDocument.md` §7.5. `docs/sql/queries.sql` Q8 does the
-whole thing in SQL instead — that is a standalone reference query, not what the API runs, and its output
-is what the aggregator will be tested against line for line.
+**How the SQL was captured.** `src/Cookfeed.Api/appsettings.Development.json` turns on
+`Microsoft.EntityFrameworkCore.Database.Command` logging at `Information`, so the exact statement is
+printed on every request: run `dotnet run --project src/Cookfeed.Api`, call the endpoint, and read the log.
+Plans come from `EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF)` in `psql` on the seeded development database.
+The seeded tables are a page or two each, so a sequential scan wins on cost; plans are shown with
+`enable_seqscan = off` to reveal the index the planner uses once tables are large.
+
+**Only part of the algorithm runs in SQL for the shopping list (§3).** The repository sums per
+(ingredient, unit category), and `ShoppingListService` passes the result to the pure-C#
+`ShoppingListAggregator` in `Cookfeed.Domain`, which does the density conversion, picks the preferred
+unit, and applies the unmerged-line policy (`DesignDocument.md` §7.5). `docs/sql/queries.sql` Q8 does the
+whole thing in SQL instead. That is a standalone reference query, not what the API runs, and the API's
+output is tested against it line for line.
 
 ---
 
@@ -390,91 +395,161 @@ though: a save costs more than one small insert, and that is the price of readin
 
 ---
 
-## 3. Shopping list
+## 3. Shopping list — *verified 2026-10-11*
 
-**Endpoint:** `GET /api/users/{id}/shopping-list?weekStart=2026-09-21`
+**Endpoint:** `GET /api/me/shopping-list?weekStart=2026-09-21`
+- The required `X-User-Id` header is the caller, as on `/api/me/orders`.
+- `weekStart` is optional: without it every plan counts, which is what `queries.sql` Q8 computes.
+- Saved recipes always count.
 
-This is two SQL statements (aggregation, then a distinct recipe count over the same source set) plus a units lookup, followed by in-memory reconciliation described in the design document §7.5.
+**Code:** `MyShoppingListController` → `ShoppingListService` → `ShoppingListRepository.GetIngredientTotalsAsync`
+(the SQL half), then `ShoppingListAggregator.Aggregate` in `Cookfeed.Domain` (the C# half). The split is
+the one DesignDocument.md §7.5 lays out:
 
-### Step A — which recipes, at what scale
-
-```csharp
-var planned = db.MealPlanEntries
-  .Where(e => e.MealPlan.UserId == userId && (weekStart == null || e.MealPlan.WeekStart == weekStart))
-  .Select(e => new { e.RecipeId, Scale = (decimal)(e.ServingsOverride ?? e.Recipe.Servings) / e.Recipe.Servings });
-
-var savedNotPlanned = db.SavedRecipes
-  .Where(s => s.UserId == userId && !planned.Any(p => p.RecipeId == s.RecipeId))
-  .Select(s => new { s.RecipeId, Scale = 1m });
-
-var sources = planned.Concat(savedNotPlanned);   // UNION ALL
-```
-
-### Step B — normalise and aggregate
+| Half | What it does |
+|---|---|
+| **SQL** | Chooses the recipes, scales them, and sums every ingredient line per (ingredient, unit category) in the category's base unit. |
+| **C#** | Converts Volume ↔ Mass through density, toward the preferred unit's category; merges what now shares a category; presents in the preferred unit or falls back to the base unit; rounds; sorts; and moves ingredients that still need two lines into `unmerged`. |
 
 ```csharp
-sources
-  .Join(db.RecipeIngredients, src => src.RecipeId, ri => ri.RecipeId, (src, ri) => new { src.Scale, ri })
-  .Where(x => !x.ri.IsOptional)
-  .GroupBy(x => new { x.ri.IngredientId, x.ri.Ingredient.Name, x.ri.Ingredient.Category,
-                      x.ri.Ingredient.DensityGPerMl, x.ri.Ingredient.PreferredShoppingUnitId,
-                      UnitCategory = x.ri.Unit.Category })
-  .Select(g => new {
-      g.Key.IngredientId, g.Key.Name, ..., g.Key.UnitCategory,
-      BaseQuantity = g.Sum(x => x.ri.Quantity * x.Scale * x.ri.Unit.ToBaseFactor) })
+var entries =
+    from e in db.MealPlanEntries
+    join mp in db.MealPlans on e.MealPlanId equals mp.Id
+    where mp.UserId == userId && (weekStart == null || mp.WeekStart == weekStart)
+    select e;
+
+var planned =                                  // scaled by the servings override; two nights = two rows
+    from e in entries
+    join r in db.Recipes on e.RecipeId equals r.Id
+    select new RecipeAtScale { RecipeId = e.RecipeId, Scale = (decimal)(e.ServingsOverride ?? r.Servings) / r.Servings };
+var savedNotPlanned =                          // saved and also planned -> counts once, at the planned scale
+    from s in db.SavedRecipes
+    where s.UserId == userId && !entries.Any(e => e.RecipeId == s.RecipeId)
+    select new RecipeAtScale { RecipeId = s.RecipeId, Scale = 1m };
+
+from source in planned.Concat(savedNotPlanned)                     // UNION ALL
+join ri in db.RecipeIngredients on source.RecipeId equals ri.RecipeId
+join unit in db.Units on ri.UnitId equals unit.Id
+join i in db.Ingredients on ri.IngredientId equals i.Id
+join preferred in db.Units on i.PreferredShoppingUnitId equals preferred.Id into preferredUnits
+from preferred in preferredUnits.DefaultIfEmpty()                  // LEFT JOIN: not every ingredient has one
+where !ri.IsOptional
+group new { ri.Quantity, source.Scale, unit.ToBaseFactor }
+    by new { i.Id, i.Name, i.Category, i.DensityGPerMl,
+             preferred.Category, preferred.ToBaseFactor, preferred.Abbreviation, unit.Category } into g
+select new IngredientTotal(..., g.Sum(x => Math.Round(x.Quantity * x.Scale * x.ToBaseFactor, 6)))
 ```
 
-**Generated SQL:**
+**Generated SQL, as logged** (`weekStart=2026-09-21`):
 
 ```sql
-SELECT i.id AS ingredient_id, i.name, i.category, i.density_g_per_ml, i.preferred_shopping_unit_id,
-       un.category AS unit_category,
-       COALESCE(SUM(ri.quantity * src.scale * un.to_base_factor), 0.0) AS base_quantity
+SELECT i.id, i.name, i.category, i.density_g_per_ml, u1.category, u1.to_base_factor, u1.abbreviation, u0.category, COALESCE(sum(round(r0.quantity * u."Scale" * u0.to_base_factor, 6)), 0.0)
 FROM (
-    -- planned entries, scaled
-    SELECT e.recipe_id,
-           CAST(COALESCE(e.servings_override, r.servings) AS numeric) / r.servings AS scale
-    FROM meal_plan_entries e
-    JOIN meal_plans mp ON e.meal_plan_id = mp.id
-    JOIN recipes r ON e.recipe_id = r.id
-    WHERE mp.user_id = @userId AND (@weekStart IS NULL OR mp.week_start = @weekStart)
+    SELECT m.recipe_id AS "RecipeId", COALESCE(m.servings_override, r.servings)::numeric / r.servings::numeric AS "Scale"
+    FROM meal_plan_entries AS m
+    INNER JOIN meal_plans AS m0 ON m.meal_plan_id = m0.id
+    INNER JOIN recipes AS r ON m.recipe_id = r.id
+    WHERE m0.user_id = @userId AND m0.week_start = @weekStart
     UNION ALL
-    -- saved recipes not already planned
-    SELECT s.recipe_id, 1.0 AS scale
-    FROM saved_recipes s
-    WHERE s.user_id = @userId
-      AND NOT EXISTS (
-          SELECT 1 FROM meal_plan_entries e2
-          JOIN meal_plans mp2 ON e2.meal_plan_id = mp2.id
-          WHERE mp2.user_id = @userId AND (@weekStart IS NULL OR mp2.week_start = @weekStart)
-            AND e2.recipe_id = s.recipe_id)
-) AS src
-JOIN recipe_ingredients ri ON src.recipe_id = ri.recipe_id
-JOIN ingredients i ON ri.ingredient_id = i.id
-JOIN units un ON ri.unit_id = un.id
-WHERE NOT ri.is_optional
-GROUP BY i.id, i.name, i.category, i.density_g_per_ml, i.preferred_shopping_unit_id, un.category
+    SELECT s.recipe_id AS "RecipeId", 1.0 AS "Scale"
+    FROM saved_recipes AS s
+    WHERE s.user_id = @userId AND NOT EXISTS (
+        SELECT 1
+        FROM meal_plan_entries AS m1
+        INNER JOIN meal_plans AS m2 ON m1.meal_plan_id = m2.id
+        WHERE m2.user_id = @userId AND m2.week_start = @weekStart AND m1.recipe_id = s.recipe_id)
+) AS u
+INNER JOIN recipe_ingredients AS r0 ON u."RecipeId" = r0.recipe_id
+INNER JOIN units AS u0 ON r0.unit_id = u0.id
+INNER JOIN ingredients AS i ON r0.ingredient_id = i.id
+LEFT JOIN units AS u1 ON i.preferred_shopping_unit_id = u1.id
+WHERE NOT (r0.is_optional)
+GROUP BY i.id, i.name, i.category, i.density_g_per_ml, u1.category, u1.to_base_factor, u1.abbreviation, u0.category
 ```
 
-One `UNION ALL` to build the recipe set with a per-row scale, one join to the ingredient lines, one `GROUP BY` with `SUM` of the normalised quantity. The rows going into the `GROUP BY` number (recipes × ingredients per recipe), typically well under a thousand for one user.
+With no `weekStart`, EF Core compiles the same statement without either `week_start` condition.
 
-A second, flat query over the same `src` set returns `DISTINCT (ingredient_id, recipe title)` pairs so the UI can label each line with the recipes it came from. Keeping it separate rather than projecting a collection inside the `GROUP BY` keeps the aggregate statement a plain grouped `SELECT` that `EXPLAIN` reads cleanly.
+**Reviewed: the first version was correct and slow, and the logged SQL is what showed it.**
 
-**Indexes and why:**
+1. **Navigations inside a grouped query become correlated subqueries.** The first LINQ grouped
+   `recipe_ingredients` rows and summed `x.Line.Quantity * x.Scale * x.Line.Unit.ToBaseFactor`, reaching
+   the unit through its navigation. EF Core could not turn that into a `SUM` over the grouped rows. Each
+   `SUM` became a correlated subquery that rebuilt the whole recipe set: the `UNION ALL`, every join, and
+   a null-safe comparison of all eight key columns. That ran once per output line, 41 extra passes for
+   Alex. The tests passed, because the numbers were right.
+   - **How it was found.** Small probe queries pinned the cause down: the same query with explicit
+     `join`s gives a plain `GROUP BY … SUM(...)`, both over one table and over the `UNION ALL`.
+   - **Rule taken from it.** In a grouped aggregate, join explicitly. Navigations are fine in `Where` and
+     `Select`, as in §1, §2 and §4.
+2. **Rounding goes inside the `SUM`.** `COALESCE(m.servings_override, r.servings)::numeric / r.servings`
+   is exact in PostgreSQL and carries 16 or more decimal places. Multiplied by a quantity (3 places) and a
+   unit factor (6), the sum overflowed .NET's 28-digit `decimal` the first time a scaled plan was included
+   (`OverflowException`). Each line is therefore rounded to 6 places, a millionth of a gram or millilitre,
+   before it is summed. Wrapping the round *around* the `SUM` instead brought back the correlated
+   subquery from point 1.
+3. **One statement, as designed.** One `UNION ALL` builds the recipe set with a per-row scale, followed
+   by the joins and one `GROUP BY`. The rows going into the aggregate number recipes × ingredient lines:
+   60 for Alex, well under a thousand for any one user.
+4. **The planned set appears twice**, once in the `UNION ALL` and once inside `NOT EXISTS`, as predicted
+   at design time: EF Core does not write a CTE. Each copy is an index probe on `meal_plans(user_id,
+   week_start)`, then the plan's entries. `entries` deliberately skips the join to `recipes`, so the
+   `NOT EXISTS` copy does not drag it in.
+5. **The preferred unit comes through the `LEFT JOIN`**, so there is no separate units lookup. The
+   aggregator gets everything it needs on each total.
+6. **Not built: the "from which recipes" labels per line.** The design mentioned a second, flat query for
+   them. The deliverable does not need it, and it can be added later without changing this statement.
+
+**Plan** (`EXPLAIN ANALYZE`, `enable_seqscan = off`, Alex's week):
+
+```
+HashAggregate (actual rows=42)                         -- Group Key: i.id, u1.*, u0.category (name, aisle, density
+  ->  Nested Loop Left Join (actual rows=60)           --   are dropped: they depend on the primary key i.id)
+        ->  Hash Join  (Hash Cond: RecipeId = r0.recipe_id)
+              ->  Append (actual rows=8)                                   -- the UNION ALL: 4 planned + 4 saved
+                    ->  Index Scan using ix_meal_plans_user_id_week_start  (user_id = 1 AND week_start = …)
+                        ->  Bitmap Index Scan on ix_meal_plan_entries_meal_plan_id_planned_date_slot
+                        ->  Index Scan using pk_recipes
+                    ->  Nested Loop Anti Join                              -- NOT EXISTS
+                          ->  Bitmap Index Scan on pk_saved_recipes  (user_id = 1)
+                          ->  Materialize -> ix_meal_plans_user_id_week_start -> ix_meal_plan_entries_…
+              ->  Hash -> Index Scan using ix_recipe_ingredients_recipe_id_sort_order (84 rows)
+                         -> Memoize -> Index Scan using pk_units
+        ->  Memoize -> Index Scan using pk_ingredients
+  ->  Index Scan using pk_units (preferred unit)
+```
+
+On 84 seeded ingredient lines the planner hashes the whole small table rather than probing it. With hash
+and merge joins turned off, which is the shape it picks once `recipe_ingredients` is large, it probes
+`ix_recipe_ingredients_recipe_id_sort_order` once per source recipe: 8 loops, `Index Cond: (recipe_id =
+"RecipeId")`.
+
+**Indexes, and why:**
 
 | Index | Serves |
 |---|---|
-| unique `ix_meal_plans_user_id_week_start (user_id, week_start)` | `WHERE mp.user_id = ? AND mp.week_start = ?` — one probe |
-| `ix_meal_plan_entries_meal_plan_id_planned_date_slot` | entries for a plan (leading column), also the calendar page |
-| PK `saved_recipes (user_id, recipe_id)` | `WHERE s.user_id = ?` range scan on leading column; `NOT EXISTS` lookup |
-| `ix_recipe_ingredients_recipe_id_sort_order` | the `JOIN recipe_ingredients ON recipe_id` for each source recipe |
-| PKs on `ingredients`, `units`, `recipes` | the remaining joins |
+| unique `ix_meal_plans_user_id_week_start (user_id, week_start)` | the plan lookup, in both copies of the planned set: one probe |
+| `ix_meal_plan_entries_meal_plan_id_planned_date_slot` | a plan's entries, through its leading column (also the calendar page) |
+| PK `saved_recipes (user_id, recipe_id)` | the caller's saves, as a range on the leading column |
+| `ix_recipe_ingredients_recipe_id_sort_order` | each source recipe's ingredient lines |
+| PKs on `recipes`, `units`, `ingredients` | the remaining joins; `Memoize` caches units and ingredients that repeat |
 
-**Reviewed:** the planned-entries subquery appears twice in the generated SQL (once in the `UNION ALL` branch, once inside `NOT EXISTS`) because EF cannot hoist a CTE from a LINQ subquery. For a single user's data this is negligible; if it showed in `EXPLAIN` as a hot spot the fix is a raw-SQL `WITH planned AS (...)` via `FromSql`, keeping the same indexes.
+**Tests:**
 
-### Step C — application
-
-Covered in `DesignDocument.md` §7.3–7.5. Volume↔Mass via density *toward the preferred unit's category*, fall back to the base unit when the line still cannot be expressed in the preferred unit, rounding, aisle sort. The direction rule is the fix for the dropped-liquids defect the Assignment 2 review found in Q8 (§3.6). The `Units` table (14 rows) is loaded once per call with `ToDictionaryAsync`.
+- `tests/Cookfeed.Domain.Tests/ShoppingList/ShoppingListAggregatorTests.cs`, the policy with no database:
+  - the flour example (1,032.91 g) and milk converting toward millilitres
+  - no density, which keeps lines apart as `unmerged`
+  - count that never merges with mass
+  - the base-unit fallbacks and division into the preferred unit
+  - rounding half away from zero, and sorting
+- `tests/Cookfeed.Application.Tests/ShoppingList/ShoppingListServiceTests.cs`
+- `tests/Cookfeed.IntegrationTests/Api/ShoppingListEndpointTests.cs`, over HTTP:
+  - Alex's list equals **Q8** line for line (41 lines).
+  - A week's list equals Q8 with that one week condition added, for Alex's week and for a week with no
+    plan (saved recipes only).
+  - A recipe planned on two nights counts twice, checked against Q8 on a database with a second taco
+    night.
+  - The admin, who saves and plans nothing, gets an empty list.
+  - A missing caller or a malformed `weekStart` is a 400.
 
 ---
 

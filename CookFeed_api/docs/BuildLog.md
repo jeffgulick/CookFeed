@@ -9,11 +9,14 @@ session; update **Where we are** and **Next steps** at the end of each step, in 
 
 *Last updated 2026-10-11.*
 
-The **database layer** is built, tested and merged into `main` (PR #2). The first feature on top of it,
-**the recipe feed** (`GET /api/feed`), is built on the `feed-endpoint` branch: the first controller, service,
-repository and DTOs, and the pattern the other three core queries will follow. **The creator storefront**
-(`GET /api/creators/{handle}`) follows it; both are in PR #6. **Order history** (`GET /api/me/orders`) is
-on the `order-history` branch, which branches off `creator-storefront`.
+The **database layer** and **all four core queries** are built. Three are merged into `main`:
+- the recipe feed (`GET /api/feed`)
+- the creator storefront (`GET /api/creators/{handle}`)
+- order history (`GET /api/me/orders`)
+
+These came in PRs #6, #7 and #8. The **shopping list** (`GET /api/me/shopping-list`) is on the
+`shopping-list` branch. Each query is controller → service → repository → Contracts DTOs, and each has
+its generated SQL verified in `docs/Queries.md`.
 
 | Done | Where |
 |---|---|
@@ -31,8 +34,11 @@ on the `order-history` branch, which branches off `creator-storefront`.
 | Storefront tests: 4 service tests, 20 HTTP tests (90 tests in all); SQL verified, split query chosen after review | `tests/*/Storefront*`, `docs/Queries.md` §2 |
 | Order history: `MyOrdersController` → `OrderHistoryService` → `OrderRepository.GetOrderHistoryAsync`, DTOs in `Contracts/Orders/` | `src/*/Orders/`, `Persistence/Repositories/`, `Api/Controllers/` |
 | Order history tests: 2 service tests, 12 HTTP tests (104 tests in all), incl. the snapshot and order-total checks; SQL verified | `tests/*/Order*`, `docs/Queries.md` §4 |
+| Shopping list: `MyShoppingListController` → `ShoppingListService` → `ShoppingListRepository` (SQL half) + `ShoppingListAggregator` in Domain (C# half) | `src/*/ShoppingList/`, `Persistence/Repositories/`, `Api/Controllers/` |
+| Shopping-list tests: 14 Domain tests for the aggregator, 3 service tests, 9 HTTP tests checked against `queries.sql` Q8 (130 tests in all); SQL verified and rewritten after review | `tests/*/ShoppingList*`, `docs/Queries.md` §3 |
 
-Not built yet: the shopping-list endpoint, `ShoppingListAggregator`, and the Domain tests.
+Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
+with reviewed SQL and justified indexes, the design document, and the API with tests.
 
 ---
 
@@ -113,14 +119,15 @@ Commands to migrate, run and test: [`README.md`](../README.md#getting-started) a
 
 ## Next steps
 
-Deliverable 2 is due **Oct 17**; step 1 is what it still needs.
+Deliverable 2 (due **Oct 17**) is complete once the `shopping-list` branch is merged. After that:
 
-1. **Shopping list**, `GET /api/me/shopping-list`: the repository's per-category aggregation plus
-   `ShoppingListAggregator` in Domain, tested line for line against `queries.sql` Q8 (`docs/Queries.md` §3,
-   `DesignDocument.md` §7.5).
-2. **Comment the existing database-layer code** to the commenting rule above (moved here from first, to
-   protect the deadline). Mainly the 19 configurations, `CookfeedDbContext.cs` and `Program.cs`. Comments
-   only: the build and the tests must be unchanged.
+1. **Comment the existing database-layer code** to the commenting rule above. Mainly the 19
+   configurations, `CookfeedDbContext.cs` and `Program.cs`. Comments only: the build and the tests must be
+   unchanged.
+2. **CI** (see Open items), so every pull request runs the 130 tests.
+3. **Assignment 4:** the Angular app against these endpoints, and login (JWT) replacing the `X-User-Id`
+   header (`DesignDocument.md` §9). Then the write features (saves, cart, checkout, reviews) and the
+   business rules below.
 
 ## Business rules the API still has to enforce
 
