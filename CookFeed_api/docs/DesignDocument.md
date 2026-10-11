@@ -2,6 +2,8 @@
 
 **Jeff Gulick** · Cookfeed: A Short-Video Recipe Marketplace · Deliverable 2 of the semester project
 
+> **Revision after instructor feedback.** Section 3 is new: it states the marketplace business rules explicitly and answers each question raised in the review. The schema changes it required (a recipe `visibility`, a surrogate key on `product_recipes`, a checkout snapshot table `order_item_recipes`, and four triggers) are reflected in the sections that follow, in `docs/schema.sql`, `docs/sql/seed.sql`, and `docs/sql/queries.sql`. The deliberate denormalizations and the normalized model are unchanged.
+
 ---
 
 ## 1. Purpose and scope
@@ -18,7 +20,7 @@ Cookfeed is a short-video recipe marketplace: home cooks discover recipes throug
 
 **Stack:** ASP.NET Core 10 (minimal APIs), EF Core 10, Npgsql, PostgreSQL 16, laid out as Clean Architecture (`Domain` → `Application` → `Infrastructure` → `Api`, dependencies pointing inward). Table and column names use `snake_case` via the `EFCore.NamingConventions` package so the SQL reads naturally in `psql`. Angular (Assignment 4) will consume the API.
 
-**Why relational.** The two features the product is built around are joins and grouped aggregations. A shopping list is *"every ingredient across every recipe this user saved or planned, grouped by ingredient, summed"*. Order history is *"orders → order items → products → creators"*. Both are one `SELECT` with `JOIN`/`GROUP BY` in SQL and would be multi-round-trip application code over a document store. PostgreSQL also gives me `CHECK` constraints, real foreign keys, `numeric` for quantities, and `DELETE`-cascade semantics that encode business rules in the database rather than trusting every caller.
+**Why relational.** The two features the product is built around are joins and grouped aggregations. A shopping list is *"every ingredient across every recipe this user saved or planned, grouped by ingredient, summed"*. Order history is *"orders → order items → products → creators"*. Both are one `SELECT` with `JOIN`/`GROUP BY` in SQL and would be multi-round-trip application code over a document store. PostgreSQL also gives me `CHECK` constraints, real foreign keys, `numeric` for quantities, triggers, and `DELETE`-cascade semantics that encode business rules in the database rather than trusting every caller.
 
 ---
 
@@ -48,11 +50,13 @@ erDiagram
     users ||--o{ orders : "places"
     orders ||--o{ order_items : "contains"
     products ||--o{ order_items : "purchased as"
+    order_items ||--o{ order_item_recipes : "snapshots bundle as"
+    recipes ||--o{ order_item_recipes : "sold as"
     products ||--o{ reviews : "reviewed in"
     users ||--o{ reviews : "writes"
 ```
 
-The full attribute-level diagram is in `docs/ERDiagram.mermaid` (renders in GitHub, VS Code, and mermaid.live).
+The full attribute-level diagram is in `docs/ERDiagram.mermaid` (renders in GitHub, VS Code, and mermaid.live); `docs/ERDiagram.svg` and `.png` are rendered from it.
 
 ### Table inventory
 
@@ -62,7 +66,7 @@ The full attribute-level diagram is in `docs/ERDiagram.mermaid` (renders in GitH
 | 2 | `roles` | HomeCook / Creator / Admin lookup | `id` |
 | 3 | `user_roles` | Many-to-many user↔role | `(user_id, role_id)` |
 | 4 | `creator_profiles` | Storefront data; 1:1 with `users`, only for creators | `user_id` (shared PK) |
-| 5 | `recipes` | The video + metadata | `id` |
+| 5 | `recipes` | The video + metadata; `visibility` says who may see it | `id` |
 | 6 | `recipe_steps` | Ordered instructions, tied to video timestamps | `id`, unique `(recipe_id, step_number)` |
 | 7 | `units` | Measurement units with category and base-conversion factor | `id` |
 | 8 | `ingredients` | **Canonical** ingredient catalog with density | `id` |
@@ -71,25 +75,96 @@ The full attribute-level diagram is in `docs/ERDiagram.mermaid` (renders in GitH
 | 11 | `meal_plans` | One per user per week | `id`, unique `(user_id, week_start)` |
 | 12 | `meal_plan_entries` | Recipe on a day/slot, optionally rescaled | `id` |
 | 13 | `products` | Sellable collection or meal plan | `id` |
-| 14 | `product_recipes` | Which recipes a product bundles (+ day/slot for meal plans) | `(product_id, recipe_id)` |
+| 14 | `product_recipes` | The live contents of a product (+ day/slot for meal plans) | `id`, unique `(product_id, recipe_id, day_offset, slot)` nulls-not-distinct |
 | 15 | `cart_items` | The cart, one row per product | `(user_id, product_id)` |
 | 16 | `orders` | Order header | `id` |
 | 17 | `order_items` | Purchased products with price/title snapshot | `id`, unique `(order_id, product_id)` |
-| 18 | `reviews` | A user's star rating, recommendation and written review of a product (added in Assignment 3) | `id`, unique `(product_id, user_id)` |
+| 18 | `order_item_recipes` | The product's recipes **as bought** — what the buyer is entitled to | `id`, unique `(order_item_id, recipe_id, day_offset, slot)` nulls-not-distinct |
+| 19 | `reviews` | A user's star rating, recommendation and written review of a product (added in Assignment 3) | `id`, unique `(product_id, user_id)` |
 
-The proposal estimated 12–14 tables; the final count is 17. The three "extra" tables are `units` (the proposal folded units into ingredients; §6 explains why that was wrong), `recipe_steps` (steps were going to be a text column; splitting them lets each step carry a video timestamp), and `product_recipes` (a product must reference many recipes, which cannot be a column). Nothing was added for its own sake — each table exists because a column could not hold the data without repeating groups.
+The proposal estimated 12–14 tables; the submitted design had 17, Assignment 3 added `reviews`, and this revision adds `order_item_recipes`. The "extra" tables relative to the proposal are `units` (the proposal folded units into ingredients; §7 explains why that was wrong), `recipe_steps` (steps were going to be a text column; splitting them lets each step carry a video timestamp), `product_recipes` (a product must reference many recipes, which cannot be a column), and now `order_item_recipes` (§3.3: what was sold must not change when the product does). Nothing was added for its own sake — each table exists because a column could not hold the data without repeating groups, or because a fact had to survive a change to the row it was copied from.
 
-**Assignment 3 addition: `reviews` (table 18).** The prototype's Reviews page shows a star rating, a recommend / do-not-recommend choice and written feedback for a product. None of the original 17 tables could hold that, so `reviews` was added. It stores `user_id`, not the reviewer's name, because the name already lives in `users.display_name` (3NF). The unique index on `(product_id, user_id)` allows one review per user per product. Rating is a `smallint` limited to 1–5 by `ck_reviews_rating_range`, and `body` is capped at 2000 characters, the same limits the prototype's form enforces in JavaScript.
+**Assignment 3 addition: `reviews`.** The prototype's Reviews page shows a star rating, a recommend / do-not-recommend choice and written feedback for a product. None of the original 17 tables could hold that, so `reviews` was added. It stores `user_id`, not the reviewer's name, because the name already lives in `users.display_name` (3NF). The unique index on `(product_id, user_id)` allows one review per user per product. Rating is a `smallint` limited to 1–5 by `ck_reviews_rating_range`, and `body` is capped at 2000 characters, the same limits the prototype's form enforces in JavaScript.
 
 ---
 
-## 3. Normalization
+## 3. Marketplace business rules
+
+The review asked for the implications of the role model to be made explicit, and raised four follow-up points. This section answers each in turn and says where in the schema, seed, and queries the rule is enforced or demonstrated.
+
+### 3.1 Who may do what
+
+Three roles, held through `user_roles`:
+
+| Role | Grants | Who holds it |
+|---|---|---|
+| `HomeCook` | save recipes, keep a cart, place orders, plan meals, write reviews | every ordinary account, granted at sign-up; **every creator**, so a creator shops like anyone else |
+| `Creator` | publish recipes, sell products | accounts with a `creator_profiles` row; always together with `HomeCook` |
+| `Admin` | operational access only | a dedicated account that holds **no other role** |
+
+The answers to the questions as they were asked:
+
+- **Are buying and saving available to every `User`, or dependent on holding the Home Cook role?** They depend on the role. The API checks `HomeCook` on every save, cart, checkout, meal-plan and review endpoint (`[Authorize(Roles = "HomeCook")]`). This is why the seed grants `HomeCook` to every creator: without it a creator could publish but not shop. It also makes the admin rule below a consequence of the data rather than a special case in code.
+- **May creators purchase one another's products?** Yes. Nothing distinguishes a creator-buyer from any other buyer. The seed has Dan (`dan-meal-preps`) buying Kenji's *Three Weeknights in Japan*; Q10's earnings report attributes it to Kenji because `order_items.creator_id` is always the seller.
+- **May creators purchase their own products?** No. A row where the buyer is the product's creator is refused by the database at both points it could be created: `cart_items_refuse_self_purchase` (adding to cart) and `order_items_refuse_self_purchase` (the order line). The API rejects it earlier with a clear message; the triggers guarantee no caller can bypass that. Because reviews require a `Paid` order item for the product by the same user (API rule, §3.5), a creator can never review their own product either.
+- **May administrators also participate as buyers and sellers?** No — admins are operational only. The `user_roles_admin_only` trigger refuses granting `Admin` to an account holding another role and refuses granting another role to an admin. Someone who both administers and cooks uses two accounts. In the seed the admin holds `Admin` alone, so the `HomeCook` check above excludes it from every buying and saving endpoint automatically.
+
+Where each lives: authorization rules (who may *act*) are enforced in the API's authorization layer, because that is the boundary where identity is known; data-integrity rules (which rows may *exist*) are enforced by triggers, because they must hold regardless of which caller writes the row. `queries.sql` Q17 demonstrates the refusals.
+
+### 3.2 Can a meal plan use the same recipe on more than one day?
+
+Yes — overnight oats on Monday and Thursday is a normal meal plan, and the original `(product_id, recipe_id)` key forbade it. `product_recipes` now has a surrogate `id`, and the one uniqueness rule that remains is "a recipe appears at most once per (product, day, slot)":
+
+```sql
+CREATE UNIQUE INDEX ix_product_recipes_product_id_recipe_id_day_offset_slot
+    ON product_recipes (product_id, recipe_id, day_offset, slot) NULLS NOT DISTINCT;
+CONSTRAINT ck_product_recipes_placement_pair CHECK ((day_offset IS NULL) = (slot IS NULL))
+```
+
+For a collection, `day_offset` and `slot` are both `NULL`; `NULLS NOT DISTINCT` (PostgreSQL 15+) makes the index treat those nulls as equal, so the same rule collapses to "a collection lists a recipe once". One index, one rule, both product types. The seed's *Family Week on a Budget* schedules Five-Day Overnight Oats on day 0 and day 3; Q5 now reports recipes (distinct, 5) and meals (rows, 6) separately for that reason.
+
+### 3.3 What does a buyer keep, and what does buying add?
+
+**What a buyer keeps.** Exactly what they bought. `order_item_recipes` copies `product_recipes` at checkout, one row per recipe in the bundle that day, with its day and slot. Every entitlement question — "which recipes does Priya own?" (Q11), "may Alex open this recipe?" (Q14) — reads the snapshot and never the live `product_recipes`. A creator editing a product changes what the *next* buyer receives and nothing about earlier buyers. Q15 shows the case directly: Alex's purchase of *Roman Pasta Collection* still includes *No-Knead Focaccia*, which Maria has since removed from the collection; the live product no longer has it, Alex still does, and a recipe Maria adds tomorrow would be in the product and not in Alex's purchase.
+
+The snapshot also tightens the delete rules. `order_item_recipes.recipe_id` is `ON DELETE RESTRICT`, so a recipe anyone has paid for cannot be deleted even after the creator removes it from every live product (Q17e). The remedy for a creator who wants a recipe gone is `is_published = false`, which hides it from the feed and from new purchases while the buyers who already have it keep it.
+
+**What buying adds.** The review correctly observed that if every recipe in a product is also in the free feed, the product sells only convenience. Two things change that:
+
+1. **Content.** `recipes.visibility` is `'Public'` or `'ProductOnly'`. A `ProductOnly` recipe is published (`is_published = true` means the creator has finished it) but is absent from the feed, the trending list, the storefront's recipe list and search; it is reachable only by a buyer whose purchase snapshot contains it. `is_published` answers "is this a draft?"; `visibility` answers "who may see it?". The seed marks *Weeknight Chicken Parm* and *Onigiri Three Ways* `ProductOnly`; Q1–Q3 exclude them, Q14 shows which users may open them.
+2. **The bundle.** A meal-plan product carries the day/slot arrangement, serving scale, and one combined shopping list for the whole week — the work of planning, which the feed does not do. A collection carries curation and sequencing. These are the `day_offset`, `slot` and `sort_order` columns, copied into the snapshot with the recipes.
+
+A creator chooses the mix per recipe: a public recipe inside a product is a preview that drives sales; a product-only recipe is the reason to buy. Saving follows visibility: a user may save a `ProductOnly` recipe only if they can open it (API rule, same check as Q14).
+
+### 3.4 Save counts
+
+`recipes.save_count` must equal `COUNT(*) FROM saved_recipes WHERE recipe_id = ?` at all times. The submitted design kept it correct for ordinary saves and unsaves by incrementing in the same transaction, which left two gaps the review identified: the seed wrote counts in the hundreds against a handful of save rows, and account deletion cascaded the save rows away without touching the counter.
+
+Both close by moving the rule into the database. A row-level trigger on `saved_recipes` (`saved_recipes_save_count`, §6) increments on `INSERT` and decrements on `DELETE`. Row-level triggers fire for rows removed by `ON DELETE CASCADE`, so a hard-deleted account (one with no orders) decrements every recipe it had saved. The seed no longer writes `save_count` at all; the trigger derives it from the save rows the seed inserts, so the counter cannot be wrong on the first commit. The seed gained four home-cook accounts so that the trigger-derived counts still produce a meaningful "Trending" order. Q16 is the consistency check (zero rows means every counter matches) and is run after seeding and in the integration tests after save, unsave, and delete.
+
+Soft deletion (an account with orders, §5) keeps the `saved_recipes` rows, so the counts are unaffected: a save is a signal about the recipe, and anonymizing the user does not change that the recipe was saved.
+
+### 3.5 Reviews
+
+A review requires a `Paid` order item for the product by the same user. The API checks it on `POST /api/products/{id}/reviews`; the seed holds to it (Priya and Dan each buy *Three Weeknights in Japan* before reviewing it). Together with §3.1, this means a creator can neither buy nor review their own product. The rule is not a trigger because, unlike self-purchase, it is a policy that may loosen later (reviews from gifted copies, say); the authorization layer is the right place for a rule that may change.
+
+### 3.6 The preferred-unit join (Q8)
+
+The standalone shopping-list query converted *every* volume line with a known density to mass, then joined the result to the ingredient's preferred shopping unit on matching category. Liquids prefer millilitres, so their converted (`Mass`) lines could not join and were dropped — ten ingredients in the seed, including the milk. §7.4 describes the corrected rule; in short, the preferred unit now decides the *direction* of the conversion, and an ingredient that still cannot be expressed in its preferred unit falls back to its category's base unit instead of vanishing. Q8's output now agrees with the application's "unmerged" policy for exactly the ingredients where they previously differed.
+
+### 3.7 What this means for the front end
+
+Nothing in the prototype changes for this assignment. When the Angular client is built (Assignment 4), the rules above surface in three places: no "Add to cart" on a creator's own product; a "yours through *Product*" label instead of a price on a `ProductOnly` recipe the viewer owns, and no link at all when they do not; and the admin account never seeing the shop, cart or save controls, which follows from the `HomeCook` check without any client-side role logic.
+
+---
+
+## 4. Normalization
 
 The schema is in third normal form. Rather than restate the definitions, here are the places where 3NF forced a decision and what it was.
 
 **Repeating groups removed (1NF).** A recipe has many steps and many ingredients. Both are child tables, not text blobs or JSON arrays. That is what makes ingredient aggregation possible at all: `recipe_ingredients` has one row per (recipe, ingredient) with a typed `numeric` quantity and a foreign key to a unit. A JSON `ingredients` column on `recipes` would have been faster to write and would have made the shopping list impossible in SQL.
 
-**Partial dependencies removed (2NF).** In the junction tables with composite keys (`user_roles`, `saved_recipes`, `product_recipes`, `cart_items`) every non-key column depends on the whole key. `saved_at` depends on *this user saving this recipe*, not on the user or the recipe alone. `day_offset` and `slot` in `product_recipes` describe *this recipe's place in this product*. Nothing about the user or the recipe themselves lives in these tables.
+**Partial dependencies removed (2NF).** In the junction tables with composite keys (`user_roles`, `saved_recipes`, `cart_items`) every non-key column depends on the whole key. `saved_at` depends on *this user saving this recipe*, not on the user or the recipe alone. `product_recipes` moved to a surrogate key in this revision (§3.2), but the same test holds: `day_offset`, `slot` and `sort_order` describe *this placement of this recipe in this product*. Nothing about the user or the recipe themselves lives in these tables.
 
 **Transitive dependencies removed (3NF).** The clearest example is the unit. A recipe ingredient line says "2 cups". The fact that a cup is a *volume* unit of 236.588 ml depends on the unit, not on the recipe ingredient. So `unit_category` and `to_base_factor` live on `units`, and `recipe_ingredients` carries only `unit_id`. Likewise an ingredient's aisle category and density depend on the ingredient, so they live on `ingredients`, referenced by FK. A creator's handle and bio depend on the creator, not on each recipe they publish, so they live on `creator_profiles`.
 
@@ -97,47 +172,56 @@ The schema is in third normal form. Rather than restate the definitions, here ar
 
 - **`creator_profiles` is a separate 1:1 table, not columns on `users`.** Handle, bio, avatar, and verification status are null for the majority of users (home cooks). Splitting them out avoids a wide, mostly-null user row, gives `recipes.creator_id` and `products.creator_id` a foreign key that *guarantees the referenced user is a creator*, and keeps the storefront URL lookup (`handle`) on a small table. The shared primary key (`creator_profiles.user_id` is both PK and FK) enforces at-most-one profile per user without an extra unique index.
 
-- **Roles are a junction table, not an enum column.** A creator is also a home cook — they save and buy like anyone else. A single `role` column would force a choice; `user_roles` lets one user hold both.
+- **Roles are a junction table, not an enum column.** A creator is also a home cook — they save and buy like anyone else. A single `role` column would force a choice; `user_roles` lets one user hold both. §3.1 states which combinations are allowed.
 
 - **There is no `carts` table.** A cart header would contain nothing but `user_id`. The cart *is* the set of `cart_items` rows for a user, keyed `(user_id, product_id)`. The composite key doubles as the rule "a product is in your cart once or not at all", which is correct for digital goods.
 
 - **`order_items` has no `quantity`.** Products are digital (a collection, a plan). Buying one twice is meaningless, and the unique index on `(order_id, product_id)` enforces that. Dropping the column is more honest than a `quantity` that is always 1.
 
-- **Products bundle recipes through `product_recipes`.** A meal-plan product is the same shape as a collection plus a `day_offset` and `slot` per recipe. One `products` table with a `type` discriminator and nullable placement columns was chosen over two tables because the cart, orders, and storefront treat both identically. The `CHECK (day_offset BETWEEN 0 AND 6)` constraint keeps the nullable columns honest.
+- **Products bundle recipes through `product_recipes`.** A meal-plan product is the same shape as a collection plus a `day_offset` and `slot` per recipe. One `products` table with a `type` discriminator and nullable placement columns was chosen over two tables because the cart, orders, and storefront treat both identically. `ck_product_recipes_day_offset_range` keeps the nullable columns honest, and `ck_product_recipes_placement_pair` makes `day_offset` and `slot` null or non-null together.
+
+- **`visibility` is a column on `recipes`, not a flag on `product_recipes`.** Whether a recipe is public is a fact about the recipe: the same recipe in two products cannot be public in one and not the other. Putting it on the placement row would have created an update anomaly.
 
 ---
 
-## 4. Constraints and referential integrity
+## 5. Constraints and referential integrity
 
 Every relationship is a real foreign key. The delete behavior was chosen per relationship, not left at a default:
 
 | Relationship | On delete | Reason |
 |---|---|---|
-| `users` → `user_roles`, `saved_recipes`, `meal_plans`, `cart_items`, `creator_profiles` | **CASCADE** | These rows are meaningless without the user; deleting an account should remove them. |
+| `users` → `user_roles`, `saved_recipes`, `meal_plans`, `cart_items`, `creator_profiles` | **CASCADE** | These rows are meaningless without the user; deleting an account should remove them. The `saved_recipes` cascade fires the save-count trigger (§3.4). |
 | `users` → `orders` | **RESTRICT** | Financial history must survive. Account deletion must be handled as a soft delete / anonymization, not a hard delete. The database refuses to let the app get this wrong. |
-| `creator_profiles` → `recipes`, `products` | CASCADE | A creator's catalog goes with their profile. |
+| `creator_profiles` → `recipes`, `products` | CASCADE | A creator's catalog goes with their profile — which, through the two RESTRICTs below, can only happen once nothing of theirs has been sold. |
 | `recipes` → `recipe_steps`, `recipe_ingredients`, `saved_recipes`, `meal_plan_entries` | CASCADE | Child rows of the recipe. |
-| `recipes` ← `product_recipes` | **RESTRICT** | A recipe that has been sold as part of a product cannot be deleted out from under buyers. Unpublish it instead (`is_published = false`). |
+| `recipes` ← `product_recipes` | **RESTRICT** | A recipe cannot be deleted out from under a live product. Remove it from the product first, or unpublish it. |
+| `recipes` ← `order_item_recipes` | **RESTRICT** | A recipe somebody has paid for cannot be deleted at all, even after it leaves every live product. Unpublish it instead (`is_published = false`). |
 | `ingredients`, `units` ← `recipe_ingredients` | **RESTRICT** | Catalog rows in use cannot be deleted. |
-| `products` ← `order_items` | **RESTRICT** | Same reason as recipes: purchased products stay. Use `is_active = false`. |
+| `products` ← `order_items` | **RESTRICT** | Same reason: purchased products stay. Use `is_active = false`. |
+| `products` → `product_recipes` | CASCADE | The live bundle goes with the product; buyers are unaffected because their copy is in `order_item_recipes`. |
 | `products` ← `cart_items` | CASCADE | An unsold product vanishing from carts is fine. |
+| `order_items` → `order_item_recipes` | CASCADE | The snapshot belongs to the order line, which itself cascades from the order. |
 | `products`, `users` ← `reviews` | CASCADE | A review is meaningless without its product or its author. Products with sales are never hard-deleted (`order_items` RESTRICT), so in practice this only removes reviews of unsold products or of deleted accounts. |
 | `roles` ← `user_roles` | RESTRICT | Roles are static lookup data. |
 | `units` ← `ingredients.preferred_shopping_unit_id` | SET NULL | A preference, not a requirement; the shopping list falls back to the base unit. |
 
-**Uniqueness** (all enforced by unique indexes, not application checks): `users.email`, `roles.name`, `creator_profiles.handle`, `units.name`, `units.abbreviation`, `ingredients.name`, `(recipe_id, step_number)`, `(user_id, week_start)` on meal plans, `(order_id, product_id)` on order items, `(product_id, user_id)` on reviews, plus every composite primary key.
+**Uniqueness** (all enforced by unique indexes, not application checks): `users.email`, `roles.name`, `creator_profiles.handle`, `units.name`, `units.abbreviation`, `ingredients.name`, `(recipe_id, step_number)`, `(user_id, week_start)` on meal plans, `(product_id, recipe_id, day_offset, slot)` nulls-not-distinct on `product_recipes` and the same shape on `order_item_recipes`, `(order_id, product_id)` on order items, `(product_id, user_id)` on reviews, plus every composite primary key.
 
 **Check constraints** encode invariants that would otherwise be scattered across validation code:
 
 ```sql
 ck_recipes_servings_positive                 servings > 0
 ck_recipes_published_has_date                is_published = false OR published_at IS NOT NULL
+ck_recipes_visibility                        visibility IN ('Public', 'ProductOnly')
 ck_recipe_steps_number_positive              step_number > 0
 ck_units_factor_positive                     to_base_factor > 0
 ck_ingredients_density_positive              density_g_per_ml IS NULL OR density_g_per_ml > 0
 ck_recipe_ingredients_quantity_positive      quantity > 0
 ck_meal_plan_entries_servings_positive       servings_override IS NULL OR servings_override > 0
 ck_product_recipes_day_offset_range          day_offset IS NULL OR day_offset BETWEEN 0 AND 6
+ck_product_recipes_placement_pair            (day_offset IS NULL) = (slot IS NULL)
+ck_order_item_recipes_day_offset_range       as above, on the snapshot
+ck_order_item_recipes_placement_pair         as above, on the snapshot
 ck_products_price_nonnegative                price_cents >= 0
 ck_orders_total_nonnegative                  total_cents >= 0
 ck_order_items_price_nonnegative             unit_price_cents >= 0
@@ -147,37 +231,50 @@ ck_reviews_rating_range                      rating BETWEEN 1 AND 5
 
 `ck_recipes_servings_positive` matters more than it looks: the shopping list divides by `servings` to scale a recipe. A zero would be a division-by-zero in the query, so the database refuses it at insert.
 
-**Types.** Money is integer cents (`price_cents`, `total_cents`, `unit_price_cents`) with a 3-letter `currency` column — never floating point. Quantities are `numeric(10,3)`; conversion factors `numeric(12,6)`; density `numeric(8,4)`. All timestamps are `timestamptz` stored in UTC; calendar dates (`week_start`, `planned_date`) are `date`, because "Monday the 21st" is not an instant. Enums (`unit category`, `meal slot`, `product type`, `order status`) are stored as short `varchar` rather than PostgreSQL enum types so that adding a value is an `INSERT`-compatible change rather than an `ALTER TYPE`, and so the values are readable in `psql`.
+**Triggers** cover the rules a `CHECK` cannot, because they compare rows across tables or maintain a derived value:
+
+| Trigger | Table | Rule |
+|---|---|---|
+| `saved_recipes_save_count` | `saved_recipes`, after insert/delete, per row | keeps `recipes.save_count` equal to the save rows (§3.4, §6) |
+| `cart_items_refuse_self_purchase` | `cart_items`, before insert/update | a creator cannot put their own product in their cart (§3.1) |
+| `order_items_refuse_self_purchase` | `order_items`, before insert/update | a creator cannot buy their own product (§3.1) |
+| `user_roles_admin_only` | `user_roles`, before insert/update | `Admin` is never held with another role (§3.1) |
+
+The refusals raise `check_violation` with a named constraint (`ck_cart_items_no_self_purchase`, `ck_order_items_no_self_purchase`, `ck_user_roles_admin_only`) so the API can map them to a 4xx exactly as it maps a real `CHECK`. EF Core does not model triggers; they ship in the migration as raw SQL (`migrationBuilder.Sql(...)`) and `schema.sql` carries the readable copy.
+
+**Types.** Money is integer cents (`price_cents`, `total_cents`, `unit_price_cents`) with a 3-letter `currency` column — never floating point. Quantities are `numeric(10,3)`; conversion factors `numeric(12,6)`; density `numeric(8,4)`. All timestamps are `timestamptz` stored in UTC; calendar dates (`week_start`, `planned_date`) are `date`, because "Monday the 21st" is not an instant. Enums (`unit category`, `meal slot`, `product type`, `order status`, `visibility`) are stored as short `varchar` rather than PostgreSQL enum types so that adding a value is an `INSERT`-compatible change rather than an `ALTER TYPE`, and so the values are readable in `psql`.
 
 ---
 
-## 5. Where I chose to denormalize
+## 6. Where I chose to denormalize
 
-Three deliberate departures from 3NF, each with the derivation rule and how it stays correct.
+Four deliberate departures from 3NF, each with the derivation rule and how it stays correct.
 
-**1. `recipes.save_count`.** Derivable as `COUNT(*) FROM saved_recipes WHERE recipe_id = ?`. The feed is the most-read page in the application and the "Trending" sort orders by this number; computing it per row with a correlated subquery, then sorting, defeats any index. The counter is maintained inside the same transaction as the `saved_recipes` insert/delete, using `UPDATE recipes SET save_count = save_count + 1` (EF `ExecuteUpdate`) — an atomic SQL increment, not a read-modify-write in C#, so concurrent saves cannot lose updates. It is indexed together with `is_published` so the trending feed is an index scan.
+**1. `recipes.save_count`.** Derivable as `COUNT(*) FROM saved_recipes WHERE recipe_id = ?`. The feed is the most-read page in the application and the "Trending" sort orders by this number; computing it per row with a correlated subquery, then sorting, defeats any index. The counter is maintained by a row-level trigger on `saved_recipes` — an atomic `UPDATE recipes SET save_count = save_count ± 1` per save row, so concurrent saves cannot lose updates, cascaded deletes are counted, and the seed cannot write a count the save rows do not support (§3.4). The application inserts and deletes `saved_recipes` rows and never touches the counter. It is indexed together with `is_published` and `visibility` so the trending feed is an index scan.
 
 **2. `orders.total_cents`.** Derivable as `SUM(unit_price_cents) FROM order_items`. Stored because an order total is a fact about a transaction that happened: if a line item were ever corrected or refunded independently, the original total should still be visible. It is written once at checkout and never updated. Tests assert it equals the sum of its items.
 
 **3. `order_items.product_title`, `unit_price_cents`, `creator_id`.** These duplicate columns on `products`. They are **snapshots**: a creator can rename or reprice a product tomorrow, and order history must show what the buyer actually paid for, at the price they paid. `creator_id` is copied so that a creator-earnings report can group order items by creator without joining through `products` — and so it still works if a product is ever reassigned. This is the standard e-commerce pattern; the normalized alternative (a `product_versions` table) was more machinery than the project needs.
 
+**4. `order_item_recipes`.** The same snapshot idea applied to the product's *contents*. Derivable from `product_recipes` only on the day of purchase; after that the live bundle may differ, and the question "what did this buyer get?" has no normalized answer without versioning every product. Written once at checkout in the same transaction as the order, never updated, and the only source the entitlement and access queries read (§3.3).
+
 Not denormalized, on purpose: the shopping list. It is always computed from `saved_recipes` + `meal_plan_entries` + `recipe_ingredients`, never stored, because it changes with every save and every plan edit and is cheap to compute for one user.
 
 ---
 
-## 6. The ingredient and unit model
+## 7. The ingredient and unit model
 
 This is the design problem the whole product hangs on. The requirement: a user saves a focaccia recipe calling for **500 g all-purpose flour**, a pancake recipe calling for **2 cups all-purpose flour**, and a cookie recipe calling for **2¼ cups flour**. The shopping list must show **one line: all-purpose flour, ~1,033 g** — not three.
 
 Three separate problems are hiding in that sentence, and the model solves each with a separate mechanism.
 
-### 6.1 "Which ingredient?" — canonical ingredients
+### 7.1 "Which ingredient?" — canonical ingredients
 
 Recipes never store ingredient names. `recipe_ingredients.ingredient_id` points at a single canonical row in `ingredients` (`name` is unique). "flour", "AP flour", and "all-purpose flour" on three recipes are three foreign keys to the same row, which is what lets `GROUP BY ingredient_id` work. What the creator actually typed is preserved in `recipe_ingredients.display_text` for the recipe page and is never used for aggregation.
 
 *Deferred:* an `ingredient_aliases` table (`alias → ingredient_id`) so the creator-facing recipe editor can map free text to canonical rows automatically. The seed data maps ingredients directly; the alias table is an Assignment 3/4 concern and slots in without changing anything here.
 
-### 6.2 "Are these the same kind of amount?" — unit categories and base units
+### 7.2 "Are these the same kind of amount?" — unit categories and base units
 
 Every unit belongs to exactly one **category** — `Volume`, `Mass`, or `Count` — and stores `to_base_factor`, its multiplier to that category's base unit (ml, g, or 1):
 
@@ -194,9 +291,9 @@ Within a category, aggregation is purely arithmetic: `SUM(quantity × to_base_fa
 
 Categories are not mixed by the database. "3 cloves garlic" and "15 g garlic" would come back as two groups for the same ingredient, and that is correct — count and mass are not interconvertible in general.
 
-### 6.3 "Can volume and mass be reconciled?" — density
+### 7.3 "Can volume and mass be reconciled?" — density
 
-`ingredients.density_g_per_ml` is nullable. When present, the application converts the ingredient's Volume group to Mass: `ml × density = g`. Flour is 0.53 g/ml, so 2 cups = 473.2 ml = 250.8 g, and the three flour lines above collapse:
+`ingredients.density_g_per_ml` is nullable. When present, volume and mass can be converted in either direction: `ml × density = g`, `g ÷ density = ml`. Flour is 0.53 g/ml, so 2 cups = 473.2 ml = 250.8 g, and the three flour lines above collapse:
 
 ```
 500 g  (focaccia, already mass)
@@ -207,37 +304,39 @@ Categories are not mixed by the database. "3 cloves garlic" and "15 g garlic" wo
 
 When density is unknown (`NULL`), the groups are **kept apart and shown separately** rather than guessed. The shopping list DTO returns them in an `unmerged` list so the UI can show "mozzarella — 200 g" and "mozzarella — 1 cup" as two lines. Wrong merges are worse than no merges: a user who buys half the cheese they need will not trust the list again.
 
-### 6.4 "What unit should the line be in?" — preferred shopping unit
+### 7.4 "What unit should the line be in?" — preferred shopping unit, and the direction of conversion
 
-`ingredients.preferred_shopping_unit_id` says how to present the aggregate: flour in grams, milk in millilitres, eggs by count. After merging, the base quantity is divided by the preferred unit's `to_base_factor`. If the preferred unit's category has no data (an ingredient with only Count rows but a Mass preference), the line falls back to the base unit of whatever category it has.
+`ingredients.preferred_shopping_unit_id` says how to present the aggregate: flour in grams, milk in millilitres, eggs by count. It does one more job that the submitted version got wrong: **it decides which way the density conversion runs.** Flour prefers grams, so its volume lines convert to mass. Milk prefers millilitres, so its *mass* lines (if a recipe said "200 g milk") convert to volume and its volume lines stay as they are. The earlier rule converted every dense volume line to mass unconditionally, which produced "milk: 975 g" — a quantity nobody shops for — and, in the standalone SQL (Q8), a line that could not be joined back to its millilitre preference and was dropped. Ten of the seed's ingredients, every liquid, disappeared from the list that way.
 
-### 6.5 Division of labor: SQL vs. application
+The corrected rule, in one sentence: *convert toward the preferred unit's category when density allows; otherwise leave the line in its own category.* After merging, the base quantity is divided by the preferred unit's `to_base_factor`. If the preferred unit's category still differs from the line's (an ingredient with only Count rows but a Mass preference, or no preferred unit at all), the line is presented in the base unit of whatever category it has — ml, g or each — rather than dropped. An ingredient with two irreconcilable categories gets two lines. The seed's Q8 output for Alex now has 41 lines where it had 31.
+
+### 7.5 Division of labor: SQL vs. application
 
 ```
 SQL  (one query, GROUP BY)             C#  (per ingredient, in memory)
 ─────────────────────────────          ───────────────────────────────
-which recipes, at what scale     →     Volume→Mass via density
+which recipes, at what scale     →     Volume<->Mass via density, toward the preferred unit
 JOIN recipe_ingredients          →     choose main vs unmerged lines
-× to_base_factor, SUM by         →     express in preferred unit
+× to_base_factor, SUM by         →     express in preferred unit, or fall back to base
 (ingredient, unit category)      →     round, sort by aisle
 ```
 
-The database does the part that benefits from being close to the data (the join and the sum over potentially hundreds of rows). The application does the part that is a *policy* — when to merge, when to refuse, how to present — because policies change and are far easier to unit-test in C# than in SQL. The C# half lives in `ShoppingListAggregator` (pure, no EF), which is why `tests/Cookfeed.Domain.Tests` can pin the flour example to ±0.5 g without a database.
+The database does the part that benefits from being close to the data (the join and the sum over potentially hundreds of rows). The application does the part that is a *policy* — when to merge, which way, when to refuse, how to present — because policies change and are far easier to unit-test in C# than in SQL. The C# half lives in `ShoppingListAggregator` (pure, no EF), which is why `tests/Cookfeed.Domain.Tests` can pin the flour example to ±0.5 g and the milk example to millilitres without a database. `docs/sql/queries.sql` Q8 implements the whole algorithm in SQL as a standalone fidelity check; after this revision its output and the aggregator's agree line for line.
 
-### 6.6 Scaling
+### 7.6 Scaling
 
 A meal plan entry can override servings: Alex plans a 2-serving teriyaki for 4 people. The recipe set query computes `scale = servings_override / recipe.servings` per entry and multiplies every ingredient quantity by it in the same `SUM`. Saved-but-not-planned recipes scale at 1. A recipe that is both saved and planned counts once, at the planned scale (`NOT EXISTS` against the planned set). A recipe planned on two different nights counts twice — you are cooking it twice. These rules are each covered by a test.
 
 ---
 
-## 7. Indexing summary
+## 8. Indexing summary
 
 Every read-side query is paired with the index that serves it in `docs/Queries.md`. The short version:
 
-- **Feed:** `(is_published, published_at DESC)` and `(is_published, save_count DESC)` — the `WHERE is_published ORDER BY … LIMIT` shape becomes a forward index scan that stops after one page.
-- **Storefront:** unique `handle`; `recipes(creator_id)`; `products(creator_id, is_active)`.
+- **Feed:** `(is_published, visibility, published_at DESC)` and `(is_published, visibility, save_count DESC)` — the `WHERE is_published AND visibility = 'Public' ORDER BY … LIMIT` shape becomes a forward index scan that stops after one page. Both leading columns are equality predicates, so the ordered column still serves the sort.
+- **Storefront:** unique `handle`; `recipes(creator_id)`; `products(creator_id, is_active)`; `product_recipes(product_id, sort_order)` returns a bundle in display order.
 - **Shopping list:** composite PK `saved_recipes(user_id, recipe_id)`; unique `meal_plans(user_id, week_start)`; `meal_plan_entries(meal_plan_id, planned_date, slot)`; `recipe_ingredients(recipe_id, sort_order)`.
-- **Order history:** `orders(user_id, placed_at DESC)`; unique `order_items(order_id, product_id)`.
+- **Order history and entitlements:** `orders(user_id, placed_at DESC)`; unique `order_items(order_id, product_id)`; the nulls-not-distinct unique on `order_item_recipes(order_item_id, …)` serves the "recipes in this purchase" join through its leading column, and `order_item_recipes(recipe_id)` serves the reverse question "does this user own this recipe?" (Q14).
 - **Reviews page:** `reviews(product_id, created_at DESC)` returns a product's reviews newest first; the unique `(product_id, user_id)` index enforces one review per user; `reviews(user_id)` supports the foreign key.
 - **Every foreign key** has a supporting index so `RESTRICT`/`CASCADE` checks and reverse lookups ("recipes using this ingredient", "who bought this product") do not table-scan. PostgreSQL does not create these automatically; EF Core does, and the reference DDL lists them explicitly.
 
@@ -245,10 +344,10 @@ No index was added speculatively. Each one corresponds to a `WHERE`, `JOIN`, or 
 
 ---
 
-## 8. Deliberately out of scope for this assignment
+## 9. Deliberately out of scope for this assignment
 
-- **Authentication.** `password_hash` is stored (never plaintext), but login, JWTs, and authorization arrive with the Angular work in Assignment 4. The API identifies the viewer by an `X-User-Id` header for now.
+- **Authentication.** `password_hash` is stored (never plaintext), but login, JWTs, and authorization arrive with the Angular work in Assignment 4. The API identifies the viewer by an `X-User-Id` header for now; the role checks in §3.1 are applied against that identity until real authentication replaces it.
 - **Payments.** Checkout creates a `Paid` order with a simulated `payment_reference`. A Stripe-style provider would move the order through `Pending → Paid` and populate the reference.
-- **Ingredient aliases and creator-side ingredient entry** (§6.1).
+- **Ingredient aliases and creator-side ingredient entry** (§7.1).
 - **Video storage.** `video_url` is a URL; upload/transcoding is infrastructure, not schema.
-- **Entitlements table.** "Does this user own this product?" is answered by `EXISTS (order_items JOIN orders WHERE status = 'Paid')`. If refunds and gifting arrive, a materialized `entitlements` table would replace that subquery; the storefront query is the only place that would change.
+- **Refunds and gifting.** `order_item_recipes` already answers "does this user own this recipe?" with one `EXISTS` (Q14). A refund would set `orders.status = 'Refunded'`, and the same query excludes it because it filters on `Paid`. Gifting would need a recipient column on `orders`; nothing else changes.

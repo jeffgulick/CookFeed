@@ -21,6 +21,8 @@ erDiagram
     users ||--o{ orders : "places"
     orders ||--o{ order_items : "contains"
     products ||--o{ order_items : "purchased as"
+    order_items ||--o{ order_item_recipes : "snapshots bundle as"
+    recipes ||--o{ order_item_recipes : "sold as"
     products ||--o{ reviews : "reviewed in"
     users ||--o{ reviews : "writes"
 
@@ -58,9 +60,10 @@ erDiagram
         int prep_minutes
         int cook_minutes
         bool is_published
+        varchar visibility "Public|ProductOnly"
         timestamptz created_at
         timestamptz published_at
-        int save_count "denormalized"
+        int save_count "denormalized, trigger-maintained"
     }
     recipe_steps {
         int id PK
@@ -129,10 +132,11 @@ erDiagram
         timestamptz created_at
     }
     product_recipes {
-        int product_id PK,FK
-        int recipe_id PK,FK
+        int id PK
+        int product_id FK
+        int recipe_id FK
         int sort_order
-        int day_offset
+        int day_offset "0..6, MealPlan only"
         varchar slot
     }
     cart_items {
@@ -157,6 +161,14 @@ erDiagram
         int creator_id "snapshot"
         varchar product_title "snapshot"
         int unit_price_cents "snapshot"
+    }
+    order_item_recipes {
+        int id PK
+        int order_item_id FK
+        int recipe_id FK "snapshot"
+        int sort_order
+        int day_offset
+        varchar slot
     }
     reviews {
         int id PK
