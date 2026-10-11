@@ -1,0 +1,35 @@
+# Runs the prototype's tests (CookFeed_frontend/tests) on each pull request and each push to main that touches
+# the front end. They use Node's built-in test runner, so there is nothing to install.
+name: Prototype tests
+
+on:
+  pull_request:
+    paths:
+      - "CookFeed_frontend/**"
+      - ".github/workflows/prototype-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "CookFeed_frontend/**"
+      - ".github/workflows/prototype-tests.yml"
+
+permissions:
+  contents: read
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: prototype-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test
+        run: node --test "CookFeed_frontend/tests/*.test.js"

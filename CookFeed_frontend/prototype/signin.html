@@ -4,24 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sign in | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=8">
+  <link rel="stylesheet" href="css/styles.css?v=9">
 </head>
 <body>
 
   <nav class="nav">
     <div class="nav-inner">
       <a class="brand" href="index.html">Cook<span>feed</span></a>
-      <a class="navlink" href="index.html">Meal plan</a>
-      <a class="navlink" href="reviews.html">Reviews</a>
-      <a class="navlink" href="creator.html">Creator</a>
-      <a class="navlink" href="kitchen.html">My kitchen</a>
+      <a class="navlink" href="index.html">Discover</a>
+      <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+      <a class="navlink" href="orders.html" data-shop>Your orders</a>
+      <a class="navlink" href="help.html">Help</a>
       <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
-      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
 
   <main class="wrap">
-
     <span class="pill">Account</span>
     <h1>Sign in</h1>
     <p class="byline">This prototype has no passwords: pick one of the store's accounts to see Cookfeed the way
@@ -42,13 +41,20 @@
     <p class="meta">Runs the site. The admin account holds no other role, so it cannot save, buy or review.</p>
     <div class="account-grid" id="admins"></div>
 
+    <h2 id="reset">Start over</h2>
+    <div class="card">
+      <p class="meta" style="margin-top:0">Every account starts with what the database holds for it: Alex's cart,
+        saves, orders and review, and so on. What you do here is kept in this browser on top of that.</p>
+      <button type="button" class="btn-secondary" id="resetData">Reset prototype data</button>
+    </div>
   </main>
 
-  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=8"></script>
-  <script src="js/data.js?v=8"></script>
-  <script src="js/common.js?v=8"></script>
-  <script src="js/signin.js?v=8"></script>
+  <script src="js/seed-data.js?v=9"></script>
+  <script src="js/db.js?v=9"></script>
+  <script src="js/rules.js?v=9"></script>
+  <script src="js/common.js?v=9"></script>
+  <script src="js/signin.js?v=9"></script>
 </body>
 </html>

@@ -3,40 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>kenji-kitchen | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=8">
+  <title>Creator | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=9">
 </head>
 <body>
 
   <nav class="nav">
     <div class="nav-inner">
       <a class="brand" href="index.html">Cook<span>feed</span></a>
-      <a class="navlink" href="index.html">Meal plan</a>
-      <a class="navlink" href="reviews.html">Reviews</a>
-      <a class="navlink active" href="creator.html">Creator</a>
-      <a class="navlink" href="kitchen.html">My kitchen</a>
+      <a class="navlink" href="index.html">Discover</a>
+      <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+      <a class="navlink" href="orders.html" data-shop>Your orders</a>
+      <a class="navlink" href="help.html">Help</a>
       <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
-      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
 
   <main class="wrap">
-
     <div class="card creator-head" style="margin-top:24px">
-      <img src="images/creators/kenji-kitchen.svg" alt="Profile picture for kenji-kitchen">
+      <img id="creatorAvatar" src="images/creators/kenji-kitchen.svg" alt="">
       <div>
-        <h1 style="margin:0">Kenji Watanabe <span class="verified" title="Cookfeed has confirmed this creator is who they say they are">&#10003; Verified creator</span></h1>
-        <p class="handle">@kenji-kitchen</p>
-        <p class="lede" style="margin:10px 0 0">
-          Japanese home cooking with a weeknight clock. Most dinners under 30 minutes,
-          everything shoppable.
-        </p>
+        <h1 style="margin:0" id="creatorName">Creator</h1>
+        <p class="handle" id="creatorHandle"></p>
+        <p class="lede" style="margin:10px 0 0" id="creatorBio"></p>
         <div class="stat-row">
-          <div class="stat"><b id="recipeCount">3</b><span>published recipes</span></div>
-          <div class="stat"><b id="totalSaves">9</b><span>times cooks saved his recipes</span></div>
+          <div class="stat"><b id="recipeCount">0</b><span>published recipes</span></div>
+          <div class="stat"><b id="totalSaves">0</b><span>times cooks saved these recipes</span></div>
         </div>
       </div>
     </div>
+    <p class="owned-label" id="ownStorefront" hidden>This is your storefront. It shows what home cooks see,
+      without buy buttons on your own plans.</p>
 
     <h2>Recipes</h2>
     <div class="sort-row">
@@ -47,28 +45,15 @@
     <div class="grid" id="creatorRecipes"></div>
 
     <h2>For sale</h2>
-    <div class="card">
-      <span class="pill">Meal plan</span>
-      <h3 style="margin:10px 0 4px">Three Weeknights in Japan</h3>
-      <p class="meta">Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less. 3 recipes, 1 shopping list.</p>
-      <div class="buybar">
-        <span class="price" id="planPrice">$12.99</span>
-        <a href="index.html"><button class="btn-primary">View this plan</button></a>
-      </div>
-    </div>
-
-    <div class="cta-foot">
-      <p><strong>New here?</strong> Start with the plan that made this kitchen popular.</p>
-      <p><a href="index.html">&larr; Three Weeknights in Japan</a> &middot; <a href="reviews.html">read the reviews</a></p>
-    </div>
-
+    <div id="creatorProducts"></div>
   </main>
 
-  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=8"></script>
-  <script src="js/data.js?v=8"></script>
-  <script src="js/common.js?v=8"></script>
-  <script src="js/creator.js?v=8"></script>
+  <script src="js/seed-data.js?v=9"></script>
+  <script src="js/db.js?v=9"></script>
+  <script src="js/rules.js?v=9"></script>
+  <script src="js/common.js?v=9"></script>
+  <script src="js/creator.js?v=9"></script>
 </body>
 </html>

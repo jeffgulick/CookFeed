@@ -4,24 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My kitchen | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=8">
+  <link rel="stylesheet" href="css/styles.css?v=9">
 </head>
 <body>
 
   <nav class="nav">
     <div class="nav-inner">
       <a class="brand" href="index.html">Cook<span>feed</span></a>
-      <a class="navlink" href="index.html">Meal plan</a>
-      <a class="navlink" href="reviews.html">Reviews</a>
-      <a class="navlink" href="creator.html">Creator</a>
-      <a class="navlink active" href="kitchen.html">My kitchen</a>
+      <a class="navlink" href="index.html">Discover</a>
+      <a class="navlink active" href="kitchen.html" data-shop aria-current="page">My kitchen</a>
+      <a class="navlink" href="orders.html" data-shop>Your orders</a>
+      <a class="navlink" href="help.html">Help</a>
       <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
-      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
 
   <main class="wrap">
-
     <span class="pill">My kitchen</span>
     <h1>Your saved recipes</h1>
     <p class="byline" id="kitchenSummary">Recipes you save show up here, with one shopping list for all of them.</p>
@@ -31,7 +30,7 @@
       <p><strong>You have not saved any recipes yet.</strong></p>
       <p class="meta">Press <strong>Save recipe</strong> on any recipe and it will appear here, and its
         ingredients will be added to the shopping list below.</p>
-      <p><a href="index.html">Browse the recipes in Three Weeknights in Japan &rarr;</a></p>
+      <p><a href="index.html">Browse trending recipes on Discover &rarr;</a></p>
     </div>
 
     <h2>Your shopping list</h2>
@@ -43,7 +42,7 @@
           <span class="send-text">Print list</span>
         </button>
       </div>
-      <p class="meta" id="kitchenListNote">
+      <p class="meta">
         Quantities are as each recipe was published. Matching ingredients are combined into one line.
       </p>
       <table>
@@ -55,17 +54,17 @@
     </div>
 
     <div class="cta-foot">
-      <p><strong>Want all three dinners planned for you?</strong></p>
-      <p><a href="index.html">See Three Weeknights in Japan &rarr;</a></p>
+      <p><strong>Want the week planned for you?</strong></p>
+      <p><a href="index.html">See the meal plans on Discover &rarr;</a></p>
     </div>
-
   </main>
 
-  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=8"></script>
-  <script src="js/data.js?v=8"></script>
-  <script src="js/common.js?v=8"></script>
-  <script src="js/kitchen.js?v=8"></script>
+  <script src="js/seed-data.js?v=9"></script>
+  <script src="js/db.js?v=9"></script>
+  <script src="js/rules.js?v=9"></script>
+  <script src="js/common.js?v=9"></script>
+  <script src="js/kitchen.js?v=9"></script>
 </body>
 </html>

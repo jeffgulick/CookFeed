@@ -1,5 +1,5 @@
 /* Cookfeed prototype - functions shared by every page.
-   Loaded after data.js and before the page-specific script on each page. */
+   Loaded after seed-data.js, db.js and rules.js, and before the page's own script. */
 
 /* ---------- formatting ---------- */
 
@@ -16,9 +16,9 @@ function buildStars(rating) {
   var stars = "";
   for (var i = 1; i <= 5; i = i + 1) {
     if (i <= rating) {
-      stars = stars + "★";
+      stars = stars + "\u2605";
     } else {
-      stars = stars + "☆";
+      stars = stars + "\u2606";
     }
   }
   return stars;
@@ -39,7 +39,8 @@ function formatDate(isoText) {
 
 /* Make text safe to place inside innerHTML. Anything a shopper types, such as a
    review, goes through this first, so typing <b> or a <script> tag shows the
-   characters instead of changing the page. */
+   characters instead of changing the page. Text from the database goes through
+   it too, because in the real application creators type that text. */
 function escapeHtml(text) {
   return String(text)
     .replace(/&/g, "&amp;")
@@ -49,182 +50,305 @@ function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
-/* ---------- saving data in the browser ----------
-   There is no server yet, so the cart, saved recipes and posted reviews are kept
-   in the browser's localStorage. Each read and write is wrapped in try/catch
-   because storage can be switched off (private windows, strict privacy settings);
-   when it is, the page still works and simply forgets on reload. */
+function plural(count, one, many) {
+  return count + " " + (count === 1 ? one : many);
+}
 
-var STORAGE_KEYS = {
-  cart: "cookfeed.cart",
-  saves: "cookfeed.saves",
-  reviews: "cookfeed.reviews",
-  orders: "cookfeed.orders",
-  userId: "cookfeed.userId"
-};
+/* ---------- reading the address ----------
+   The page templates name what they show in the query string: product.html?id=3,
+   creator.html?handle=kenji-kitchen. */
 
-function loadJson(key, fallback) {
-  try {
-    var text = window.localStorage.getItem(key);
-    if (text === null) {
-      return fallback;
-    }
-    return JSON.parse(text);
-  } catch (error) {
-    return fallback;
+function queryText(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+/* A whole-number parameter, or null when it is missing or not a number. */
+function queryNumber(name) {
+  var text = queryText(name);
+  return text !== null && /^[0-9]+$/.test(text) ? Number(text) : null;
+}
+
+/* Replace the page's content with a short message, for an id that names nothing. */
+function showMissing(heading, message) {
+  document.title = heading + " | Cookfeed";
+  document.querySelector("main").innerHTML =
+    "<div class='card notice-card'><h1>" + escapeHtml(heading) + "</h1><p>" + message + "</p>" +
+    "<p><a href='index.html'>Back to Discover</a></p></div>";
+}
+
+/* ---------- who is signed in ----------
+   The prototype's stand-in for logging in, the same idea as the API's X-User-Id header until real
+   login arrives: signin.html stores the id of one of the seeded accounts, and every page reads it back. */
+
+var USER_KEY = "cookfeed.userId";
+
+var ROLE_LABELS = { HomeCook: "Home cook", Creator: "Creator", Admin: "Admin" };
+
+/* The signed-in account (userById's shape), or null when browsing signed out or the stored id no
+   longer names a user. */
+function currentUser() {
+  var id = loadJson(USER_KEY, null);
+  return typeof id === "number" ? userById(id) : null;
+}
+
+function signIn(userId) {
+  saveJson(USER_KEY, userId);
+}
+
+function signOut() {
+  removeStored(USER_KEY);
+}
+
+/* A link that sends a signed-out visitor to sign in, e.g. "Sign in to save". */
+function signInLink(action) {
+  return "<a class='sign-in-to' href='signin.html'>Sign in to " + action + "</a>";
+}
+
+/* The nav's account area: "Sign in" when signed out, otherwise the account's name and a Sign out
+   button. Signing out reloads the page, so everything on it is drawn again for a guest. */
+function updateAccountArea() {
+  var area = document.getElementById("accountArea");
+  if (!area) {
+    return;
+  }
+  var user = currentUser();
+  if (!user) {
+    area.innerHTML = '<a class="navlink" href="signin.html">Sign in</a>';
+    return;
+  }
+  area.innerHTML =
+    '<a class="account-name" href="signin.html" title="Switch account">Signed in as <strong>' +
+    escapeHtml(user.displayName) + '</strong></a>' +
+    '<button type="button" class="link-button" id="signOutButton">Sign out</button>';
+  document.getElementById("signOutButton").addEventListener("click", function () {
+    signOut();
+    window.location.reload();
+  });
+}
+
+/* Links marked data-shop (My kitchen, Your orders, the cart) belong to shoppers. The admin account
+   never shops (design section 3.1), so its nav leaves them out. */
+function updateShopLinks() {
+  var hide = currentUser() !== null && !canShop(currentUser());
+  var links = document.querySelectorAll("[data-shop]");
+  for (var i = 0; i < links.length; i = i + 1) {
+    links[i].hidden = hide;
   }
 }
 
-function saveJson(key, value) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
+/* ---------- cart chip ---------- */
 
-/* ---------- cart ----------
-   One entry per product, shaped like a cart_items row: { productId, addedAt },
-   plus a quantity. The quantity is a prototype-only feature for practising
-   number handling in JavaScript: the database design has no quantity column,
-   because a digital plan is owned once. */
-
-var CART_MAX_QUANTITY = 10;
-
-function getCart() {
-  return loadJson(STORAGE_KEYS.cart, []);
-}
-
-function isInCart(productId) {
-  var cart = getCart();
-  for (var i = 0; i < cart.length; i = i + 1) {
-    if (cart[i].productId === productId) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/* Returns false when the product was already there, true when it was added. */
-function addProductToCart(productId) {
-  if (isInCart(productId)) {
-    return false;
-  }
-  var cart = getCart();
-  cart.push({ productId: productId, addedAt: new Date().toISOString(), quantity: 1 });
-  saveJson(STORAGE_KEYS.cart, cart);
-  updateCartChip();
-  return true;
-}
-
-function removeProductFromCart(productId) {
-  var cart = getCart().filter(function (item) { return item.productId !== productId; });
-  saveJson(STORAGE_KEYS.cart, cart);
-  updateCartChip();
-}
-
-/* How many of one product are in the cart. Entries saved before quantities
-   existed have no quantity, which counts as 1. */
-function cartQuantity(item) {
-  return typeof item.quantity === "number" && item.quantity >= 1 ? item.quantity : 1;
-}
-
-/* Set a product's quantity, kept between 1 and CART_MAX_QUANTITY.
-   Returns the quantity actually stored. */
-function setCartQuantity(productId, quantity) {
-  var cart = getCart();
-  var stored = Math.min(CART_MAX_QUANTITY, Math.max(1, Math.round(quantity)));
-
-  for (var i = 0; i < cart.length; i = i + 1) {
-    if (cart[i].productId === productId) {
-      cart[i].quantity = stored;
-    }
-  }
-
-  saveJson(STORAGE_KEYS.cart, cart);
-  updateCartChip();
-  return stored;
-}
-
-/* Total number of units in the cart, adding up every line's quantity. */
-function cartUnitCount() {
-  var cart = getCart();
-  var units = 0;
-  for (var i = 0; i < cart.length; i = i + 1) {
-    units = units + cartQuantity(cart[i]);
-  }
-  return units;
-}
-
-function clearCart() {
-  saveJson(STORAGE_KEYS.cart, []);
-  updateCartChip();
-}
-
-/* Every page's nav has a cart chip. Show the real number of units in it. */
 function updateCartChip() {
   var chip = document.getElementById("cartCount");
+  var user = currentUser();
   if (chip !== null) {
-    chip.textContent = cartUnitCount();
+    chip.textContent = user === null ? 0 : cartFor(user.id).length;
   }
 }
 
-/* ---------- saved recipes ----------
-   Shaped like saved_recipes rows: { recipeId, savedAt }. Shared by the product
-   page and the recipe pages, so saving on one shows as saved on the other. */
+/* ---------- products ---------- */
 
-function getSaves() {
-  return loadJson(STORAGE_KEYS.saves, []);
+function productTypeLabel(product) {
+  return product.type === "MealPlan" ? "Meal plan" : "Recipe collection";
 }
 
-function isSaved(recipeId) {
-  var saves = getSaves();
-  for (var i = 0; i < saves.length; i = i + 1) {
-    if (saves[i].recipeId === recipeId) {
-      return true;
-    }
+/* "plan" or "collection", for sentences such as "You own this plan". */
+function productNoun(product) {
+  return product.type === "MealPlan" ? "plan" : "collection";
+}
+
+/* "5 recipes, 6 meals" for a meal plan that repeats a recipe; "3 recipes" for a collection. */
+function productCounts(product) {
+  var text = plural(product.recipeCount, "recipe", "recipes");
+  if (product.mealCount !== null && product.mealCount !== product.recipeCount) {
+    text = text + ", " + plural(product.mealCount, "meal", "meals");
   }
-  return false;
+  return text;
 }
 
-/* Save the recipe if it is not saved, unsave it if it is.
-   Returns the new state: true means it is now saved. */
-function toggleSave(recipeId) {
-  var saves = getSaves();
-  var nowSaved = !isSaved(recipeId);
+function productUrl(productId) {
+  return "product.html?id=" + productId;
+}
 
-  if (nowSaved) {
-    saves.push({ recipeId: recipeId, savedAt: new Date().toISOString() });
-  } else {
-    saves = saves.filter(function (item) { return item.recipeId !== recipeId; });
+/* "by kenji-kitchen (Verified creator)", linked to the storefront. */
+function creatorByline(creator) {
+  var html = "by <a href='creator.html?handle=" + encodeURIComponent(creator.handle) + "'>" +
+    escapeHtml(creator.handle) + "</a>";
+  if (creator.isVerified) {
+    html = html + " <span class='verified' title='Cookfeed has confirmed this creator is who they say they are'>" +
+      "&#10003; Verified creator</span>";
   }
-
-  saveJson(STORAGE_KEYS.saves, saves);
-  return nowSaved;
+  return html;
 }
 
-/* The published save count plus this shopper's own save, the way the
-   denormalized recipes.save_count moves when someone saves a recipe. */
-function currentSaveCount(recipe) {
-  return recipe.saveCount + (isSaved(recipe.id) ? 1 : 0);
+/* The average star rating of a product's reviews, or null when it has none. */
+function averageRating(productId) {
+  var reviews = reviewsFor(productId);
+  if (reviews.length === 0) {
+    return null;
+  }
+  var total = reviews.reduce(function (sum, r) { return sum + r.rating; }, 0);
+  return { average: total / reviews.length, count: reviews.length };
 }
 
-/* ---------- shopping list ----------
-   Shared by the product page (the plan's three recipes) and My kitchen (the
-   shopper's saved recipes). */
+function ratingText(productId) {
+  var rating = averageRating(productId);
+  return rating === null ? "no reviews yet"
+    : "\u2605 " + rating.average.toFixed(1) + " (" + plural(rating.count, "review", "reviews") + ")";
+}
+
+/* The buy area of a product, from rules.js buyState. Used by the product page and the storefront.
+   onChange runs after the cart changes, so the page can redraw what depends on it. */
+function renderBuyArea(container, product, onChange) {
+  var user = currentUser();
+  var state = buyState(user, product);
+  var noun = productNoun(product);
+  var html = "";
+
+  if (state === "buy") {
+    html = "<button type='button' class='btn-primary buy-button'>Add to cart &mdash; " +
+      formatPrice(product.priceCents) + "</button>";
+  } else if (state === "inCart") {
+    html = "<a class='btn-primary done' href='cart.html'>In your cart &#10003; &mdash; go to cart</a>";
+  } else if (state === "owned") {
+    html = "<span class='owned-label'>&#10003; You own this " + noun + "</span> " +
+      "<a class='meta' href='orders.html'>See your orders</a>";
+  } else if (state === "yourOwn") {
+    html = "<span class='meta'>This is your " + noun + ". Creators can't buy their own.</span>";
+  } else if (state === "notForSale") {
+    html = "<span class='meta'>No longer for sale</span>";
+  } else if (state === "signIn") {
+    html = signInLink("buy");
+  }
+  // noShop: the admin sees no shop controls at all.
+
+  container.innerHTML = html;
+
+  var button = container.querySelector(".buy-button");
+  if (button !== null) {
+    button.addEventListener("click", function () {
+      addToCart(user.id, product.id);
+      updateCartChip();
+      renderBuyArea(container, product, onChange);
+      showToast(product.title + " added to your cart.");
+      if (onChange) { onChange(); }
+    });
+  }
+}
+
+/* ---------- recipe cards ----------
+   One card shape for every grid of recipes: Discover, a product, a storefront and My kitchen.
+   options:
+     label      a line above the title, such as "Monday dinner"
+     productId  link to the recipe in the context of this product
+     preview    include the hover preview of times, counts and the first step
+     locked     the viewer cannot open it: no link, and a note instead of the save button
+     foot       HTML for the card's foot, replacing the save count and Save button */
 
 /* Tooltip on every Save button, so a first-time visitor knows what saving does. */
 var SAVE_HINT = "Saving keeps this recipe in My kitchen and adds its ingredients to your shopping list there";
 
-/* Every ingredient across the given recipes, each tagged with its own recipe's
-   servings. Recipes do not all serve the same number (teriyaki and stir-fry
-   serve 2, onigiri serves 4), so each line has to be scaled against its own recipe. */
+function recipeHref(recipe, productId) {
+  return recipe.pageUrl + (productId ? "&product=" + productId : "");
+}
+
+function saveButtonHtml(recipe) {
+  var user = currentUser();
+  if (user === null) {
+    return signInLink("save");
+  }
+  if (!canSave(user, recipe)) {
+    return "";
+  }
+  var saved = isSavedBy(user.id, recipe.id);
+  return "<button type='button' class='btn-small save-button" + (saved ? " saved" : "") + "' title='" + SAVE_HINT +
+    "' data-recipe-id='" + recipe.id + "'>" + (saved ? "Saved &#10003;" : "Save recipe") + "</button>";
+}
+
+function recipeCardHtml(recipe, options) {
+  var href = recipeHref(recipe, options.productId);
+  var minutes = (recipe.prepMinutes || 0) + (recipe.cookMinutes || 0);
+  var image = "<img src='" + escapeHtml(recipe.thumbnailUrl || "") + "' alt='" + escapeHtml(recipe.title) + "'>";
+  var html = "<div class='recipe-card" + (options.locked ? " locked" : "") + "' data-recipe-id='" + recipe.id + "'>";
+
+  if (options.locked) {
+    html = html + "<div class='card-media'>" + image + "</div>";
+  } else {
+    html = html + "<a class='card-media' href='" + href + "'>" + image;
+    if (options.preview && recipe.steps.length > 0) {
+      html = html + "<div class='preview' aria-hidden='true'>";
+      html = html + "<div><b>" + recipe.prepMinutes + " min prep &middot; " + recipe.cookMinutes + " min cook</b></div>";
+      html = html + "<div>" + recipe.ingredients.length + " ingredients &middot; " + recipe.steps.length + " steps</div>";
+      html = html + "<div class='preview-step'>First: " + escapeHtml(recipe.steps[0].instruction) + "</div>";
+      html = html + "</div>";
+    }
+    html = html + "</a>";
+  }
+
+  html = html + "<div class='recipe-body'>";
+  if (options.label) {
+    html = html + "<div class='day'>" + escapeHtml(options.label) + "</div>";
+  }
+  html = html + "<div class='recipe-title'>" + (options.locked ? escapeHtml(recipe.title)
+    : "<a href='" + href + "'>" + escapeHtml(recipe.title) + "</a>") + "</div>";
+  html = html + "<div class='meta'>Serves " + recipe.servings + " &middot; " + minutes + " min</div>";
+
+  var user = currentUser();
+  var through = recipe.visibility === "ProductOnly" ? ownedThrough(user, recipe.id) : null;
+  if (options.locked) {
+    html = html + "<div class='lock-label'>&#128274; Included when you buy the " +
+      (options.productNoun || "plan") + "</div>";
+  } else if (through !== null) {
+    html = html + "<div class='owned-label'>Yours through " + escapeHtml(through) + "</div>";
+  }
+
+  if (options.foot !== undefined) {
+    html = html + "<div class='recipe-foot'>" + options.foot + "</div>";
+  } else if (!options.locked) {
+    html = html + "<div class='recipe-foot'>";
+    html = html + "<span class='meta'>saved by <span class='save-count'>" + saveCount(recipe.id) + "</span> cooks</span>";
+    html = html + saveButtonHtml(recipe);
+    html = html + "</div>";
+  }
+  html = html + "</div></div>";
+  return html;
+}
+
+/* Save buttons on any grid of cards. One listener per grid handles every card (event delegation). */
+function wireSaveButtons(grid, onChange) {
+  grid.addEventListener("click", function (event) {
+    var button = event.target.closest(".save-button");
+    if (button === null) {
+      return;
+    }
+    var user = currentUser();
+    var recipe = rowById("recipes", Number(button.getAttribute("data-recipe-id")));
+    var nowSaved = !isSavedBy(user.id, recipe.id);
+    setSaved(user.id, recipe.id, nowSaved);
+
+    button.innerHTML = nowSaved ? "Saved &#10003;" : "Save recipe";
+    button.classList.toggle("saved", nowSaved);
+    var count = button.closest(".recipe-card").querySelector(".save-count");
+    if (count !== null) {
+      count.textContent = saveCount(recipe.id);
+    }
+    showToast(nowSaved ? recipe.title + " saved to My kitchen, with its ingredients on your shopping list."
+                       : recipe.title + " removed from your saved recipes.");
+    if (onChange) { onChange(); }
+  });
+}
+
+/* ---------- shopping list ----------
+   Shared by the product page (the recipes in a plan) and My kitchen (the saved recipes). */
+
+/* Every ingredient across the given recipes, each tagged with its own recipe's servings. Recipes do
+   not all serve the same number, so each line has to be scaled against its own recipe. A recipe listed
+   twice (the oats on two mornings of Family Week) is bought for twice. */
 function collectIngredients(recipeIds) {
   var rows = [];
 
   for (var i = 0; i < recipeIds.length; i = i + 1) {
-    var recipe = RECIPES[recipeIds[i]];
+    var recipe = recipeWithDetails(recipeIds[i]);
 
     for (var j = 0; j < recipe.ingredients.length; j = j + 1) {
       var item = recipe.ingredients[j];
@@ -284,7 +408,7 @@ function buildShoppingList(recipeIds, people) {
 }
 
 /* ---------- servings ----------
-   Used by the servings boxes on the product page and the recipe pages. */
+   Used by the servings boxes on the product page and the recipe page. */
 
 /* Check what the shopper typed. Returns an error message, or "" when the
    value is a whole number of people inside the allowed range. */
@@ -302,20 +426,6 @@ function servingsProblem(text) {
     return "Choose between " + LIMITS.servingsMin + " and " + LIMITS.servingsMax + " people.";
   }
   return "";
-}
-
-/* ---------- reviews ----------
-   The seed reviews from data.js plus any the shopper posted, which are kept in
-   localStorage. Shared so the product page can show the average rating too. */
-
-function getPostedReviews() {
-  return loadJson(STORAGE_KEYS.reviews, []);
-}
-
-function getAllReviews(productId) {
-  return getPostedReviews().concat(SEED_REVIEWS).filter(function (review) {
-    return review.productId === productId;
-  });
 }
 
 /* ---------- feedback ----------
@@ -375,78 +485,18 @@ function showStorageNotice() {
   notice.id = "storageNotice";
   notice.className = "storage-notice";
   notice.setAttribute("role", "note");
-  notice.textContent = "This browser is blocking sites from saving data, so the cart, saved " +
+  notice.textContent = "This browser is blocking sites from saving data, so the sign-in, cart, saved " +
     "recipes and new reviews reset when you change pages. Allow site data for this page, " +
     "or open it in a different browser, to see them carry over.";
   main.insertBefore(notice, main.firstChild);
 }
 
-/* ---------- who is signed in ----------
-   The prototype's stand-in for logging in, the same idea as the API's X-User-Id header until real login
-   arrives: signin.html stores the id of one of the seeded accounts, and every page reads it back. */
-
-var ROLE_LABELS = { HomeCook: "Home cook", Creator: "Creator", Admin: "Admin" };
-
-/* The roles a user holds, by name (user_roles joined to roles). */
-function rolesFor(userId) {
-  return window.COOKFEED_SEED.userRoles
-    .filter(function (ur) { return ur.userId === userId; })
-    .map(function (ur) {
-      return window.COOKFEED_SEED.roles.filter(function (r) { return r.id === ur.roleId; })[0].name;
-    });
-}
-
-/* The signed-in account, or null when browsing signed out (or the stored id no longer names a user). */
-function currentUser() {
-  var id = loadJson(STORAGE_KEYS.userId, null);
-  var user = window.COOKFEED_SEED.users.filter(function (u) { return u.id === id; })[0];
-  if (!user) {
-    return null;
-  }
-  var profile = window.COOKFEED_SEED.creatorProfiles.filter(function (p) { return p.userId === id; })[0];
-  return { id: user.id, displayName: user.displayName, roles: rolesFor(user.id), handle: profile ? profile.handle : null };
-}
-
-function signIn(userId) {
-  saveJson(STORAGE_KEYS.userId, userId);
-}
-
-function signOut() {
-  try {
-    window.localStorage.removeItem(STORAGE_KEYS.userId);
-  } catch (error) {
-    // Storage is blocked: there was nothing stored to remove.
-  }
-}
-
-/* The nav's account area: "Sign in" when signed out, otherwise the account's name and a Sign out button. */
-function updateAccountArea() {
-  var area = document.getElementById("accountArea");
-  if (!area) {
-    return;
-  }
-  var user = currentUser();
-  if (!user) {
-    area.innerHTML = '<a class="navlink" href="signin.html">Sign in</a>';
-    return;
-  }
-  area.innerHTML =
-    '<a class="account-name" href="signin.html" title="Switch account">Signed in as <strong>' +
-    escapeHtml(user.displayName) + '</strong></a>' +
-    '<button type="button" class="link-button" id="signOutButton">Sign out</button>';
-  document.getElementById("signOutButton").addEventListener("click", function () {
-    signOut();
-    updateAccountArea();
-    showToast("Signed out. You are browsing as a guest.");
-    document.dispatchEvent(new CustomEvent("cookfeed:accountchange"));
-  });
-}
-
-/* Every page shows the cart count and who is signed in as soon as it loads, and the storage
-   notice when saving is blocked. */
+/* Every page shows who is signed in, the shopper's links and cart count as soon as it loads, and the
+   storage notice when saving is blocked. */
 document.addEventListener("DOMContentLoaded", function () {
-  updateCartChip();
   updateAccountArea();
+  updateShopLinks();
+  updateCartChip();
   if (storageWorks() === false) {
     showStorageNotice();
   }

@@ -1,48 +1,27 @@
 /* Cookfeed prototype - My kitchen page
 
-   Shows the recipes the shopper saved (from the product page or a recipe page)
-   and builds one shopping list from all of them, using the same function as the
-   product page. Removing a recipe here updates the list straight away. */
+   Shows the recipes the signed-in account saved and builds one shopping list from all of them, using
+   the same function as the product page. Removing a recipe here updates the list straight away. */
 
-/* Saved recipe ids, newest save first, skipping any recipe no longer in the data. */
+/* Saved recipe ids, newest save first. */
 function savedRecipeIds() {
-  var saves = getSaves().slice();
-
-  saves.sort(function (a, b) { return new Date(b.savedAt) - new Date(a.savedAt); });
-
-  return saves
-    .map(function (save) { return save.recipeId; })
-    .filter(function (id) { return RECIPES[id] !== undefined; });
+  return savesFor(currentUser().id).map(function (save) { return save.recipeId; });
 }
 
 function renderSavedRecipes(ids) {
-  var html = "";
-
-  for (var i = 0; i < ids.length; i = i + 1) {
-    var recipe = RECIPES[ids[i]];
-
-    html = html + "<div class='recipe-card' data-recipe-id='" + recipe.id + "'>";
-    html = html + "<a href='" + recipe.pageUrl + "'>";
-    html = html + "<img src='" + recipe.thumbnailUrl + "' alt='" + escapeHtml(recipe.title) + "'>";
-    html = html + "</a>";
-    html = html + "<div class='recipe-body'>";
-    html = html + "<div class='recipe-title'><a href='" + recipe.pageUrl + "'>" + recipe.title + "</a></div>";
-    html = html + "<div class='meta'>Serves " + recipe.servings + " &middot; " +
-                  (recipe.prepMinutes + recipe.cookMinutes) + " min &middot; " +
-                  recipe.ingredients.length + " ingredients</div>";
-    html = html + "<div class='recipe-foot'>";
-    html = html + "<a class='meta' href='" + recipe.pageUrl + "'>Cook it &rarr;</a>";
-    html = html + "<button class='btn-small unsave-button'>Remove</button>";
-    html = html + "</div></div></div>";
-  }
-
-  document.getElementById("savedRecipes").innerHTML = html;
+  document.getElementById("savedRecipes").innerHTML = ids.map(function (id) {
+    var recipe = recipeWithDetails(id);
+    return recipeCardHtml(recipe, {
+      foot: "<a class='meta' href='" + recipe.pageUrl + "'>Cook it &rarr;</a>" +
+            "<button class='btn-small unsave-button'>Remove</button>"
+    });
+  }).join("");
   document.getElementById("emptyKitchen").hidden = ids.length > 0;
 
-  var word = ids.length === 1 ? "recipe" : "recipes";
   document.getElementById("kitchenSummary").textContent = ids.length === 0
     ? "Recipes you save show up here, with one shopping list for all of them."
-    : "You have saved " + ids.length + " " + word + ". Their ingredients are combined in the shopping list below.";
+    : "You have saved " + plural(ids.length, "recipe", "recipes") +
+      ". Their ingredients are combined in the shopping list below.";
 }
 
 function renderKitchenList(ids) {
@@ -52,10 +31,10 @@ function renderKitchenList(ids) {
   for (var i = 0; i < list.length; i = i + 1) {
     var line = list[i];
     html = html + "<tr>";
-    html = html + "<td class='qty'>" + formatQuantity(line.amount) + " " + line.unit + "</td>";
-    html = html + "<td>" + line.name + "</td>";
-    html = html + "<td class='aisle'>" + line.recipes.join(", ") + "</td>";
-    html = html + "<td class='aisle'>" + line.aisle + "</td>";
+    html = html + "<td class='qty'>" + formatQuantity(line.amount) + " " + escapeHtml(line.unit) + "</td>";
+    html = html + "<td>" + escapeHtml(line.name) + "</td>";
+    html = html + "<td class='aisle'>" + escapeHtml(line.recipes.join(", ")) + "</td>";
+    html = html + "<td class='aisle'>" + escapeHtml(line.aisle) + "</td>";
     html = html + "</tr>";
   }
 
@@ -83,13 +62,21 @@ function onKitchenClicked(event) {
     return;
   }
 
-  var recipe = RECIPES[Number(button.closest(".recipe-card").getAttribute("data-recipe-id"))];
-  toggleSave(recipe.id);
+  var recipe = rowById("recipes", Number(button.closest(".recipe-card").getAttribute("data-recipe-id")));
+  setSaved(currentUser().id, recipe.id, false);
   renderKitchen();
   showToast(recipe.title + " removed. Its ingredients are off your list.");
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+  var user = currentUser();
+  if (user === null || !canShop(user)) {
+    document.querySelector("main").innerHTML = "<span class='pill'>My kitchen</span><h1>Your saved recipes</h1>" +
+      "<div class='card notice-card'><p>" + (user === null ? signInLink("see the recipes you saved") + "."
+        : "Admin accounts do not save recipes.") + "</p></div>";
+    return;
+  }
+
   renderKitchen();
   document.getElementById("savedRecipes").addEventListener("click", onKitchenClicked);
   document.getElementById("kitchenPrint").addEventListener("click", function () { window.print(); });

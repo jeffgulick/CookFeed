@@ -1,28 +1,121 @@
-/* Cookfeed prototype - product page (Three Weeknights in Japan)
+/* Cookfeed prototype - product page (product.html?id=), for meal plans and recipe collections alike.
 
    Homework 3 interactions on this page:
      1. Servings stepper     - input, click and keyboard events rescale the list live
      2. Recipe card preview  - mouseenter / mouseleave (and focus) show more detail
      3. "Have it" checklist  - change events tick items off and update the progress bar
-     4. Add to cart and Save - click events, remembered across pages and reloads */
+     4. Add to cart and Save - click events, kept per account across pages and reloads
 
-/* Tooltip on every Save button, so a first-time visitor knows what saving does. */
-/* The ids of the recipes in the plan, in plan order. */
-function planRecipeIds() {
-  return PRODUCT.recipes.map(function (placement) { return placement.recipeId; });
-}
+   What the viewer sees follows rules.js: the buy area comes from buyState, and a ProductOnly recipe
+   the viewer has not bought shows without a link and stays off the shopping list (design section 3.3). */
+
+var product = null;
 
 /* null means "show the list as each recipe was published". A number means every
-   night of the plan is cooked for that many people. */
+   meal of the plan is cooked for that many people. */
 var currentPeople = null;
 
 /* Which shopping-list lines the shopper already has at home, keyed by line.
    Kept separately from the list so ticks survive when the list is rescaled. */
 var haveItems = {};
 
+/* "Monday dinner" for a meal plan's placement; nothing for a collection. */
+function placementLabel(placement) {
+  return placement.dayOffset === null ? "" : DAY_NAMES[placement.dayOffset] + " " + placement.slot.toLowerCase();
+}
+
+function viewerCanOpen(recipeId) {
+  return canOpenRecipe(currentUser(), rowById("recipes", recipeId));
+}
+
+/* The recipe of every placement the viewer can open, in plan order. A recipe placed twice is listed
+   twice, so its ingredients are bought for both meals. */
+function shoppableRecipeIds() {
+  return product.recipes
+    .map(function (placement) { return placement.recipeId; })
+    .filter(viewerCanOpen);
+}
+
+/* The titles of the recipes the viewer cannot open yet. */
+function lockedTitles() {
+  var titles = [];
+  product.recipes.forEach(function (placement) {
+    var title = rowById("recipes", placement.recipeId).title;
+    if (!viewerCanOpen(placement.recipeId) && titles.indexOf(title) === -1) {
+      titles.push(title);
+    }
+  });
+  return titles;
+}
+
+/* ---------- the header and "what you get" ---------- */
+
+/* The distinct days of a meal plan, in order: "Monday, Wednesday and Thursday". */
+function planDays() {
+  var days = [];
+  product.recipes.forEach(function (placement) {
+    var day = DAY_NAMES[placement.dayOffset];
+    if (days.indexOf(day) === -1) { days.push(day); }
+  });
+  return days.length > 1 ? days.slice(0, -1).join(", ") + " and " + days[days.length - 1] : days.join("");
+}
+
+function renderHeader() {
+  var creator = creatorFor(product.creatorId);
+  var noun = productNoun(product);
+
+  document.title = product.title + " | Cookfeed";
+  document.getElementById("productCover").src = product.coverImageUrl || "";
+  document.getElementById("productCover").alt = "Cover of " + product.title;
+  document.getElementById("productType").textContent = productTypeLabel(product);
+  document.getElementById("productTitle").textContent = product.title;
+  document.getElementById("productByline").innerHTML = creatorByline(creator);
+  document.getElementById("productDescription").textContent = product.description || "";
+  document.getElementById("priceTag").textContent = formatPrice(product.priceCents);
+  document.getElementById("priceNote").textContent =
+    "One-time purchase \u00b7 yours to keep \u00b7 " + productCounts(product) + ", 1 shopping list";
+  document.getElementById("reviewsLink").href = "reviews.html?product=" + product.id;
+  document.getElementById("ratingLink").href = "reviews.html?product=" + product.id;
+  document.getElementById("ratingLink").textContent = ratingText(product.id);
+  document.getElementById("reviewsNoun").textContent = noun;
+
+  var items = [];
+  items.push("<strong>" + plural(product.recipeCount, "full cooking video", "full cooking videos") + ".</strong> " +
+    "Every step is marked in the video, so you can jump straight to the part you are on.");
+  if (product.type === "MealPlan") {
+    items.push("<strong>One shopping list for all " + plural(product.mealCount, "meal", "meals") + ",</strong> " +
+      "scaled to however many people you cook for, sorted by aisle, and ready to print.");
+    items.push("<strong>A plan that is already worked out.</strong> Meals on " + planDays() +
+      ", chosen so the ingredients overlap and little goes to waste.");
+  } else {
+    items.push("<strong>One shopping list for every recipe,</strong> scaled to however many people you cook for, " +
+      "sorted by aisle, and ready to print.");
+    items.push("<strong>Chosen by " + escapeHtml(creator.displayName) + ",</strong> in the order they would cook them.");
+  }
+  var exclusive = product.recipes
+    .map(function (placement) { return rowById("recipes", placement.recipeId); })
+    .filter(function (recipe, index, all) { return recipe.visibility === "ProductOnly" && all.indexOf(recipe) === index; });
+  if (exclusive.length > 0) {
+    items.push("<strong>Recipes you will not find in the feed.</strong> " +
+      exclusive.map(function (r) { return escapeHtml(r.title); }).join(" and ") +
+      (exclusive.length === 1 ? " is" : " are") + " only in this " + noun + ".");
+  }
+  items.push("<strong>Yours to keep.</strong> Pay once. No subscription, and the " + noun + " stays in your account.");
+
+  document.getElementById("valueHeading").textContent = "What your " + formatPrice(product.priceCents) + " gets you";
+  document.getElementById("valueList").innerHTML = "<li>" + items.join("</li><li>") + "</li>";
+}
+
+/* The buy area, and everything that changes once the viewer owns the product. */
+function renderBuy() {
+  renderBuyArea(document.getElementById("buyArea"), product, null);
+}
+
+/* ---------- 1. shopping list and servings stepper ---------- */
+
 /* Draw the shopping list, keeping any "have it" ticks the shopper already made. */
 function renderShoppingList() {
-  var list = buildShoppingList(planRecipeIds(), currentPeople);
+  var list = buildShoppingList(shoppableRecipeIds(), currentPeople);
   var html = "";
 
   for (var i = 0; i < list.length; i = i + 1) {
@@ -32,9 +125,9 @@ function renderShoppingList() {
     html = html + "<tr class='" + (have ? "have" : "") + "' data-key='" + escapeHtml(line.key) + "'>";
     html = html + "<td class='have-col'><input type='checkbox' aria-label='I already have " +
                   escapeHtml(line.name) + "'" + (have ? " checked" : "") + "></td>";
-    html = html + "<td class='qty'>" + formatQuantity(line.amount) + " " + line.unit + "</td>";
-    html = html + "<td>" + line.name + "</td>";
-    html = html + "<td class='aisle'>" + line.aisle + "</td>";
+    html = html + "<td class='qty'>" + formatQuantity(line.amount) + " " + escapeHtml(line.unit) + "</td>";
+    html = html + "<td>" + escapeHtml(line.name) + "</td>";
+    html = html + "<td class='aisle'>" + escapeHtml(line.aisle) + "</td>";
     html = html + "</tr>";
   }
 
@@ -45,18 +138,25 @@ function renderShoppingList() {
 
   if (currentPeople === null) {
     heading.innerHTML = "Shopping list &mdash; as published";
-    note.textContent = "Teriyaki and stir-fry serve 2, onigiri serves 4. One list, one grocery trip.";
+    var seen = [];
+    var servings = shoppableRecipeIds()
+      .filter(function (id) { var fresh = seen.indexOf(id) === -1; seen.push(id); return fresh; })
+      .map(function (id) { var r = rowById("recipes", id); return r.title + " serves " + r.servings; });
+    note.textContent = "Quantities as each recipe was written: " + servings.join("; ") + ".";
   } else {
     var word = currentPeople === 1 ? "person" : "people";
     heading.textContent = "Shopping list for " + currentPeople + " " + word;
-    note.textContent = "Scaled from the published servings. Every night is now cooked for " +
+    note.textContent = "Scaled from the published servings. Every meal is now cooked for " +
                        currentPeople + " " + word + ".";
   }
 
+  var locked = lockedTitles();
+  document.getElementById("lockedNote").textContent = locked.length === 0 ? ""
+    : "Not on this list yet: " + locked.join(" and ") + ". " + (locked.length === 1 ? "Its" : "Their") +
+      " ingredients are added when you buy the " + productNoun(product) + ".";
+
   updateProgress();
 }
-
-/* ---------- 1. servings stepper ---------- */
 
 /* Read the box and, if it holds a sensible number, rescale the list. When it
    does not, explain why under the box and leave the list as it was. */
@@ -113,52 +213,36 @@ function resetServings() {
 
 /* ---------- 2. recipe cards and the hover preview ---------- */
 
-/* Draw one card per recipe in the plan. Each card carries a hidden preview with
-   the details a shopper wants before clicking through. */
 function renderRecipeCards() {
   var html = "";
 
-  for (var i = 0; i < PRODUCT.recipes.length; i = i + 1) {
-    var placement = PRODUCT.recipes[i];
-    var recipe = RECIPES[placement.recipeId];
-    var minutes = recipe.prepMinutes + recipe.cookMinutes;
-    var saved = isSaved(recipe.id);
-
-    html = html + "<div class='recipe-card' data-recipe-id='" + recipe.id + "'>";
-    html = html + "<a class='card-media' href='" + recipe.pageUrl + "'>";
-    html = html + "<img src='" + recipe.thumbnailUrl + "' alt='" + escapeHtml(recipe.title) + "'>";
-    html = html + "<div class='preview' aria-hidden='true'>";
-    html = html + "<div><b>" + recipe.prepMinutes + " min prep &middot; " + recipe.cookMinutes + " min cook</b></div>";
-    html = html + "<div>" + recipe.ingredients.length + " ingredients &middot; " + recipe.steps.length + " steps</div>";
-    html = html + "<div class='preview-step'>First: " + recipe.steps[0].instruction + "</div>";
-    html = html + "</div></a>";
-    html = html + "<div class='recipe-body'>";
-    html = html + "<div class='day'>" + DAY_NAMES[placement.dayOffset] + " " + placement.slot.toLowerCase() + "</div>";
-    html = html + "<div class='recipe-title'><a href='" + recipe.pageUrl + "'>" + recipe.title + "</a></div>";
-    html = html + "<div class='meta'>Serves " + recipe.servings + " &middot; " + minutes + " min</div>";
-    html = html + "<div class='recipe-foot'>";
-    html = html + "<span class='meta'>saved by <span class='save-count'>" + currentSaveCount(recipe) + "</span> cooks</span>";
-    html = html + "<button class='btn-small save-button" + (saved ? " saved" : "") + "' title='" + SAVE_HINT + "'>" +
-                  (saved ? "Saved ✓" : "Save recipe") + "</button>";
-    html = html + "</div></div></div>";
+  for (var i = 0; i < product.recipes.length; i = i + 1) {
+    var placement = product.recipes[i];
+    var recipe = recipeWithDetails(placement.recipeId);
+    html = html + recipeCardHtml(recipe, {
+      label: placementLabel(placement),
+      productId: product.id,
+      productNoun: productNoun(product),
+      preview: true,
+      locked: !viewerCanOpen(recipe.id)
+    });
   }
 
-  document.getElementById("planRecipes").innerHTML = html;
+  if (product.recipes.length === 0) {
+    html = "<p class='meta'>This " + productNoun(product) + " has no recipes listed.</p>";
+  }
 
-  var cards = document.querySelectorAll("#planRecipes .recipe-card");
+  var grid = document.getElementById("planRecipes");
+  grid.innerHTML = html;
 
+  var cards = grid.querySelectorAll(".recipe-card");
   for (var k = 0; k < cards.length; k = k + 1) {
-    var card = cards[k];
-
-    /* Mouse events: show the preview while the pointer is over the card. */
-    card.addEventListener("mouseenter", showPreview);
-    card.addEventListener("mouseleave", hidePreview);
-
-    /* Keyboard users get the same preview when they tab onto the card's link. */
-    card.addEventListener("focusin", showPreview);
-    card.addEventListener("focusout", hidePreview);
-
-    card.querySelector(".save-button").addEventListener("click", saveRecipe);
+    /* Mouse events: show the preview while the pointer is over the card. Keyboard users get the
+       same preview when they tab onto the card's link. */
+    cards[k].addEventListener("mouseenter", showPreview);
+    cards[k].addEventListener("mouseleave", hidePreview);
+    cards[k].addEventListener("focusin", showPreview);
+    cards[k].addEventListener("focusout", hidePreview);
   }
 }
 
@@ -168,21 +252,6 @@ function showPreview(event) {
 
 function hidePreview(event) {
   event.currentTarget.classList.remove("previewing");
-}
-
-/* Save or unsave one recipe. The same saved list is read by the recipe pages. */
-function saveRecipe(event) {
-  var button = event.currentTarget;
-  var card = button.closest(".recipe-card");
-  var recipe = RECIPES[Number(card.getAttribute("data-recipe-id"))];
-  var nowSaved = toggleSave(recipe.id);
-
-  button.textContent = nowSaved ? "Saved ✓" : "Save recipe";
-  button.classList.toggle("saved", nowSaved);
-  card.querySelector(".save-count").textContent = currentSaveCount(recipe);
-
-  showToast(nowSaved ? recipe.title + " saved to My kitchen, with its ingredients on your shopping list."
-                     : recipe.title + " removed from your saved recipes.");
 }
 
 /* ---------- 3. "have it" checklist ---------- */
@@ -266,61 +335,23 @@ function printList() {
   window.print();
 }
 
-/* ---------- 4. add to cart ---------- */
-
-/* Make the buy button match the cart: "Add to cart" or "In cart, go to cart". */
-function renderBuyButton() {
-  var button = document.getElementById("buyButton");
-
-  if (isInCart(PRODUCT.id)) {
-    button.textContent = "In cart ✓ — go to cart";
-    button.className = "btn-primary done";
-  } else {
-    button.textContent = "Add to cart — " + formatPrice(PRODUCT.priceCents);
-    button.className = "btn-primary";
-  }
-}
-
-function onBuyClicked() {
-  if (isInCart(PRODUCT.id)) {
-    window.location.href = "cart.html";
-    return;
-  }
-
-  addProductToCart(PRODUCT.id);
-  renderBuyButton();
-  showToast(PRODUCT.title + " added. Your shopping list is waiting in the cart.");
-}
-
-/* Show the plan's average rating next to the creator's name. */
-function renderRatingLink() {
-  var reviews = getAllReviews(PRODUCT.id);
-  var link = document.getElementById("ratingLink");
-
-  if (reviews.length === 0) {
-    link.textContent = "no reviews yet";
-    return;
-  }
-
-  var total = 0;
-  for (var i = 0; i < reviews.length; i = i + 1) {
-    total = total + reviews[i].rating;
-  }
-  var average = total / reviews.length;
-  link.textContent = "★ " + average.toFixed(1) + " (" + reviews.length + " reviews)";
-}
-
 /* ---------- start ---------- */
 
 document.addEventListener("DOMContentLoaded", function () {
-  document.getElementById("priceTag").textContent = formatPrice(PRODUCT.priceCents);
-  renderBuyButton();
-  renderRatingLink();
+  var id = queryNumber("id");
+  product = id === null ? null : productWithRecipes(id);
+  if (product === null) {
+    showMissing("Plan not found", "There is no meal plan or collection at this address.");
+    return;
+  }
+
+  renderHeader();
+  renderBuy();
   renderRecipeCards();
   renderShoppingList();
   updateStepperButtons();
 
-  document.getElementById("buyButton").addEventListener("click", onBuyClicked);
+  wireSaveButtons(document.getElementById("planRecipes"), null);
 
   var servingsInput = document.getElementById("servingsInput");
   servingsInput.addEventListener("input", applyServingsInput);

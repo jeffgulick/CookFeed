@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipe | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=9">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Discover</a>
+      <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+      <a class="navlink" href="orders.html" data-shop>Your orders</a>
+      <a class="navlink" href="help.html">Help</a>
+      <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <p class="crumb" id="recipeCrumb"></p>
+
+    <span class="pill" id="recipePill">Recipe</span>
+    <h1 id="recipeTitle">Recipe</h1>
+    <p class="byline" id="recipeByline"></p>
+    <p class="owned-label" id="ownedNote" hidden></p>
+    <p class="lede" id="recipeDescription"></p>
+
+    <div class="player">
+      <img id="recipeImage" src="images/recipes/5.svg" alt="">
+      <div class="player-bar">
+        <span class="play">&#9654;</span>
+        <div class="track"><div class="track-fill" id="videoProgress"></div></div>
+        <span class="time" id="videoTime">0:00 / 0:00</span>
+      </div>
+      <p class="player-note" id="videoLabel">Tap a step below to jump to that moment.</p>
+    </div>
+
+    <div class="buybar">
+      <span class="meta">Serves <span id="servesCount"></span> &middot; <span id="totalTime"></span> min total &middot;
+        saved by <span id="saveCount">0</span> cooks</span>
+      <span id="saveArea"></span>
+    </div>
+    <p class="price-note">Saving keeps this recipe in <a href="kitchen.html">My kitchen</a> and adds its ingredients to your shopping list there.</p>
+
+    <h2>Ingredients <span class="meta" style="font-weight:400">for <span id="servingsLabel"></span></span></h2>
+    <div class="card">
+      <div class="stepper-row" style="margin-top:0">
+        <label for="servingsInput">Cooking for</label>
+        <div class="stepper">
+          <button type="button" id="servingsDown" aria-label="One fewer person">&minus;</button>
+          <input type="number" id="servingsInput" min="1" max="20" step="1" value="2" inputmode="numeric">
+          <button type="button" id="servingsUp" aria-label="One more person">+</button>
+        </div>
+        <span class="meta">people</span>
+        <button type="button" class="link-button" id="servingsReset">Reset to as written</button>
+      </div>
+      <p class="field-error" id="servingsError"></p>
+      <ul class="ingredients" id="ingredientList"></ul>
+    </div>
+
+    <h2>Method</h2>
+    <ol class="steps" id="stepList"></ol>
+
+    <div class="cta-foot" id="recipeFoot"></div>
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+
+  <script src="js/seed-data.js?v=9"></script>
+  <script src="js/db.js?v=9"></script>
+  <script src="js/rules.js?v=9"></script>
+  <script src="js/common.js?v=9"></script>
+  <script src="js/recipe.js?v=9"></script>
+</body>
+</html>
