@@ -1,0 +1,64 @@
+# Builds the API and runs every test (Domain, Application and the integration tests against real PostgreSQL)
+# on each pull request and each push to main, so a PR shows green or red before it is merged.
+name: API tests
+
+on:
+  pull_request:
+    paths:
+      - "CookFeed_api/**"
+      - ".github/workflows/api-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "CookFeed_api/**"
+      - ".github/workflows/api-tests.yml"
+
+permissions:
+  contents: read
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: api-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: CookFeed_api
+
+    services:
+      # The same PostgreSQL as docker-compose.yml. The integration tests connect to its "postgres" database and
+      # create and drop their own throwaway databases (tests/Cookfeed.IntegrationTests/Support/TestDatabaseServer.cs).
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The SDK version comes from global.json, the same pin every machine uses.
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: CookFeed_api/global.json
+
+      # --locked-mode fails if a packages.lock.json no longer matches the package references.
+      - name: Restore
+        run: dotnet restore Cookfeed.slnx --locked-mode
+
+      # Warnings are errors (Directory.Build.props), so a warning fails the build here too.
+      - name: Build
+        run: dotnet build Cookfeed.slnx --no-restore
+
+      - name: Test
+        run: dotnet test --solution Cookfeed.slnx --no-build

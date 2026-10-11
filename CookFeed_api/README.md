@@ -63,4 +63,7 @@ dotnet run --project src/Cookfeed.Api  # seeds an empty database in Development,
 dotnet test --solution Cookfeed.slnx   # all tests
 ```
 
+Every pull request that touches `CookFeed_api/` runs the same restore, build and tests in GitHub Actions
+(`.github/workflows/api-tests.yml`, against `postgres:16.15`); the result shows on the PR.
+
 `DOCKER.md` explains each command, how to look inside the database with `psql`, and the fidelity test.
