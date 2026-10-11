@@ -1,7 +1,8 @@
-# Cookfeed prototype (Homework 1, extended in Homework 3)
+# Cookfeed prototype (Homework 1, extended in Homework 3 and Project Deliverable 2)
 
 **Temporary folder.** This is the HTML/JavaScript prototype from Homework 1, extended with
-event-driven JavaScript in Homework 3. It will be deleted
+event-driven JavaScript in Homework 3, and refined against the project database in Project
+Deliverable 2. It will be deleted
 when the Angular application is built in Assignment 4:
 
 ```
@@ -20,10 +21,10 @@ the viewer hands the browser only the one file it clicked.
 Once extracted, double-click `index.html`, or drag it onto a browser window. Any modern
 browser works.
 
-**Seeing the Homework 1 version?** If you opened the Homework 1 prototype before in the same
+**Seeing an older version?** If you opened an earlier version of the prototype in the same
 browser, it may show you its saved copy of the old pages. Press **Ctrl+Shift+R** (Cmd+Shift+R
-on a Mac) on each page to load the current files. The current product page has a "Cooking
-every night for" box with minus and plus buttons above the shopping list.
+on a Mac) on each page to load the current files. The current home page is **Discover**, with
+plans for sale, trending recipes and creators.
 
 The pages are plain HTML, CSS, and JavaScript, so they run straight from the file system
 with no web server and no internet connection.
@@ -51,51 +52,62 @@ DevTools (F12), then right-click the reload button and choose **Empty cache and 
 
 ## Pages
 
+Every page has the same navigation: Discover, My kitchen, Your orders, Help, the signed-in account,
+and the cart. Product, recipe, creator and review pages are templates: the address names what they show.
+
 | File | Purpose |
 |---|---|
-| `index.html` | Product page - the "Three Weeknights in Japan" meal plan, $12.99 |
-| `reviews.html` | Customer reviews and the feedback form |
-| `creator.html` | Creator storefront for kenji-kitchen |
-| `cart.html` | Cart, totals and a simulated checkout |
-| `kitchen.html` | My kitchen - saved recipes and one shopping list for all of them |
-| `recipe-teriyaki.html` | Recipe: Chicken Teriyaki, the Real Way |
-| `recipe-stirfry.html` | Recipe: 10-Minute Ginger Garlic Stir-Fry |
-| `recipe-onigiri.html` | Recipe: Onigiri Three Ways |
-| `signin.html` | Sign in as one of the seeded accounts, or browse signed out |
+| `index.html` | Discover: the plans and collections for sale, trending recipes, and the creators |
+| `product.html?id=3` | A meal plan or collection: what it includes, its buy button, and one shopping list |
+| `recipe.html?id=5` | A recipe: video steps, scalable ingredients, Save. `&product=3` shows the plan and day |
+| `creator.html?handle=kenji-kitchen` | A creator's storefront: Public recipes and products for sale |
+| `reviews.html?product=3` | A product's reviews and, for buyers, the review form |
+| `cart.html` | The cart and a simulated checkout |
+| `orders.html` | Your orders, newest first, cancelled ones included |
+| `kitchen.html` | My kitchen: saved recipes and one shopping list for all of them |
+| `help.html` | A short FAQ |
+| `signin.html` | Sign in as one of the seeded accounts, browse signed out, or reset the data |
 
 ## Folder layout
 
 ```
 prototype/
-  index.html          product page
-  reviews.html        reviews and feedback page
-  creator.html        creator storefront page
-  cart.html           cart and checkout page
+  index.html          Discover (home page)
+  product.html        product template (meal plans and collections)
+  recipe.html         recipe template
+  creator.html        creator storefront template
+  reviews.html        reviews template
+  cart.html           cart and checkout
+  orders.html         Your orders
   kitchen.html        My kitchen: saved recipes and their shopping list
-  recipe-*.html       the three recipes in the plan
+  help.html           FAQ
   signin.html         sign in as a seeded account
   css/styles.css      one stylesheet for every page
   js/seed-data.js     every seeded table, exported from the database (generated, do not edit)
-  js/data.js          builds each page's data from seed-data.js
-  js/common.js        functions used by more than one page (cart, saves, sign-in, storage, toast)
-  js/product.js       product page behavior
-  js/reviews.js       reviews page behavior
-  js/creator.js       creator page behavior
-  js/cart.js          cart and checkout behavior
-  js/kitchen.js       My kitchen behavior
-  js/recipe.js        all three recipes and the recipe page behavior
-  js/signin.js        sign-in page behavior
+  js/db.js            the seed plus the browser's copy of the tables people change; the stand-in for the API
+  js/rules.js         the marketplace rules of DesignDocument section 3, in one place
+  js/common.js        functions used by more than one page (sign-in, cards, buy area, shopping list, toast)
+  js/discover.js      Discover
+  js/product.js       product page
+  js/recipe.js        recipe page
+  js/creator.js       creator page
+  js/reviews.js       reviews page
+  js/cart.js          cart and checkout
+  js/orders.js        Your orders
+  js/kitchen.js       My kitchen
+  js/signin.js        sign-in page
   images/             illustrations (SVG) in recipes/, creators/ and products/, the paths the seed stores
 ```
 
-The export that writes `js/seed-data.js` lives next to this folder, in `CookFeed_frontend/tools/`.
+The export that writes `js/seed-data.js` lives next to this folder, in `CookFeed_frontend/tools/`, and
+the tests for `db.js` and `rules.js` in `CookFeed_frontend/tests/`.
 
 ## Homework 3 additions
 
 All event handlers are attached with `addEventListener`; there are no inline `onclick` or
 `onload` attributes.
 
-**Product page (`index.html`)**
+**Product page (now `product.html`)**
 - Servings stepper: type a number or use the minus and plus buttons, and the shopping list
   rescales as you go. Numbers outside 1-20 get a message under the box.
 - Recipe card preview: point at a recipe (`mouseenter` / `mouseleave`) to see prep and cook
@@ -104,6 +116,7 @@ All event handlers are attached with `addEventListener`; there are no inline `on
   and printing leaves the ticked lines off the paper.
 - Add to cart and Save are remembered across pages and reloads.
 - "What your $12.99 gets you" spells out what the purchase includes beyond the free recipe text.
+  It is now written from the product's own data.
 
 **Reviews page (`reviews.html`)**
 - The form checks itself as you type: inline messages, a live character counter, and a Post
@@ -115,18 +128,15 @@ All event handlers are attached with `addEventListener`; there are no inline `on
 - Posted reviews survive a reload and can be removed by their author.
 
 **Cart page (`cart.html`)**
-- Minus and plus buttons, or typing a number, change how many copies of a plan are in the
-  cart (1-10). Line prices, totals and the cart chip update as the number changes.
 - Empty cart removes everything after a confirmation.
-- Extra copies are gifts: the cart says so, and the receipt lists one gift code per extra copy.
-- Quantity is a prototype-only feature. The database stores one row per product per cart,
-  because a digital plan is owned once.
+- Homework 3 also had copies and gift codes. Project Deliverable 2 removed them: the database
+  stores one row per product per cart, because a digital plan is owned once.
 
 **My kitchen (`kitchen.html`)**
 - Lists every recipe the shopper saved, newest first, and builds one shopping list from all of
   them with the same function the product page uses. Removing a recipe shrinks the list at once.
 
-**Recipe pages**
+**Recipe page (now `recipe.html`)**
 - The servings pop-up is replaced by the same minus / plus box as the product page.
 
 **Wording for first-time visitors**
@@ -160,6 +170,33 @@ To regenerate `seed-data.js` after changing the seed:
 2. From `CookFeed_frontend/tools`, run `./export-seed-data.sh`. It uses `psql` if installed, otherwise
    the Postgres container from `CookFeed_api/docker-compose.yml`.
 
+## Project Deliverable 2: the whole store, and the rules
+
+The pages are now templates over every product, recipe and creator in the seed, and they show the
+marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever is signed in.
+
+- **Each account starts from the database.** `js/db.js` copies the tables people change (saves,
+  carts, orders, order lines, the order's recipe snapshot, reviews) from the seed into one
+  `localStorage` key, `cookfeed.db`. Signing in as Alex shows his cart, saves, orders and review;
+  what you do is kept per account on top. Reset prototype data, on the sign-in page, puts the seed
+  back, and so does regenerating `seed-data.js`.
+- **The rules are in one file.** `js/rules.js` answers who may shop, buy, open, save and review.
+  Each page asks it and shows or hides its controls from the answer:
+  - creators cannot buy or review their own plans, but buy other creators' like anyone else;
+  - the admin account sees no cart, Save or review controls;
+  - a ProductOnly recipe shows without a link, and stays off the shopping list, until you buy the
+    plan it is in; after that it reads "Yours through" the plan;
+  - only buyers review, once per plan, under their account name;
+  - the cart holds one copy of each plan, and a storefront lists only Public recipes.
+- **Checkout writes what the API will write:** a Paid order, one line per plan with the title, price
+  and seller, and a snapshot of the plan's recipes with their days and slots.
+- **Counts follow the database.** Save counts are counted from the save rows, and a meal plan that
+  repeats a recipe reads "5 recipes, 6 meals", with the repeated recipe bought for twice.
+- **Tests.** `node --test "CookFeed_frontend/tests/*.test.js"` runs the tests for `db.js` and
+  `rules.js` with Node's built-in runner (nothing to install). They load the same scripts the pages
+  load, and one checks the recipe-access rule against `queries.sql` Q14 for every account. CI runs
+  them on every change to `CookFeed_frontend/` (`.github/workflows/prototype-tests.yml`).
+
 ## Planned for the Angular production build
 
 These came out of a first-time-customer review of the prototype. They are deferred to the Angular
@@ -171,7 +208,6 @@ application (Assignment 4), where they can be built against the real API and dat
   by other Cookfeed creators, using the orders and creator profile data.
 - **Creator page header layout.** Keep the avatar and name on one row on laptop-width screens; today
   they wrap onto separate lines.
-- **Order history.** A "Your orders" page linked from the receipt, listing past orders and gift codes.
 - **Send to Instacart and Send to Favor.** Connect the delivery partners that are marked Coming soon.
 - **Custom confirmation pop-ups.** Replace every browser `confirm()` and `alert()` box (removing
   a review, removing from the cart, emptying the cart, placing an order, posting a review) with
@@ -180,15 +216,14 @@ application (Assignment 4), where they can be built against the real API and dat
 ## Notes
 
 - Nothing is sent to a server. The cart, saved recipes, posted reviews and placed orders are
-  kept in the browser's `localStorage`, shaped like the matching database rows. Clearing site
-  data in the browser resets the prototype.
+  kept in the browser's `localStorage`, as rows shaped exactly like the database's. Reset
+  prototype data on the sign-in page, or clearing site data in the browser, starts over.
 - Send to Instacart and Send to Favor are marked Planned. They explain what the handover
   would do; no partner is connected. Print list is real and uses the browser's print
   dialog, with a print stylesheet that strips everything except the list.
 - The video players on the recipe pages are mocks. There is no video file; clicking a
   step moves the progress bar and the clock to show how the steps and the video line up.
 - Checkout does not take payment. Placing an order shows the confirmation a real checkout
-  would produce, with a generated order number.
+  would produce, numbered after the seeded orders (CF-00007 is the first one placed here).
 - The content is the semester project's seed data, exported from the database into
-  `js/seed-data.js`: the meal plan, its three recipes, the ingredient quantities, the creators,
-  the accounts and the reviews.
+  `js/seed-data.js`: every product, recipe, ingredient quantity, creator, account, order and review.
