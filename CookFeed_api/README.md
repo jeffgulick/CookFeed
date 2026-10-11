@@ -2,7 +2,8 @@
 
 The back end of Cookfeed, a short-video recipe marketplace: ASP.NET Core 10 with controllers, EF Core 10
 and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is built this way, is in
-[`docs/DesignDocument.md`](docs/DesignDocument.md).
+[`docs/DesignDocument.md`](docs/DesignDocument.md); where the build stands and what comes next is in
+[`docs/BuildLog.md`](docs/BuildLog.md).
 
 ## Status
 
