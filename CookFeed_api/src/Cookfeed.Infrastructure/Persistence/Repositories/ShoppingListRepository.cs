@@ -18,15 +18,29 @@ public class ShoppingListRepository(CookfeedDbContext db) : IShoppingListReposit
             where mp.UserId == userId && (weekStart == null || mp.WeekStart == weekStart)
             select e;
 
+        // Only recipes the caller may cook from count: published, and either Public or in the snapshot of one of
+        // their Paid orders (queries.sql Q14, DesignDocument.md §3.3). A save or plan entry does not grant access by
+        // itself, so a ProductOnly recipe adds nothing until it is bought, a refund takes it away again, and a draft
+        // never counts.
+        var accessible =
+            from r in db.Recipes
+            where r.IsPublished
+                && (r.Visibility == RecipeVisibility.Public
+                    || db.OrderItemRecipes.Any(oir => oir.RecipeId == r.Id
+                        && oir.OrderItem.Order.UserId == userId
+                        && oir.OrderItem.Order.Status == OrderStatus.Paid))
+            select r;
+
         // Which recipes, at what scale (§7.6). A planned entry scales by its servings override; a recipe planned on
         // two nights is two entries, so it counts twice. A saved recipe counts once at its own size, unless it is
         // planned: then the plan's scale wins.
         var planned =
             from e in entries
-            join r in db.Recipes on e.RecipeId equals r.Id
+            join r in accessible on e.RecipeId equals r.Id
             select new RecipeAtScale { RecipeId = e.RecipeId, Scale = (decimal)(e.ServingsOverride ?? r.Servings) / r.Servings };
         var savedNotPlanned =
             from s in db.SavedRecipes
+            join r in accessible on s.RecipeId equals r.Id
             where s.UserId == userId && !entries.Any(e => e.RecipeId == s.RecipeId)
             select new RecipeAtScale { RecipeId = s.RecipeId, Scale = 1m };
 

@@ -41,6 +41,7 @@ in the [README](../README.md#deliverable-2).
 | Order history tests: 2 service tests, 12 HTTP tests (104 tests in all), incl. the snapshot and order-total checks; SQL verified | `tests/*/Order*`, `docs/Queries.md` §4 |
 | Shopping list: `MyShoppingListController` → `ShoppingListService` → `ShoppingListRepository` (SQL half) + `ShoppingListAggregator` in Domain (C# half) | `src/*/ShoppingList/`, `Persistence/Repositories/`, `Api/Controllers/` |
 | Shopping-list tests: 14 Domain tests for the aggregator, 3 service tests, 9 HTTP tests checked against `queries.sql` Q8 (130 tests in all); SQL verified and rewritten after review | `tests/*/ShoppingList*`, `docs/Queries.md` §3 |
+| Review fixes: the shopping list counts only recipes the caller may open (Q14 rule, also in Q8); strict `X-User-Id` parsing on every route; ASCII-only handles; ProblemDetails for every error; HTTPS redirection outside Development only; ISO-only `weekStart`; tests for the `lines`/`unmerged` split and sort (188 tests in all) | `docs/Queries.md` §3, `DesignDocument.md` §9 |
 | CI: `.github/workflows/api-tests.yml` runs a locked restore, the build and all tests against a `postgres:16.15` service on every PR and push to `main` that touches `CookFeed_api/` | `.github/workflows/` |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
@@ -102,7 +103,8 @@ cart" on a creator's own product, ProductOnly recipes, no shop controls for the 
 | EF Core model | Code-first. Entities and configurations written by hand; migrations generated with `dotnet ef migrations add`; triggers added to the migration by hand | Configurations are the source of truth from now on |
 | Connection | Configured at registration (`AddInfrastructure`, `UseCookfeedDatabase`), not in `OnConfiguring` | Configuration and tests supply the connection string |
 | Enums | Stored as their names in varchar columns | `CookfeedDbContext.ConfigureConventions`, `DesignDocument.md` §5 |
-| Caller identity | `X-User-Id` header until login (Assignment 4). A user's own data is under `/api/me/…`, where the header is required (400 if missing); no route takes a user id. No custom authentication handler: JWT replaces the header then | `DesignDocument.md` §9 |
+| Caller identity | `X-User-Id` header until login (Assignment 4). A user's own data is under `/api/me/…`, where the header is required (400 if missing); no route takes a user id. One strict parser for every route (`Api/Binding/CallerIdModelBinder.cs`): plain digits, 1 or more, otherwise 400. No custom authentication handler: JWT replaces the header then | `DesignDocument.md` §9 |
+| Errors | Every error response is a ProblemDetails body: validation errors, unknown routes (404), and unexpected failures (500, with no exception text) | `Program.cs` |
 | Tests | xUnit v3 on Microsoft.Testing.Platform (run with `dotnet test --solution`); NSubstitute for fakes; integration tests create and drop throwaway databases and roll back their changes | `DesignDocument.md` §1 "Tests" |
 | CI | GitHub Actions on every PR and push to `main` that touches `CookFeed_api/`: locked restore, build (warnings are errors), all tests against a `postgres:16.15` service. A PR is ready to merge only when its "API tests" check is green | `.github/workflows/api-tests.yml`, `DesignDocument.md` §1 "Continuous integration" |
 
@@ -215,7 +217,9 @@ Tick items off here as they merge.
     - *Rules:* saves, meal plans, cart, checkout and reviews require the `HomeCook` role. Every creator
       holds it and the admin does not, so the admin gets **403** on all of them with no special case.
     - *Tests:* each write endpoint, called as the admin, returns 403.
-12. **Database refusals become readable 4xx responses**, built with the first write feature (item 6).
+12. **Database refusals become readable 4xx responses**, built with the first write feature (item 6). The
+    ProblemDetails plumbing is already in place (every error has a ProblemDetails body); what remains is
+    mapping PostgreSQL's refusal codes to 400 or 409.
     A `check_violation` (`ck_…`), unique violation or trigger refusal that gets past a service becomes a
     400 or 409 ProblemDetails naming the rule, never a 500.
     - *Tests:* the trigger refusals that `TriggerTests` already provoke, sent through the API, come back
@@ -239,10 +243,10 @@ them off here as they land. The status codes are proposals, to confirm when each
 | Checkout refuses a self-purchase the same way (the `order_items_refuse_self_purchase` trigger stays as the last line of defence). | §3.1 | Checkout | 400 |
 | A database refusal (`check_violation` with a `ck_…` constraint name, or a unique violation) that slips past a service becomes a 4xx with a readable message, never a 500. | §5 | First write feature (saves or cart) | 400 / 409 |
 | The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront ✅ (`StorefrontEndpointTests`) | — |
-| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14. | §3.3 | Recipe detail | 404 (do not reveal it exists) |
+| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail | 404 (do not reveal it exists) |
 | Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
 | Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |
-| Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Recipe detail, My kitchen / purchases | — |
+| Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Storefront ✅ (owned = a Paid order item), shopping list ✅, recipe detail, My kitchen / purchases | — |
 | A review requires a `Paid` order item for that product by the same user; one review per user per product. | §3.5 | Reviews | 403 / 409 |
 
 ## Open items

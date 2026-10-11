@@ -11,6 +11,8 @@
 --   Q8      the preferred shopping unit now decides the direction of the density conversion, and an
 --           ingredient that cannot be expressed in its preferred unit falls back to the base unit of
 --           its category instead of being dropped. The output matches the API's "unmerged" policy.
+--           It also counts only the recipes the user may open (the Q14 rule), so a saved or planned
+--           ProductOnly recipe or draft adds no ingredients until the user owns it.
 --   Q11     entitlements read order_item_recipes (the bundle as bought), not the live product_recipes.
 --   Q14-Q17 new: recipe access, bundle drift, save_count consistency, and the rules the database refuses.
 
@@ -77,7 +79,8 @@ WHERE u.email = 'alex@example.com' AND mp.week_start = DATE '2026-09-21'
 ORDER BY e.planned_date, CASE e.slot WHEN 'Breakfast' THEN 1 WHEN 'Lunch' THEN 2 WHEN 'Dinner' THEN 3 ELSE 4 END;
 
 -- Q8. SHOPPING LIST: every ingredient across a user's planned + saved recipes, aggregated into one line per ingredient.
---     Step A: which recipes and at what scale (planned entries scaled by servings_override; saved-but-not-planned at 1x).
+--     Step A: which recipes and at what scale (planned entries scaled by servings_override; saved-but-not-planned at 1x),
+--             counting only recipes the user may open (Q14): a saved ProductOnly recipe adds nothing until bought.
 --     Step B: normalise each quantity to its unit category's base (ml / g / count). When the ingredient has a known
 --             density, convert *toward the preferred shopping unit's category*: flour prefers grams, so "2 cups flour"
 --             becomes grams; milk prefers millilitres, so "200 g milk" would become millilitres and "1.5 cups milk"
@@ -87,18 +90,34 @@ ORDER BY e.planned_date, CASE e.slot WHEN 'Breakfast' THEN 1 WHEN 'Lunch' THEN 2
 --             differs from it (count vs. mass with no density), present in the category's base unit. An ingredient
 --             with two irreconcilable categories therefore gets two lines, which is the same "unmerged" policy the
 --             application's ShoppingListAggregator applies (DesignDocument.md §7.5).
-WITH planned AS (
+WITH accessible AS (
+    -- The recipes this user may cook from, by Q14's rule: published, and Public or in the snapshot of one of their
+    -- Paid orders. Saving or planning a recipe does not grant access, and a refunded purchase grants nothing.
+    SELECT r.id, r.servings
+    FROM recipes r
+    CROSS JOIN users u
+    WHERE u.email = 'alex@example.com'
+      AND r.is_published
+      AND (r.visibility = 'Public'
+           OR EXISTS (SELECT 1
+                      FROM orders o
+                      JOIN order_items oi ON oi.order_id = o.id
+                      JOIN order_item_recipes oir ON oir.order_item_id = oi.id
+                      WHERE o.user_id = u.id AND o.status = 'Paid' AND oir.recipe_id = r.id))
+),
+planned AS (
     SELECT e.recipe_id, COALESCE(e.servings_override, r.servings)::numeric / r.servings AS scale
     FROM meal_plan_entries e
     JOIN meal_plans mp ON e.meal_plan_id = mp.id
     JOIN users u ON mp.user_id = u.id
-    JOIN recipes r ON e.recipe_id = r.id
+    JOIN accessible r ON e.recipe_id = r.id
     WHERE u.email = 'alex@example.com'
 ),
 saved_not_planned AS (
     SELECT s.recipe_id, 1::numeric AS scale
     FROM saved_recipes s
     JOIN users u ON s.user_id = u.id
+    JOIN accessible a ON a.id = s.recipe_id
     WHERE u.email = 'alex@example.com'
       AND NOT EXISTS (SELECT 1 FROM planned p WHERE p.recipe_id = s.recipe_id)
 ),

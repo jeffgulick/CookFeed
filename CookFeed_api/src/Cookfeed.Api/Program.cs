@@ -10,8 +10,16 @@ var connectionString = builder.Configuration.GetConnectionString("Cookfeed")
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddControllers();
+// Every error is a ProblemDetails body (application/problem+json): validation errors already are, and with this
+// so are unknown routes and unexpected failures, which otherwise come back as an empty body.
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+// An unexpected exception becomes a 500 ProblemDetails without its message or stack trace; an empty error response
+// (a 404 for an unknown route, say) gets a ProblemDetails body.
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
@@ -21,7 +29,13 @@ if (app.Environment.IsDevelopment())
     await scope.ServiceProvider.GetRequiredService<DbSeeder>().SeedAsync();
 }
 
-app.UseHttpsRedirection();
+// Redirect to HTTPS, and tell browsers to stay on it, outside Development only. Locally the API serves plain
+// HTTP, and a redirect there would break the Angular dev server's cross-origin requests.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
 app.UseAuthorization();
 app.MapControllers();
 

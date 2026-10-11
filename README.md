@@ -8,7 +8,7 @@ their week, and turn everything they saved and planned into a single shopping li
 
 | Folder | What it is |
 |---|---|
-| [`CookFeed_api/`](CookFeed_api/README.md) | The back end: ASP.NET Core 10, EF Core 10 and PostgreSQL 16, laid out as Clean Architecture, with 130 tests run by GitHub Actions on every pull request. [Deliverable 2 is mapped item by item here](CookFeed_api/README.md#deliverable-2). |
+| [`CookFeed_api/`](CookFeed_api/README.md) | The back end: ASP.NET Core 10, EF Core 10 and PostgreSQL 16, laid out as Clean Architecture, with its tests run by GitHub Actions on every pull request that touches it. [Deliverable 2 is mapped item by item here](CookFeed_api/README.md#deliverable-2). |
 | [`CookFeed_frontend/prototype/`](CookFeed_frontend/prototype/README.md) | The HTML/JavaScript prototype from Homeworks 1 and 3. The Angular app replaces it in Assignment 4, built against the API. |
 
 Start with the [design document](CookFeed_api/docs/DesignDocument.md), the

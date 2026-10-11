@@ -31,7 +31,7 @@ The four endpoints:
 **How it is checked.** Each endpoint is tested over HTTP against what the reference queries in
 `queries.sql` return on the same seeded database (Q1, Q2, Q3, Q5, Q8, Q9). For example, the shopping list
 must equal Q8 line for line: 41 lines, with "2 cups flour" and "500 g flour" merged into flour 1,032.91 g.
-GitHub Actions runs the build and all 130 tests on every pull request.
+GitHub Actions runs the build and all the tests on every pull request that touches the API.
 
 **What reviewing the generated SQL changed** (each is written up in `docs/Queries.md`):
 - **Storefront: split query.** In one statement, the recipe list and the product list multiplied each
@@ -52,12 +52,12 @@ GitHub Actions runs the build and all 130 tests on every pull request.
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Tests | 130, all passing: Domain 14, Application 16, Integration 100 (45 for the database, 55 for the API over HTTP) |
+| Tests | 188, all passing: Domain 14, Application 20, Integration 154 (45 for the database, 109 for the API over HTTP) |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 24 tests; SQL verified in `docs/Queries.md` §2 |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
 | Shopping list, `GET /api/me/shopping-list` | Done: 26 tests, incl. 14 Domain tests for `ShoppingListAggregator`; SQL verified in `docs/Queries.md` §3 |
-| Continuous integration | Done: GitHub Actions runs the build and all 130 tests on every pull request (`.github/workflows/api-tests.yml`) |
+| Continuous integration | Done: GitHub Actions runs the build and all the tests on every pull request that touches the API (`.github/workflows/api-tests.yml`) |
 
 ## Layout
 

@@ -20,8 +20,8 @@ Cookfeed is a short-video recipe marketplace: home cooks discover recipes throug
 | 6. Seed data in C# | Done | `src/Cookfeed.Infrastructure/Persistence/Seed/DbSeeder.cs` and `SeedData.cs` (mirror `docs/sql/seed.sql`) |
 | 7. Core queries in LINQ, generated SQL reviewed, indexes justified | Done | `src/Cookfeed.Infrastructure/Persistence/Repositories/*Repository.cs`; the logged SQL, query plans and index reasoning for each in `docs/Queries.md` |
 | 8. ASP.NET Core API | Done for the four core queries | `src/Cookfeed.Api/Controllers/*Controller.cs` over the services in `src/Cookfeed.Application/` |
-| 9. xUnit test suite | Done: 130 tests, passing | `tests/Cookfeed.Domain.Tests` (14), `tests/Cookfeed.Application.Tests` (16), `tests/Cookfeed.IntegrationTests` (100: the database, and the API over HTTP) |
-| 10. Continuous integration | Done | `.github/workflows/api-tests.yml`: every pull request runs the build and all 130 tests on GitHub Actions |
+| 9. xUnit test suite | Done: 188 tests, passing | `tests/Cookfeed.Domain.Tests` (14), `tests/Cookfeed.Application.Tests` (20), `tests/Cookfeed.IntegrationTests` (154: 45 for the database, 109 for the API over HTTP) |
+| 10. Continuous integration | Done | `.github/workflows/api-tests.yml`: every pull request that touches the API runs the build and all the tests on GitHub Actions |
 
 Everything in this table is in the repository and runs today:
 
@@ -51,19 +51,19 @@ Everything in this table is in the repository and runs today:
 
 A request runs controller → service → repository → EF Core. Controllers only translate HTTP: bind the request, call one service method, return the result. Services hold the business rules (§3) and the use-case logic. Repositories are the only classes that touch `CookfeedDbContext`. There is one per area rather than a generic `Repository<T>`, because the `DbContext` already provides generic add, find and save. Built: `RecipeRepository`, `CreatorRepository`, `OrderRepository` and `ShoppingListRepository`; areas such as the cart and reviews get theirs with the write features. Read methods project straight into `Contracts` DTOs, so the SQL in `docs/Queries.md` is what runs; write methods work with entities and save with a single `SaveChanges`, which EF Core wraps in one transaction (§6 relies on that for checkout).
 
-**Tests.** All three test projects use xUnit, and each layer is tested at the level where its mistakes would show. 130 tests, all passing:
+**Tests.** All three test projects use xUnit, and each layer is tested at the level where its mistakes would show. 188 tests, all passing:
 
 | Project | What it proves | How |
 |---|---|---|
 | `Cookfeed.Domain.Tests` (14) | `ShoppingListAggregator` applies the §7 policy: the flour example totals 1,032.91 g, milk converts toward millilitres, an ingredient without a density stays as two unmerged lines, count never merges with mass, the base-unit fallbacks, rounding and sorting | xUnit only; no database, no mocks |
-| `Cookfeed.Application.Tests` (16) | The services' own rules: the feed's one-extra-row paging, the storefront's lower-cased handle lookup, the caller passed through for order history and the shopping list, and the aggregator's output reaching the response. The §3 write rules (no self-purchase in the cart, a review needs a `Paid` order, `ProductOnly` access, the checkout snapshot) get their tests here with those features | xUnit with NSubstitute fakes of the repository interfaces, so each rule is tested without a database |
-| `Cookfeed.IntegrationTests` (100) | **The database:** the EF Core migration creates exactly the schema in `schema.sql` (tables, columns, indexes, check constraints, keys, triggers); `seed.sql` loads unchanged and Q1–Q16 return the same rows as on the `schema.sql` database; the four triggers and the delete rules refuse what §3 and §5 say they refuse; Q16 stays empty after save, unsave and account deletion; `DbSeeder` produces exactly the rows and id sequences of `seed.sql`. **The API over HTTP:** each endpoint returns what the reference queries return on the same database (Q1, Q2, Q3, Q5, Q8, Q9); ProductOnly recipes and drafts never reach the feed or storefront; the order-history snapshot survives a product rename; `orders.total_cents` equals the sum of its lines; bad input is a 400 | xUnit against real PostgreSQL; each run creates throwaway databases and drops them afterwards. HTTP tests start the API in memory with `WebApplicationFactory<Program>` |
+| `Cookfeed.Application.Tests` (20) | The services' own rules: the feed's one-extra-row paging, the storefront's handle rule (ASCII letters, digits and hyphens, then lower-cased), the caller passed through for order history and the shopping list, and the aggregator's output reaching the response. The §3 write rules (no self-purchase in the cart, a review needs a `Paid` order, `ProductOnly` access, the checkout snapshot) get their tests here with those features | xUnit with NSubstitute fakes of the repository interfaces, so each rule is tested without a database |
+| `Cookfeed.IntegrationTests` (154) | **The database:** the EF Core migration creates exactly the schema in `schema.sql` (tables, columns, indexes, check constraints, keys, triggers); `seed.sql` loads unchanged and Q1–Q16 return the same rows as on the `schema.sql` database; the four triggers and the delete rules refuse what §3 and §5 say they refuse; Q16 stays empty after save, unsave and account deletion; `DbSeeder` produces exactly the rows and id sequences of `seed.sql`. **The API over HTTP:** each endpoint returns what the reference queries return on the same database (Q1, Q2, Q3, Q5, Q8, Q9); ProductOnly recipes and drafts never reach the feed or storefront; the order-history snapshot survives a product rename; `orders.total_cents` equals the sum of its lines; the shopping list counts a ProductOnly recipe only once it is bought and never a draft; the `X-User-Id` header is parsed the same strict way on every route; bad input is a 400 and every error is a ProblemDetails body | xUnit against real PostgreSQL; each run creates throwaway databases and drops them afterwards. HTTP tests start the API in memory with `WebApplicationFactory<Program>` |
 
 **Continuous integration.** `.github/workflows/api-tests.yml` runs on every pull request, and every push to `main`, that touches `CookFeed_api/`. Each run gets a fresh GitHub-hosted Ubuntu 24.04 machine and a `postgres:16.15` service container, the same version as `docker-compose.yml`, and takes about a minute. It has three steps:
 
 1. Restore with `--locked-mode`, so a stale `packages.lock.json` fails the run.
 2. Build, with warnings as errors.
-3. Run all 130 tests.
+3. Run all the tests.
 
 The result shows as a check on the pull request, so a change that breaks a query, a rule or the schema is red before it reaches `main`.
 
@@ -391,7 +391,7 @@ The "which recipes is this line from" labels are deferred. They need a second, f
 
 ### 7.6 Scaling
 
-A meal plan entry can override servings: Alex plans a 2-serving teriyaki for 4 people. The recipe set query computes `scale = servings_override / recipe.servings` per entry and multiplies every ingredient quantity by it in the same `SUM`. Saved-but-not-planned recipes scale at 1. A recipe that is both saved and planned counts once, at the planned scale (`NOT EXISTS` against the planned set). A recipe planned on two different nights counts twice — you are cooking it twice. These rules are each covered by a test.
+A meal plan entry can override servings: Alex plans a 2-serving teriyaki for 4 people. The recipe set query computes `scale = servings_override / recipe.servings` per entry and multiplies every ingredient quantity by it in the same `SUM`. Saved-but-not-planned recipes scale at 1. A recipe that is both saved and planned counts once, at the planned scale (`NOT EXISTS` against the planned set). A recipe planned on two different nights counts twice — you are cooking it twice. Only recipes the user may open count at all: published, and Public or in one of their Paid purchases (§3.3, the Q14 rule), so a ProductOnly recipe saved before buying, a refunded purchase, or a draft adds no ingredients. These rules are each covered by a test.
 
 ---
 
@@ -413,8 +413,9 @@ No index was added speculatively. Each one corresponds to a `WHERE`, `JOIN`, or 
 ## 9. Deliberately out of scope for this assignment
 
 - **Authentication.** `password_hash` is stored (never plaintext), but login, JWTs, and authorization arrive with the Angular work in Assignment 4. Until then the API takes the caller from an `X-User-Id` header, and the role checks in §3.1 will be applied against that identity until real authentication replaces it. Two conventions are fixed now so that login changes nothing else:
-  - **A user's own data lives under `/api/me/…`** (`/api/me/orders`, and next `/api/me/shopping-list`). No route takes a user id, so no request can name another user's data, whatever the caller sends. On these routes the header is required: missing, non-numeric or below 1 is a 400. An id that names no user simply has no data, so it gets an empty result and learns nothing.
+  - **A user's own data lives under `/api/me/…`** (`/api/me/orders`, `/api/me/shopping-list`). No route takes a user id, so no request can name another user's data, whatever the caller sends. On these routes the header is required. An id that names no user simply has no data, so it gets an empty result and learns nothing.
   - **On public routes** (the feed, storefronts) the header is optional and only marks the caller's own state (`savedByViewer`, `ownedByViewer`, `viewerIsCreator`).
+  - **One parser for every route** (`CallerIdModelBinder`): the value must be a whole number of 1 or more in plain digits. `0`, a negative number, hex (`0x1`), a leading `+`, or an empty or repeated header is a 400 on public routes too, rather than being read as "anonymous" or as another user.
 
   When login arrives, ASP.NET Core's JWT authentication sets the caller from the token's user-id claim, the controllers read it from there instead of the header, and the routes, services, repositories and queries stay as they are. Building a custom header-authentication handler now was considered and rejected: it would be deleted then.
 - **Payments.** Checkout creates a `Paid` order with a simulated `payment_reference`. A Stripe-style provider would move the order through `Pending → Paid` and populate the reference.

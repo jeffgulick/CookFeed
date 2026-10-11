@@ -1,8 +1,7 @@
-using System.ComponentModel.DataAnnotations;
+using Cookfeed.Api.Binding;
 using Cookfeed.Application.Orders;
 using Cookfeed.Contracts.Orders;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Cookfeed.Api.Controllers;
 
@@ -11,11 +10,11 @@ namespace Cookfeed.Api.Controllers;
 [Route("api/me/orders")]
 public class MyOrdersController(OrderHistoryService orders) : ControllerBase
 {
-    // Until login exists (Assignment 4), the caller is the X-User-Id header. [BindRequired] makes it mandatory:
-    // missing, non-numeric or below 1 is a 400 from [ApiController] before any query runs.
+    // Until login exists (Assignment 4), the caller is the X-User-Id header, required here (an int, not int?):
+    // missing or not a plain number of 1 or more is a 400 from [ApiController] before any query runs.
     [HttpGet]
     public Task<IReadOnlyList<OrderDto>> Get(
-        [FromHeader(Name = "X-User-Id"), BindRequired, Range(1, int.MaxValue)] int callerId,
+        [FromCallerHeader] int callerId,
         CancellationToken cancellationToken) =>
         orders.GetOrderHistoryAsync(callerId, cancellationToken);
 }

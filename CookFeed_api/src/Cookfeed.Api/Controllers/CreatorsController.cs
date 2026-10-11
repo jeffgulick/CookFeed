@@ -1,3 +1,4 @@
+using Cookfeed.Api.Binding;
 using Cookfeed.Application.Storefront;
 using Cookfeed.Contracts.Storefront;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,7 @@ public class CreatorsController(StorefrontService storefronts) : ControllerBase
     [HttpGet("{handle}")]
     public async Task<ActionResult<StorefrontDto>> Get(
         string handle,
-        [FromHeader(Name = "X-User-Id")] int? viewerId = null,
+        [FromCallerHeader] int? viewerId = null,
         CancellationToken cancellationToken = default) =>
         await storefronts.GetStorefrontAsync(handle, viewerId, cancellationToken) is { } storefront
             ? storefront

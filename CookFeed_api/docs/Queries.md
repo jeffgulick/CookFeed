@@ -399,8 +399,11 @@ though: a save costs more than one small insert, and that is the price of readin
 
 **Endpoint:** `GET /api/me/shopping-list?weekStart=2026-09-21`
 - The required `X-User-Id` header is the caller, as on `/api/me/orders`.
-- `weekStart` is optional: without it every plan counts, which is what `queries.sql` Q8 computes.
-- Saved recipes always count.
+- `weekStart` is optional and must be an ISO date (`yyyy-MM-dd`; anything else is a 400). Without it every plan
+  counts, which is what `queries.sql` Q8 computes; a date that starts none of the caller's plans leaves only
+  the saved recipes.
+- Saved recipes always count, but only recipes the caller may open: published, and Public or in one of their
+  Paid purchases (the Q14 rule; see "Reviewed" point 7 below).
 
 **Code:** `MyShoppingListController` → `ShoppingListService` → `ShoppingListRepository.GetIngredientTotalsAsync`
 (the SQL half), then `ShoppingListAggregator.Aggregate` in `Cookfeed.Domain` (the C# half). The split is
@@ -418,12 +421,22 @@ var entries =
     where mp.UserId == userId && (weekStart == null || mp.WeekStart == weekStart)
     select e;
 
+var accessible =                               // the recipes the caller may open (Q14)
+    from r in db.Recipes
+    where r.IsPublished
+        && (r.Visibility == RecipeVisibility.Public
+            || db.OrderItemRecipes.Any(oir => oir.RecipeId == r.Id
+                && oir.OrderItem.Order.UserId == userId
+                && oir.OrderItem.Order.Status == OrderStatus.Paid))
+    select r;
+
 var planned =                                  // scaled by the servings override; two nights = two rows
     from e in entries
-    join r in db.Recipes on e.RecipeId equals r.Id
+    join r in accessible on e.RecipeId equals r.Id
     select new RecipeAtScale { RecipeId = e.RecipeId, Scale = (decimal)(e.ServingsOverride ?? r.Servings) / r.Servings };
 var savedNotPlanned =                          // saved and also planned -> counts once, at the planned scale
     from s in db.SavedRecipes
+    join r in accessible on s.RecipeId equals r.Id
     where s.UserId == userId && !entries.Any(e => e.RecipeId == s.RecipeId)
     select new RecipeAtScale { RecipeId = s.RecipeId, Scale = 1m };
 
@@ -443,27 +456,46 @@ select new IngredientTotal(..., g.Sum(x => Math.Round(x.Quantity * x.Scale * x.T
 **Generated SQL, as logged** (`weekStart=2026-09-21`):
 
 ```sql
-SELECT i.id, i.name, i.category, i.density_g_per_ml, u1.category, u1.to_base_factor, u1.abbreviation, u0.category, COALESCE(sum(round(r0.quantity * u."Scale" * u0.to_base_factor, 6)), 0.0)
+SELECT i.id, i.name, i.category, i.density_g_per_ml, u1.category, u1.to_base_factor, u1.abbreviation, u0.category, COALESCE(sum(round(r3.quantity * u."Scale" * u0.to_base_factor, 6)), 0.0)
 FROM (
-    SELECT m.recipe_id AS "RecipeId", COALESCE(m.servings_override, r.servings)::numeric / r.servings::numeric AS "Scale"
+    SELECT m.recipe_id AS "RecipeId", COALESCE(m.servings_override, r0.servings)::numeric / r0.servings::numeric AS "Scale"
     FROM meal_plan_entries AS m
     INNER JOIN meal_plans AS m0 ON m.meal_plan_id = m0.id
-    INNER JOIN recipes AS r ON m.recipe_id = r.id
+    INNER JOIN (
+        SELECT r.id, r.servings
+        FROM recipes AS r
+        WHERE r.is_published AND (r.visibility = 'Public' OR EXISTS (
+            SELECT 1
+            FROM order_item_recipes AS o
+            INNER JOIN order_items AS o0 ON o.order_item_id = o0.id
+            INNER JOIN orders AS o1 ON o0.order_id = o1.id
+            WHERE o.recipe_id = r.id AND o1.user_id = @userId AND o1.status = 'Paid'))
+    ) AS r0 ON m.recipe_id = r0.id
     WHERE m0.user_id = @userId AND m0.week_start = @weekStart
     UNION ALL
     SELECT s.recipe_id AS "RecipeId", 1.0 AS "Scale"
     FROM saved_recipes AS s
+    INNER JOIN (
+        SELECT r1.id
+        FROM recipes AS r1
+        WHERE r1.is_published AND (r1.visibility = 'Public' OR EXISTS (
+            SELECT 1
+            FROM order_item_recipes AS o2
+            INNER JOIN order_items AS o3 ON o2.order_item_id = o3.id
+            INNER JOIN orders AS o4 ON o3.order_id = o4.id
+            WHERE o2.recipe_id = r1.id AND o4.user_id = @userId AND o4.status = 'Paid'))
+    ) AS r2 ON s.recipe_id = r2.id
     WHERE s.user_id = @userId AND NOT EXISTS (
         SELECT 1
         FROM meal_plan_entries AS m1
         INNER JOIN meal_plans AS m2 ON m1.meal_plan_id = m2.id
         WHERE m2.user_id = @userId AND m2.week_start = @weekStart AND m1.recipe_id = s.recipe_id)
 ) AS u
-INNER JOIN recipe_ingredients AS r0 ON u."RecipeId" = r0.recipe_id
-INNER JOIN units AS u0 ON r0.unit_id = u0.id
-INNER JOIN ingredients AS i ON r0.ingredient_id = i.id
+INNER JOIN recipe_ingredients AS r3 ON u."RecipeId" = r3.recipe_id
+INNER JOIN units AS u0 ON r3.unit_id = u0.id
+INNER JOIN ingredients AS i ON r3.ingredient_id = i.id
 LEFT JOIN units AS u1 ON i.preferred_shopping_unit_id = u1.id
-WHERE NOT (r0.is_optional)
+WHERE NOT (r3.is_optional)
 GROUP BY i.id, i.name, i.category, i.density_g_per_ml, u1.category, u1.to_base_factor, u1.abbreviation, u0.category
 ```
 
@@ -498,6 +530,16 @@ With no `weekStart`, EF Core compiles the same statement without either `week_st
    aggregator gets everything it needs on each total.
 6. **Not built: the "from which recipes" labels per line.** The design mentioned a second, flat query for
    them. The deliverable does not need it, and it can be added later without changing this statement.
+7. **Only recipes the caller may open count** (added after a later review). The first version summed every
+   saved and planned recipe. A save or plan entry is not access, though: a ProductOnly recipe saved before
+   buying, a purchase later refunded, or a recipe the creator unpublished would all have leaked their
+   ingredients onto the list. Each recipe source is now joined to `accessible`, which is Q14's rule:
+   published, and Public or in the snapshot of one of the caller's Paid orders (DesignDocument.md §3.3).
+   Q8 applies the same rule, so the two still agree line for line. Alex's list is unchanged, because every
+   recipe he saved or planned is Public.
+   - **Plan:** each source recipe is checked through `pk_recipes`, and a Public recipe passes on the spot.
+     The ownership check is a hashed subplan, computed once per query, through `ix_orders_user_id_placed_at`
+     → `ix_order_items_order_id_product_id` → the `order_item_recipes` unique index.
 
 **Plan** (`EXPLAIN ANALYZE`, `enable_seqscan = off`, Alex's week):
 
@@ -549,7 +591,12 @@ and merge joins turned off, which is the shape it picks once `recipe_ingredients
   - A recipe planned on two nights counts twice, checked against Q8 on a database with a second taco
     night.
   - The admin, who saves and plans nothing, gets an empty list.
-  - A missing caller or a malformed `weekStart` is a 400.
+  - Sam saves ProductOnly Onigiri: nothing changes. After a refunded purchase: still nothing. After a paid
+    one, its ingredients appear. At each step the list equals Q8 run for Sam.
+  - A saved draft (given an ingredient for the test) never changes the list.
+  - With an egg line in grams added to carbonara, both egg lines, and only those, are in `unmerged`, and
+    both lists are sorted by aisle, then ingredient.
+  - A missing caller, or a `weekStart` that is not an ISO date (`next-week`, `09/21/2026`, `2026-9-21`), is a 400.
 
 ---
 
