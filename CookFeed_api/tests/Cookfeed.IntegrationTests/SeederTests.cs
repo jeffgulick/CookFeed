@@ -6,13 +6,18 @@ namespace Cookfeed.IntegrationTests;
 /// <c>DbSeeder</c> is the C# version of <c>docs/sql/seed.sql</c> (DesignDocument.md §1). These tests hold
 /// it to that: a database seeded by <c>DbSeeder</c> must contain exactly what one seeded by <c>seed.sql</c>
 /// contains, row for row and id for id, and running it again must change nothing.
+/// <para>
+/// The comparison is with the schema.sql + seed.sql database, which no test writes to. The EF Core + seed.sql
+/// database would not do: other tests insert into it inside transactions they roll back, and PostgreSQL never
+/// rolls back an id sequence, so its sequences end up wherever those tests left them.
+/// </para>
 /// </summary>
 public class SeederTests(DatabaseFixture databases)
 {
     [Fact]
     public async Task Seeder_inserts_exactly_the_rows_seed_sql_inserts()
     {
-        var fromScript = await TableData.RowsAsync(await databases.EfWithSeedScriptAsync());
+        var fromScript = await TableData.RowsAsync(await databases.ReferenceWithSeedScriptAsync());
         var fromSeeder = await TableData.RowsAsync(await databases.EfWithDbSeederAsync());
 
         AssertSame.Lines(fromScript, fromSeeder, "Seeded rows", expectedSource: "seed.sql database", actualSource: "DbSeeder database");
@@ -21,7 +26,7 @@ public class SeederTests(DatabaseFixture databases)
     [Fact]
     public async Task Seeder_leaves_every_id_sequence_where_seed_sql_does()
     {
-        var fromScript = await TableData.SequencesAsync(await databases.EfWithSeedScriptAsync());
+        var fromScript = await TableData.SequencesAsync(await databases.ReferenceWithSeedScriptAsync());
         var fromSeeder = await TableData.SequencesAsync(await databases.EfWithDbSeederAsync());
 
         AssertSame.Lines(fromScript, fromSeeder, "Id sequences", expectedSource: "seed.sql database", actualSource: "DbSeeder database");

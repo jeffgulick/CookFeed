@@ -16,17 +16,17 @@ Cookfeed is a short-video recipe marketplace: home cooks discover recipes throug
 | 2. Seed data | Done | `docs/sql/seed.sql` |
 | 3. Core queries, with the indexes that serve them | Done in SQL | `docs/sql/queries.sql`, `docs/Queries.md` |
 | 4. Design document | Done | this file |
-| 5. Schema as EF Core entities and migration | Planned | `src/Cookfeed.Domain/Entities/*.cs`, `src/Cookfeed.Infrastructure/Persistence/CookfeedDbContext.cs`, `Persistence/Configurations/*.cs`, `Persistence/Migrations/` |
-| 6. Seed data in C# | Planned | `src/Cookfeed.Infrastructure/Persistence/Seed/DbSeeder.cs` (mirrors `docs/sql/seed.sql`) |
+| 5. Schema as EF Core entities and migration | Done | `src/Cookfeed.Domain/Entities/*.cs`, `src/Cookfeed.Infrastructure/Persistence/CookfeedDbContext.cs`, `Persistence/Configurations/*.cs`, `Persistence/Migrations/` |
+| 6. Seed data in C# | Done | `src/Cookfeed.Infrastructure/Persistence/Seed/DbSeeder.cs` and `SeedData.cs` (mirror `docs/sql/seed.sql`) |
 | 7. Core queries in LINQ, generated SQL reviewed | Planned | `src/Cookfeed.Infrastructure/Persistence/Repositories/*Repository.cs`, `docs/Queries.md` |
 | 8. ASP.NET Core API | Planned | `src/Cookfeed.Api/Controllers/*Controller.cs` over services in `src/Cookfeed.Application/Services` |
-| 9. xUnit test suite | Planned | `tests/Cookfeed.Domain.Tests`, `tests/Cookfeed.Application.Tests`, `tests/Cookfeed.IntegrationTests` |
+| 9. xUnit test suite | Database tests done; the rest planned | `tests/Cookfeed.IntegrationTests` (45 tests, passing), `tests/Cookfeed.Domain.Tests`, `tests/Cookfeed.Application.Tests` |
 
-Rows 1–4 are in this repository and run today: `schema.sql`, `seed.sql` and `queries.sql` load and execute against PostgreSQL 16 (see `DOCKER.md`). Rows 5–9 are the planned API and its tests; every `src/` and `tests/` path in this document names a file that does not exist yet, and every statement about what "the API" or "the tests" do describes how they will be built.
+Rows 1–6 are in this repository and run today. The EF Core migration builds the same database as `schema.sql`, `DbSeeder` loads the same rows as `seed.sql`, and the integration tests prove both on every run (see "Tests" below and `DOCKER.md`). Rows 7–8 and the domain and service tests in row 9 are planned: the repositories, services, controllers, DTOs and `ShoppingListAggregator` named in this document do not exist yet, and statements about what "the API" does describe how it will be built. The API is built one feature at a time, test-first.
 
 **Stack:** ASP.NET Core 10 Web API with controllers, EF Core 10, Npgsql, PostgreSQL 16, laid out as Clean Architecture. Table and column names use `snake_case` via the `EFCore.NamingConventions` package so the SQL reads naturally in `psql`. Angular (Assignment 4) will consume the API.
 
-**Planned API architecture.** Five projects; each references only the ones listed before it, so the business rules at the centre never depend on EF Core or ASP.NET:
+**API architecture.** Five projects, all created; each references only the ones listed before it, so the business rules at the centre never depend on EF Core or ASP.NET:
 
 | Project | Holds | References |
 |---|---|---|
@@ -38,13 +38,13 @@ Rows 1–4 are in this repository and run today: `schema.sql`, `seed.sql` and `q
 
 A request runs controller → service → repository → EF Core. Controllers only translate HTTP: bind the request, call one service method, return the result. Services hold the business rules (§3) and the use-case logic. Repositories are the only classes that touch `CookfeedDbContext`; there is one per area (recipes, creators, products, cart, orders, reviews, saves and meal plans) rather than a generic `Repository<T>`, because the `DbContext` already provides generic add, find and save. Read methods project straight into `Contracts` DTOs, so the SQL in `docs/Queries.md` is what runs; write methods work with entities and save with a single `SaveChanges`, which EF Core wraps in one transaction (§6 relies on that for checkout).
 
-**Planned tests.** All three test projects use xUnit, and each layer is tested at the level where its mistakes would show:
+**Tests.** All three test projects use xUnit, and each layer is tested at the level where its mistakes would show. The integration tests for the database exist and pass; the rest arrive with the features they test:
 
 | Project | What it proves | How |
 |---|---|---|
 | `Cookfeed.Domain.Tests` | The pure logic is right: the flour example totals ~1,033 g (±0.5 g), milk stays in millilitres, an ingredient without a density stays as two unmerged lines, scaling and the saved-versus-planned rules of §7.6 hold | xUnit only; no database, no mocks |
 | `Cookfeed.Application.Tests` | The services enforce the business rules of §3: a creator cannot add their own product to the cart, a review needs a `Paid` order for the product, a `ProductOnly` recipe opens only for a buyer whose snapshot holds it, checkout copies every `product_recipes` row into the snapshot and totals the lines | xUnit with NSubstitute fakes of the repository interfaces, so each rule is tested without a database |
-| `Cookfeed.IntegrationTests` | The whole stack works against real PostgreSQL: routes and status codes, the `HomeCook` authorization, the EF Core mappings and migration, the four triggers (including the database refusing what a service would have refused), Q16 after save, unsave and delete, and `orders.total_cents` equal to the sum of its lines | xUnit with `WebApplicationFactory<Program>` against the `cookfeed_test` database in Docker (`DOCKER.md`); each run migrates and seeds it from `DbSeeder` |
+| `Cookfeed.IntegrationTests` | **Built:** the EF Core migration creates exactly the schema in `schema.sql` (tables, columns, indexes, check constraints, keys, triggers); `seed.sql` loads unchanged and Q1–Q16 return the same rows as on the `schema.sql` database; the four triggers and the delete rules refuse what §3 and §5 say they refuse; Q16 stays empty after save, unsave and account deletion; `DbSeeder` produces exactly the rows and id sequences of `seed.sql`. **Planned:** routes and status codes, the `HomeCook` authorization, and `orders.total_cents` equal to the sum of its lines | xUnit against PostgreSQL in Docker (`DOCKER.md`); each run creates throwaway databases and drops them afterwards. HTTP tests will add `WebApplicationFactory<Program>` |
 
 The repositories are what make the middle project possible: because services depend only on repository interfaces, every business rule can be tested in milliseconds, and the slower integration tests are kept for what only a real database can prove.
 
@@ -168,7 +168,7 @@ A creator chooses the mix per recipe: a public recipe inside a product is a prev
 
 `recipes.save_count` must equal `COUNT(*) FROM saved_recipes WHERE recipe_id = ?` at all times. The submitted design kept it correct for ordinary saves and unsaves by incrementing in the same transaction, which left two gaps the review identified: the seed wrote counts in the hundreds against a handful of save rows, and account deletion cascaded the save rows away without touching the counter.
 
-Both close by moving the rule into the database. A row-level trigger on `saved_recipes` (`saved_recipes_save_count`, §6) increments on `INSERT` and decrements on `DELETE`. Row-level triggers fire for rows removed by `ON DELETE CASCADE`, so a hard-deleted account (one with no orders) decrements every recipe it had saved. The seed no longer writes `save_count` at all; the trigger derives it from the save rows the seed inserts, so the counter cannot be wrong on the first commit. The seed gained four home-cook accounts so that the trigger-derived counts still produce a meaningful "Trending" order. Q16 is the consistency check (zero rows means every counter matches); it passes after seeding today, and the integration tests will run it after save, unsave, and delete.
+Both close by moving the rule into the database. A row-level trigger on `saved_recipes` (`saved_recipes_save_count`, §6) increments on `INSERT` and decrements on `DELETE`. Row-level triggers fire for rows removed by `ON DELETE CASCADE`, so a hard-deleted account (one with no orders) decrements every recipe it had saved. The seed no longer writes `save_count` at all; the trigger derives it from the save rows the seed inserts, so the counter cannot be wrong on the first commit. The seed gained four home-cook accounts so that the trigger-derived counts still produce a meaningful "Trending" order. Q16 is the consistency check (zero rows means every counter matches); the integration tests run it after seeding and after save, unsave, and account deletion.
 
 Soft deletion (an account with orders, §5) keeps the `saved_recipes` rows, so the counts are unaffected: a save is a signal about the recipe, and anonymizing the user does not change that the recipe was saved.
 
@@ -268,7 +268,7 @@ ck_reviews_rating_range                      rating BETWEEN 1 AND 5
 | `order_items_refuse_self_purchase` | `order_items`, before insert/update | a creator cannot buy their own product (§3.1) |
 | `user_roles_admin_only` | `user_roles`, before insert/update | `Admin` is never held with another role (§3.1) |
 
-The refusals raise `check_violation` with a named constraint (`ck_cart_items_no_self_purchase`, `ck_order_items_no_self_purchase`, `ck_user_roles_admin_only`) so the API can map them to a 4xx exactly as it maps a real `CHECK`. EF Core does not model triggers; they will ship in the migration as raw SQL (`migrationBuilder.Sql(...)`), and `schema.sql` carries the readable copy.
+The refusals raise `check_violation` with a named constraint (`ck_cart_items_no_self_purchase`, `ck_order_items_no_self_purchase`, `ck_user_roles_admin_only`) so the API can map them to a 4xx exactly as it maps a real `CHECK`. EF Core does not model triggers; they ship in the migration as raw SQL (`migrationBuilder.Sql(...)`), copied verbatim from `schema.sql`, and an integration test fails if the two ever differ.
 
 **Types.** Money is integer cents (`price_cents`, `total_cents`, `unit_price_cents`) with a 3-letter `currency` column — never floating point. Quantities are `numeric(10,3)`; conversion factors `numeric(12,6)`; density `numeric(8,4)`. All timestamps are `timestamptz` stored in UTC; calendar dates (`week_start`, `planned_date`) are `date`, because "Monday the 21st" is not an instant. Enums (`unit category`, `meal slot`, `product type`, `order status`, `visibility`) are stored as short `varchar` rather than PostgreSQL enum types so that adding a value is an `INSERT`-compatible change rather than an `ALTER TYPE`, and so the values are readable in `psql`.
 

@@ -1,26 +1,26 @@
 # Running Cookfeed's database in Docker
 
-PostgreSQL 16 runs in a container and listens on `localhost:5432`. There is no Dockerfile — we use
-the official `postgres:16` image as-is, so `docker-compose.yml` is the whole setup.
-
-**What works today:** everything on this page except the parts marked *planned*. The schema, seed and
-queries in `docs/` load and run against this container now. The ASP.NET Core API, its EF Core
-migration and its tests are not built yet (`docs/DesignDocument.md` §1); when they are, the API will
-run on the WSL host and connect over `localhost:5432`.
+PostgreSQL 16 runs in a container and listens on `localhost:5432`; the API runs on the WSL host and
+connects to it there. There is no Dockerfile — we use the official `postgres:16.15` image as-is, pinned
+to the exact version the build is tested against, so `docker-compose.yml` is the whole setup.
 
 | Database | Used by | Created by |
 |---|---|---|
-| `cookfeed` | development: `docs/` scripts now, `dotnet run` once the API exists | the container, from `POSTGRES_DB` |
-| `cookfeed_test` | `tests/Cookfeed.IntegrationTests` (*planned*) | `docker/init/01-create-test-db.sql` |
+| `cookfeed` | development: `dotnet run`, and the `docs/` scripts | the container, from `POSTGRES_DB`; tables by `dotnet ef database update` |
+| `cookfeed_test_*` | `tests/Cookfeed.IntegrationTests` | the tests themselves: each run creates throwaway databases and drops them when it finishes |
 
-Connection strings (*planned*: they will live in `appsettings.Development.json` and the test config):
+The development connection string lives in `src/Cookfeed.Api/appsettings.Development.json`:
 
 ```
 Host=localhost;Port=5432;Database=cookfeed;Username=postgres;Password=postgres
-Host=localhost;Port=5432;Database=cookfeed_test;Username=postgres;Password=postgres
 ```
 
-The test connection will be overridable with the `COOKFEED_TEST_CONNECTION` environment variable.
+The integration tests connect to the same server with the same credentials (the database name in their
+default connection string is not used; they create their own). To run them against a different server,
+set `COOKFEED_TEST_CONNECTION` to its connection string.
+
+The `cookfeed_test` database that `docker/init/01-create-test-db.sql` creates is no longer used by the
+tests. It does no harm, so the init script stays.
 
 ---
 
@@ -100,15 +100,46 @@ psql -h localhost -p 5432 -U postgres -d cookfeed -f docs/sql/seed.sql
 
 ---
 
+## The API: migrate, run, test
+
+Run these from `CookFeed_api/`, with the container up (`docker compose up -d --wait`).
+
+```bash
+dotnet tool restore
+```
+Installs the pinned `dotnet-ef` tool from `dotnet-tools.json`. Once per clone.
+
+```bash
+dotnet ef database update --project src/Cookfeed.Infrastructure --startup-project src/Cookfeed.Api
+```
+Applies the EF Core migrations to the `cookfeed` database: 19 tables and the four triggers. Run it
+again after pulling a commit that adds a migration.
+
+```bash
+dotnet run --project src/Cookfeed.Api
+```
+Starts the API. In Development it first fills an empty database with the `seed.sql` data
+(`DbSeeder`); once the database has accounts it leaves it alone.
+
+```bash
+dotnet test --solution Cookfeed.slnx
+```
+Runs every test project. The integration tests need the container running; they create their own
+databases, so they never touch `cookfeed`.
+
+---
+
 ## The fidelity test
 
 The project requires the EF migration to produce a schema that the submitted seed and queries run
-against unchanged. After `dotnet ef database update` (*planned*: until the migration exists, load
-`docs/schema.sql` instead, as in "Talking to the database" above, and steps 1 and 2 work today;
-step 3 needs the migration):
+against unchanged. `dotnet test` checks all three steps below on every run (`SchemaFidelityTests` and
+`SeedScriptTests`), so these commands are for seeing it by hand.
+
+Start from a clean, migrated database and do **not** `dotnet run` first: the seeder would load the same
+rows, and `seed.sql` would then fail on duplicate ids.
 
 ```bash
-# 1. Load the submitted seed data into the dev database.
+# 1. Load the submitted seed data into the migrated dev database.
 docker compose exec -T postgres psql -U postgres -d cookfeed -v ON_ERROR_STOP=1 < docs/sql/seed.sql
 ```
 `ON_ERROR_STOP=1` makes psql exit on the first error instead of plowing ahead — without it a
@@ -126,9 +157,10 @@ docker compose exec -T postgres pg_dump -U postgres -d cookfeed --schema-only --
 diff <(grep -v '^--' /tmp/actual-schema.sql) <(grep -v '^--' docs/schema.sql) | head -50
 ```
 `pg_dump --schema-only` prints the structure without any rows. The output will not be
-byte-identical to `docs/schema.sql` (pg_dump has its own formatting and ordering), so read the
-diff for real differences — missing constraints, wrong types, renamed indexes — rather than
-expecting it to be empty.
+byte-identical to `docs/schema.sql` (pg_dump has its own formatting and ordering, and EF Core names
+primary and foreign keys `pk_…`/`fk_…` where `schema.sql` lets PostgreSQL name them), so read the diff
+for real differences — missing constraints, wrong types, renamed indexes — rather than expecting it to
+be empty. `SchemaFidelityTests` does this comparison precisely.
 
 To start the fidelity test from a clean database:
 
@@ -138,7 +170,7 @@ docker compose exec -T postgres psql -U postgres -d postgres -c "DROP DATABASE I
 Drops and recreates the dev database. The two statements need separate `-c` flags: psql runs a
 single `-c` with several statements as one transaction, and `DROP DATABASE` is not allowed inside
 a transaction. `WITH (FORCE)` disconnects anything still attached, which is usually a stray
-`dotnet run` or a database viewer.
+`dotnet run` or a database viewer. Then run `dotnet ef database update` again before step 1.
 
 ---
 
@@ -155,13 +187,12 @@ Something else already holds the port — often a PostgreSQL installed directly 
 `ss -ltn | grep 5432`. Either stop it (`sudo systemctl stop postgresql`) or change the host side
 of the mapping in `docker-compose.yml` to `"5433:5432"` and update the connection strings.
 
-**The init script did not run / `cookfeed_test` is missing**
-Scripts in `docker/init/` only run when the data volume is created. If the volume already
-existed, create the database by hand:
+**The integration tests fail with `connection refused` or a timeout**
+The container is not running, or not healthy yet. Run `docker compose up -d --wait` and try again.
 
-```bash
-docker compose exec postgres psql -U postgres -c "CREATE DATABASE cookfeed_test;"
-```
+**Lots of `cookfeed_test_…` databases left behind**
+A test run that was killed part-way cannot drop its databases. They are harmless; remove them with
+`docker compose down -v` (which also resets `cookfeed`) or drop them one by one in `psql`.
 
 **`password authentication failed`**
 The password is baked into the volume on first creation. If you changed `POSTGRES_PASSWORD`

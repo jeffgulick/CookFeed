@@ -1,0 +1,430 @@
+using Cookfeed.Domain.Entities;
+using Cookfeed.Domain.Enums;
+
+namespace Cookfeed.Infrastructure.Persistence.Seed;
+
+/// <summary>
+/// The development and test data: the same rows, with the same ids, as <c>docs/sql/seed.sql</c>. When one
+/// changes, change the other; <c>SeederTests</c> fails until they match again. See <c>seed.sql</c> for what
+/// each group of rows demonstrates.
+/// </summary>
+/// <remarks>
+/// <see cref="Recipe.SaveCount"/> is never set here: the <c>saved_recipes</c> trigger counts the
+/// <see cref="SavedRecipes"/> as they are inserted. Columns that <c>seed.sql</c> leaves to their
+/// <c>DEFAULT now()</c> (user_roles.granted_at, meal_plans.created_at, cart_items.added_at) are left unset too.
+/// </remarks>
+internal static class SeedData
+{
+    public static Role[] Roles =>
+    [
+        new() { Id = 1, Name = "HomeCook" },
+        new() { Id = 2, Name = "Creator" },
+        new() { Id = 3, Name = "Admin" },
+    ];
+
+    public static Unit[] Units =>
+    [
+        new() { Id = 1, Name = "teaspoon", Abbreviation = "tsp", Category = UnitCategory.Volume, ToBaseFactor = 4.92892m, IsMetric = false },
+        new() { Id = 2, Name = "tablespoon", Abbreviation = "tbsp", Category = UnitCategory.Volume, ToBaseFactor = 14.7868m, IsMetric = false },
+        new() { Id = 3, Name = "cup", Abbreviation = "c", Category = UnitCategory.Volume, ToBaseFactor = 236.588m, IsMetric = false },
+        new() { Id = 4, Name = "fluid ounce", Abbreviation = "fl oz", Category = UnitCategory.Volume, ToBaseFactor = 29.5735m, IsMetric = false },
+        new() { Id = 5, Name = "millilitre", Abbreviation = "ml", Category = UnitCategory.Volume, ToBaseFactor = 1m, IsMetric = true },
+        new() { Id = 6, Name = "litre", Abbreviation = "L", Category = UnitCategory.Volume, ToBaseFactor = 1000m, IsMetric = true },
+        new() { Id = 7, Name = "gram", Abbreviation = "g", Category = UnitCategory.Mass, ToBaseFactor = 1m, IsMetric = true },
+        new() { Id = 8, Name = "kilogram", Abbreviation = "kg", Category = UnitCategory.Mass, ToBaseFactor = 1000m, IsMetric = true },
+        new() { Id = 9, Name = "ounce", Abbreviation = "oz", Category = UnitCategory.Mass, ToBaseFactor = 28.3495m, IsMetric = false },
+        new() { Id = 10, Name = "pound", Abbreviation = "lb", Category = UnitCategory.Mass, ToBaseFactor = 453.592m, IsMetric = false },
+        new() { Id = 11, Name = "each", Abbreviation = "ea", Category = UnitCategory.Count, ToBaseFactor = 1m, IsMetric = true },
+        new() { Id = 12, Name = "clove", Abbreviation = "clove", Category = UnitCategory.Count, ToBaseFactor = 1m, IsMetric = true },
+        new() { Id = 13, Name = "can", Abbreviation = "can", Category = UnitCategory.Count, ToBaseFactor = 1m, IsMetric = true },
+        new() { Id = 14, Name = "bunch", Abbreviation = "bunch", Category = UnitCategory.Count, ToBaseFactor = 1m, IsMetric = true },
+    ];
+
+    public static User[] Users =>
+    [
+        new() { Id = 1, Email = "alex@example.com", DisplayName = "Alex Rivera", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 8, 1, 12, 0) },
+        new() { Id = 2, Email = "priya@example.com", DisplayName = "Priya Shah", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 8, 4, 12, 0) },
+        new() { Id = 3, Email = "maria@example.com", DisplayName = "Maria Conti", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 7, 2, 12, 0) },
+        new() { Id = 4, Email = "kenji@example.com", DisplayName = "Kenji Watanabe", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 7, 7, 12, 0) },
+        new() { Id = 5, Email = "dan@example.com", DisplayName = "Dan Okafor", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 7, 22, 12, 0) },
+        new() { Id = 6, Email = "admin@cookfeed.app", DisplayName = "Cookfeed Admin", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 6, 2, 12, 0) },
+        new() { Id = 7, Email = "sam@example.com", DisplayName = "Sam Lee", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 8, 6, 12, 0) },
+        new() { Id = 8, Email = "noor@example.com", DisplayName = "Noor Haddad", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 8, 8, 12, 0) },
+        new() { Id = 9, Email = "tomas@example.com", DisplayName = "Tomás Reyes", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 8, 10, 12, 0) },
+        new() { Id = 10, Email = "grace@example.com", DisplayName = "Grace Kim", PasswordHash = "$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde", CreatedAt = Utc(2026, 8, 12, 12, 0) },
+    ];
+
+    public static UserRole[] UserRoles =>
+    [
+        new() { UserId = 1, RoleId = 1 },
+        new() { UserId = 2, RoleId = 1 },
+        new() { UserId = 3, RoleId = 1 },
+        new() { UserId = 3, RoleId = 2 },
+        new() { UserId = 4, RoleId = 1 },
+        new() { UserId = 4, RoleId = 2 },
+        new() { UserId = 5, RoleId = 1 },
+        new() { UserId = 5, RoleId = 2 },
+        new() { UserId = 6, RoleId = 3 },
+        new() { UserId = 7, RoleId = 1 },
+        new() { UserId = 8, RoleId = 1 },
+        new() { UserId = 9, RoleId = 1 },
+        new() { UserId = 10, RoleId = 1 },
+    ];
+
+    public static CreatorProfile[] CreatorProfiles =>
+    [
+        new() { UserId = 3, Handle = "maria-cooks", Bio = "Roman trattoria classics, filmed in a tiny Chicago kitchen. Weeknight pasta is a right, not a privilege.", IsVerified = true },
+        new() { UserId = 4, Handle = "kenji-kitchen", Bio = "Japanese home cooking with a weeknight clock. Most dinners under 30 minutes, everything shoppable.", IsVerified = true },
+        new() { UserId = 5, Handle = "dan-meal-preps", Bio = "Dad of three. I cook on Sunday so we eat all week. No fancy gear.", IsVerified = false },
+    ];
+
+    public static Ingredient[] Ingredients =>
+    [
+        new() { Id = 1, Name = "all-purpose flour", Category = "Pantry", DensityGPerMl = 0.53m, PreferredShoppingUnitId = 7 },
+        new() { Id = 2, Name = "granulated sugar", Category = "Pantry", DensityGPerMl = 0.85m, PreferredShoppingUnitId = 7 },
+        new() { Id = 3, Name = "brown sugar", Category = "Pantry", DensityGPerMl = 0.82m, PreferredShoppingUnitId = 7 },
+        new() { Id = 4, Name = "unsalted butter", Category = "Dairy", DensityGPerMl = 0.911m, PreferredShoppingUnitId = 7 },
+        new() { Id = 5, Name = "egg", Category = "Dairy", PreferredShoppingUnitId = 11 },
+        new() { Id = 6, Name = "whole milk", Category = "Dairy", DensityGPerMl = 1.03m, PreferredShoppingUnitId = 5 },
+        new() { Id = 7, Name = "parmesan cheese", Category = "Dairy", DensityGPerMl = 0.45m, PreferredShoppingUnitId = 7 },
+        new() { Id = 8, Name = "mozzarella cheese", Category = "Dairy", PreferredShoppingUnitId = 7 },
+        new() { Id = 9, Name = "heavy cream", Category = "Dairy", DensityGPerMl = 1.0m, PreferredShoppingUnitId = 5 },
+        new() { Id = 10, Name = "olive oil", Category = "Pantry", DensityGPerMl = 0.92m, PreferredShoppingUnitId = 5 },
+        new() { Id = 11, Name = "kosher salt", Category = "Spices", DensityGPerMl = 1.2m, PreferredShoppingUnitId = 7 },
+        new() { Id = 12, Name = "black pepper", Category = "Spices", DensityGPerMl = 0.5m, PreferredShoppingUnitId = 7 },
+        new() { Id = 13, Name = "garlic", Category = "Produce", PreferredShoppingUnitId = 12 },
+        new() { Id = 14, Name = "yellow onion", Category = "Produce", PreferredShoppingUnitId = 11 },
+        new() { Id = 15, Name = "crushed tomatoes", Category = "Pantry", DensityGPerMl = 1.02m, PreferredShoppingUnitId = 13 },
+        new() { Id = 16, Name = "fresh basil", Category = "Produce", PreferredShoppingUnitId = 14 },
+        new() { Id = 17, Name = "spaghetti", Category = "Pantry", PreferredShoppingUnitId = 7 },
+        new() { Id = 18, Name = "pancetta", Category = "Meat", PreferredShoppingUnitId = 7 },
+        new() { Id = 19, Name = "boneless chicken thigh", Category = "Meat", PreferredShoppingUnitId = 7 },
+        new() { Id = 20, Name = "chicken breast", Category = "Meat", PreferredShoppingUnitId = 7 },
+        new() { Id = 21, Name = "ground beef", Category = "Meat", PreferredShoppingUnitId = 7 },
+        new() { Id = 22, Name = "soy sauce", Category = "Pantry", DensityGPerMl = 1.07m, PreferredShoppingUnitId = 5 },
+        new() { Id = 23, Name = "mirin", Category = "Pantry", DensityGPerMl = 1.1m, PreferredShoppingUnitId = 5 },
+        new() { Id = 24, Name = "sake", Category = "Beverages", DensityGPerMl = 0.99m, PreferredShoppingUnitId = 5 },
+        new() { Id = 25, Name = "fresh ginger", Category = "Produce", PreferredShoppingUnitId = 7 },
+        new() { Id = 26, Name = "scallion", Category = "Produce", PreferredShoppingUnitId = 14 },
+        new() { Id = 27, Name = "short-grain rice", Category = "Pantry", DensityGPerMl = 0.85m, PreferredShoppingUnitId = 7 },
+        new() { Id = 28, Name = "rice vinegar", Category = "Pantry", DensityGPerMl = 1.01m, PreferredShoppingUnitId = 5 },
+        new() { Id = 29, Name = "sesame oil", Category = "Pantry", DensityGPerMl = 0.92m, PreferredShoppingUnitId = 5 },
+        new() { Id = 30, Name = "vegetable oil", Category = "Pantry", DensityGPerMl = 0.92m, PreferredShoppingUnitId = 5 },
+        new() { Id = 31, Name = "lime", Category = "Produce", PreferredShoppingUnitId = 11 },
+        new() { Id = 32, Name = "cilantro", Category = "Produce", PreferredShoppingUnitId = 14 },
+        new() { Id = 33, Name = "flour tortilla", Category = "Bakery", PreferredShoppingUnitId = 11 },
+        new() { Id = 34, Name = "chickpeas", Category = "Pantry", PreferredShoppingUnitId = 13 },
+        new() { Id = 35, Name = "tahini", Category = "Pantry", DensityGPerMl = 1.1m, PreferredShoppingUnitId = 5 },
+        new() { Id = 36, Name = "lemon", Category = "Produce", PreferredShoppingUnitId = 11 },
+        new() { Id = 37, Name = "ground cumin", Category = "Spices", DensityGPerMl = 0.55m, PreferredShoppingUnitId = 7 },
+        new() { Id = 38, Name = "chili powder", Category = "Spices", DensityGPerMl = 0.5m, PreferredShoppingUnitId = 7 },
+        new() { Id = 39, Name = "baking powder", Category = "Pantry", DensityGPerMl = 0.9m, PreferredShoppingUnitId = 7 },
+        new() { Id = 40, Name = "vanilla extract", Category = "Pantry", DensityGPerMl = 0.88m, PreferredShoppingUnitId = 5 },
+        new() { Id = 41, Name = "chocolate chips", Category = "Pantry", DensityGPerMl = 0.65m, PreferredShoppingUnitId = 7 },
+        new() { Id = 42, Name = "rolled oats", Category = "Pantry", DensityGPerMl = 0.41m, PreferredShoppingUnitId = 7 },
+        new() { Id = 43, Name = "banana", Category = "Produce", PreferredShoppingUnitId = 11 },
+        new() { Id = 44, Name = "honey", Category = "Pantry", DensityGPerMl = 1.42m, PreferredShoppingUnitId = 5 },
+        new() { Id = 45, Name = "greek yogurt", Category = "Dairy", DensityGPerMl = 1.05m, PreferredShoppingUnitId = 7 },
+        new() { Id = 46, Name = "blueberries", Category = "Produce", PreferredShoppingUnitId = 7 },
+        new() { Id = 47, Name = "baby spinach", Category = "Produce", PreferredShoppingUnitId = 7 },
+        new() { Id = 48, Name = "bell pepper", Category = "Produce", PreferredShoppingUnitId = 11 },
+        new() { Id = 49, Name = "broccoli", Category = "Produce", PreferredShoppingUnitId = 11 },
+        new() { Id = 50, Name = "cornstarch", Category = "Pantry", DensityGPerMl = 0.54m, PreferredShoppingUnitId = 7 },
+    ];
+
+    public static Recipe[] Recipes =>
+    [
+        new() { Id = 1, CreatorId = 3, Title = "15-Minute Spaghetti Carbonara", Description = "No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.", VideoUrl = "https://cdn.cookfeed.app/videos/001.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/001.jpg", Servings = 4, PrepMinutes = 5, CookMinutes = 12, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 12, 12, 0), PublishedAt = Utc(2026, 7, 12, 12, 0) },
+        new() { Id = 2, CreatorId = 3, Title = "Sunday Marinara from Scratch", Description = "One can of tomatoes, one onion, one hour. Freezes beautifully.", VideoUrl = "https://cdn.cookfeed.app/videos/002.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/002.jpg", Servings = 6, PrepMinutes = 10, CookMinutes = 60, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 14, 12, 0), PublishedAt = Utc(2026, 7, 14, 12, 0) },
+        new() { Id = 3, CreatorId = 3, Title = "No-Knead Focaccia", Description = "Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.", VideoUrl = "https://cdn.cookfeed.app/videos/003.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/003.jpg", Servings = 8, PrepMinutes = 15, CookMinutes = 25, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 20, 12, 0), PublishedAt = Utc(2026, 7, 20, 12, 0) },
+        new() { Id = 4, CreatorId = 3, Title = "Weeknight Chicken Parm", Description = "Thin cutlets, quick fry, broiled with marinara and mozzarella.", VideoUrl = "https://cdn.cookfeed.app/videos/004.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/004.jpg", Servings = 4, PrepMinutes = 15, CookMinutes = 20, IsPublished = true, Visibility = RecipeVisibility.ProductOnly, CreatedAt = Utc(2026, 7, 26, 12, 0), PublishedAt = Utc(2026, 7, 26, 12, 0) },
+        new() { Id = 5, CreatorId = 4, Title = "Chicken Teriyaki, the Real Way", Description = "Four ingredients in the sauce. Skin-on thighs. That's the whole secret.", VideoUrl = "https://cdn.cookfeed.app/videos/005.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/005.jpg", Servings = 2, PrepMinutes = 5, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 13, 12, 0), PublishedAt = Utc(2026, 7, 13, 12, 0) },
+        new() { Id = 6, CreatorId = 4, Title = "Onigiri Three Ways", Description = "Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.", VideoUrl = "https://cdn.cookfeed.app/videos/006.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/006.jpg", Servings = 4, PrepMinutes = 20, CookMinutes = 20, IsPublished = true, Visibility = RecipeVisibility.ProductOnly, CreatedAt = Utc(2026, 7, 17, 12, 0), PublishedAt = Utc(2026, 7, 17, 12, 0) },
+        new() { Id = 7, CreatorId = 4, Title = "10-Minute Ginger Garlic Stir-Fry", Description = "The one-pan dinner I make when I have nothing planned.", VideoUrl = "https://cdn.cookfeed.app/videos/007.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/007.jpg", Servings = 2, PrepMinutes = 5, CookMinutes = 8, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 23, 12, 0), PublishedAt = Utc(2026, 7, 23, 12, 0) },
+        new() { Id = 8, CreatorId = 5, Title = "Saturday Buttermilk-Style Pancakes", Description = "Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.", VideoUrl = "https://cdn.cookfeed.app/videos/008.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/008.jpg", Servings = 4, PrepMinutes = 10, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 24, 12, 0), PublishedAt = Utc(2026, 7, 24, 12, 0) },
+        new() { Id = 9, CreatorId = 5, Title = "Five-Day Overnight Oats", Description = "One mixing bowl on Sunday, five breakfasts done.", VideoUrl = "https://cdn.cookfeed.app/videos/009.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/009.jpg", Servings = 5, PrepMinutes = 10, CookMinutes = 0, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 25, 12, 0), PublishedAt = Utc(2026, 7, 25, 12, 0) },
+        new() { Id = 10, CreatorId = 5, Title = "Weeknight Beef Tacos", Description = "Skip the packet. Cumin, chili powder, and a squeeze of lime.", VideoUrl = "https://cdn.cookfeed.app/videos/010.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/010.jpg", Servings = 4, PrepMinutes = 10, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 28, 12, 0), PublishedAt = Utc(2026, 7, 28, 12, 0) },
+        new() { Id = 11, CreatorId = 5, Title = "Smooth Hummus", Description = "Peel the chickpeas. Yes, really. It's worth it.", VideoUrl = "https://cdn.cookfeed.app/videos/011.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/011.jpg", Servings = 6, PrepMinutes = 15, CookMinutes = 0, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 29, 12, 0), PublishedAt = Utc(2026, 7, 29, 12, 0) },
+        new() { Id = 12, CreatorId = 5, Title = "Brown Butter Chocolate Chip Cookies", Description = "Brown the butter. Chill the dough. Thank me later.", VideoUrl = "https://cdn.cookfeed.app/videos/012.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/012.jpg", Servings = 24, PrepMinutes = 20, CookMinutes = 12, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 30, 12, 0), PublishedAt = Utc(2026, 7, 30, 12, 0) },
+        new() { Id = 13, CreatorId = 4, Title = "Miso Soup (draft)", VideoUrl = "https://cdn.cookfeed.app/videos/draft-miso.mp4", Servings = 2, IsPublished = false, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 31, 12, 0) },
+    ];
+
+    public static RecipeStep[] RecipeSteps =>
+    [
+        new() { Id = 1, RecipeId = 1, StepNumber = 1, Instruction = "Boil a large pot of salted water and cook the spaghetti until just shy of al dente.", VideoTimestampSeconds = 8 },
+        new() { Id = 2, RecipeId = 1, StepNumber = 2, Instruction = "Render the pancetta in a cold pan over medium heat until crisp.", VideoTimestampSeconds = 16 },
+        new() { Id = 3, RecipeId = 1, StepNumber = 3, Instruction = "Whisk the eggs, cheese, and pepper in a bowl.", VideoTimestampSeconds = 24 },
+        new() { Id = 4, RecipeId = 1, StepNumber = 4, Instruction = "Off the heat, toss the pasta with the pancetta, then add the egg mixture and a splash of pasta water, stirring fast until glossy.", VideoTimestampSeconds = 32 },
+        new() { Id = 5, RecipeId = 1, StepNumber = 5, Instruction = "Serve immediately with more cheese and pepper.", VideoTimestampSeconds = 40 },
+        new() { Id = 6, RecipeId = 2, StepNumber = 1, Instruction = "Sweat the onion in olive oil over low heat until translucent, about 8 minutes.", VideoTimestampSeconds = 8 },
+        new() { Id = 7, RecipeId = 2, StepNumber = 2, Instruction = "Add garlic and cook 1 minute, until fragrant.", VideoTimestampSeconds = 16 },
+        new() { Id = 8, RecipeId = 2, StepNumber = 3, Instruction = "Add tomatoes, salt, and sugar. Simmer uncovered for 45 minutes, stirring now and then.", VideoTimestampSeconds = 24 },
+        new() { Id = 9, RecipeId = 2, StepNumber = 4, Instruction = "Stir in basil off the heat.", VideoTimestampSeconds = 32 },
+        new() { Id = 10, RecipeId = 3, StepNumber = 1, Instruction = "Stir flour, salt, sugar, and 400 ml of water into a shaggy dough. Cover and refrigerate overnight.", VideoTimestampSeconds = 8 },
+        new() { Id = 11, RecipeId = 3, StepNumber = 2, Instruction = "Pour the dough into a well-oiled pan and let it rise at room temperature for 2 hours.", VideoTimestampSeconds = 16 },
+        new() { Id = 12, RecipeId = 3, StepNumber = 3, Instruction = "Dimple with oiled fingers, top with flaky salt, and bake at 230°C for 25 minutes.", VideoTimestampSeconds = 24 },
+        new() { Id = 13, RecipeId = 4, StepNumber = 1, Instruction = "Season the chicken and dredge in flour, then egg, then parmesan.", VideoTimestampSeconds = 8 },
+        new() { Id = 14, RecipeId = 4, StepNumber = 2, Instruction = "Shallow-fry in vegetable oil until golden on both sides.", VideoTimestampSeconds = 16 },
+        new() { Id = 15, RecipeId = 4, StepNumber = 3, Instruction = "Top with marinara and mozzarella and broil until bubbling.", VideoTimestampSeconds = 24 },
+        new() { Id = 16, RecipeId = 5, StepNumber = 1, Instruction = "Sear the thighs skin-side down in oil until deeply browned, about 6 minutes.", VideoTimestampSeconds = 8 },
+        new() { Id = 17, RecipeId = 5, StepNumber = 2, Instruction = "Flip, add soy, mirin, sake, and sugar, and simmer until the sauce reduces to a glaze.", VideoTimestampSeconds = 16 },
+        new() { Id = 18, RecipeId = 5, StepNumber = 3, Instruction = "Slice and spoon the glaze over. Garnish with scallions.", VideoTimestampSeconds = 24 },
+        new() { Id = 19, RecipeId = 6, StepNumber = 1, Instruction = "Cook the rice and let it cool until you can handle it.", VideoTimestampSeconds = 8 },
+        new() { Id = 20, RecipeId = 6, StepNumber = 2, Instruction = "Wet and salt your hands, scoop a handful of rice, press in a filling, and shape into a triangle.", VideoTimestampSeconds = 16 },
+        new() { Id = 21, RecipeId = 6, StepNumber = 3, Instruction = "Wrap with nori just before eating so it stays crisp.", VideoTimestampSeconds = 24 },
+        new() { Id = 22, RecipeId = 7, StepNumber = 1, Instruction = "Toss the chicken with cornstarch and 1 tbsp soy sauce.", VideoTimestampSeconds = 8 },
+        new() { Id = 23, RecipeId = 7, StepNumber = 2, Instruction = "Stir-fry the chicken in vegetable oil over high heat until just cooked, then remove.", VideoTimestampSeconds = 16 },
+        new() { Id = 24, RecipeId = 7, StepNumber = 3, Instruction = "Stir-fry the vegetables, garlic, and ginger for 3 minutes, return the chicken, add the remaining soy, vinegar, and sesame oil, and toss.", VideoTimestampSeconds = 24 },
+        new() { Id = 25, RecipeId = 8, StepNumber = 1, Instruction = "Whisk the dry ingredients together in one bowl and the wet in another.", VideoTimestampSeconds = 8 },
+        new() { Id = 26, RecipeId = 8, StepNumber = 2, Instruction = "Combine and stir just until no dry streaks remain. Lumps are fine.", VideoTimestampSeconds = 16 },
+        new() { Id = 27, RecipeId = 8, StepNumber = 3, Instruction = "Cook on a medium griddle until bubbles form, flip, and cook 1 more minute.", VideoTimestampSeconds = 24 },
+        new() { Id = 28, RecipeId = 9, StepNumber = 1, Instruction = "Mash the bananas in a large bowl and whisk in milk, yogurt, honey, and vanilla.", VideoTimestampSeconds = 8 },
+        new() { Id = 29, RecipeId = 9, StepNumber = 2, Instruction = "Stir in the oats and blueberries.", VideoTimestampSeconds = 16 },
+        new() { Id = 30, RecipeId = 9, StepNumber = 3, Instruction = "Portion into five jars and refrigerate overnight.", VideoTimestampSeconds = 24 },
+        new() { Id = 31, RecipeId = 10, StepNumber = 1, Instruction = "Brown the beef with the onion, breaking it up as it cooks.", VideoTimestampSeconds = 8 },
+        new() { Id = 32, RecipeId = 10, StepNumber = 2, Instruction = "Add garlic and spices and cook 2 minutes more.", VideoTimestampSeconds = 16 },
+        new() { Id = 33, RecipeId = 10, StepNumber = 3, Instruction = "Serve in warm tortillas with lime and cilantro.", VideoTimestampSeconds = 24 },
+        new() { Id = 34, RecipeId = 11, StepNumber = 1, Instruction = "Blend tahini and lemon juice for a minute until pale and whipped.", VideoTimestampSeconds = 8 },
+        new() { Id = 35, RecipeId = 11, StepNumber = 2, Instruction = "Add chickpeas, garlic, cumin, salt, and olive oil and blend, adding cold water a tablespoon at a time until silky.", VideoTimestampSeconds = 16 },
+        new() { Id = 36, RecipeId = 12, StepNumber = 1, Instruction = "Brown the butter in a light-colored pan until it smells nutty, then cool 10 minutes.", VideoTimestampSeconds = 8 },
+        new() { Id = 37, RecipeId = 12, StepNumber = 2, Instruction = "Beat the butter with both sugars, then the eggs and vanilla.", VideoTimestampSeconds = 16 },
+        new() { Id = 38, RecipeId = 12, StepNumber = 3, Instruction = "Fold in flour, baking powder, salt, and chocolate chips. Chill the dough at least 1 hour.", VideoTimestampSeconds = 24 },
+        new() { Id = 39, RecipeId = 12, StepNumber = 4, Instruction = "Bake at 180°C for 11–12 minutes until the edges are set and the centers look underdone.", VideoTimestampSeconds = 32 },
+        new() { Id = 40, RecipeId = 13, StepNumber = 1, Instruction = "TODO" },
+    ];
+
+    public static RecipeIngredient[] RecipeIngredients =>
+    [
+        new() { Id = 1, RecipeId = 1, IngredientId = 17, UnitId = 7, Quantity = 400m, SortOrder = 1, IsOptional = false },
+        new() { Id = 2, RecipeId = 1, IngredientId = 18, UnitId = 7, Quantity = 150m, Preparation = "diced", SortOrder = 2, IsOptional = false },
+        new() { Id = 3, RecipeId = 1, IngredientId = 5, UnitId = 11, Quantity = 3m, SortOrder = 3, IsOptional = false },
+        new() { Id = 4, RecipeId = 1, IngredientId = 7, UnitId = 3, Quantity = 1m, DisplayText = "Parmigiano-Reggiano", Preparation = "finely grated", SortOrder = 4, IsOptional = false },
+        new() { Id = 5, RecipeId = 1, IngredientId = 12, UnitId = 1, Quantity = 1m, DisplayText = "freshly cracked black pepper", SortOrder = 5, IsOptional = false },
+        new() { Id = 6, RecipeId = 1, IngredientId = 11, UnitId = 2, Quantity = 1m, Preparation = "for the pasta water", SortOrder = 6, IsOptional = false },
+        new() { Id = 7, RecipeId = 2, IngredientId = 15, UnitId = 13, Quantity = 1m, DisplayText = "28 oz crushed tomatoes", SortOrder = 1, IsOptional = false },
+        new() { Id = 8, RecipeId = 2, IngredientId = 14, UnitId = 11, Quantity = 1m, Preparation = "finely diced", SortOrder = 2, IsOptional = false },
+        new() { Id = 9, RecipeId = 2, IngredientId = 13, UnitId = 12, Quantity = 4m, Preparation = "minced", SortOrder = 3, IsOptional = false },
+        new() { Id = 10, RecipeId = 2, IngredientId = 10, UnitId = 2, Quantity = 3m, SortOrder = 4, IsOptional = false },
+        new() { Id = 11, RecipeId = 2, IngredientId = 16, UnitId = 14, Quantity = 1m, Preparation = "torn", SortOrder = 5, IsOptional = false },
+        new() { Id = 12, RecipeId = 2, IngredientId = 11, UnitId = 1, Quantity = 1m, SortOrder = 6, IsOptional = false },
+        new() { Id = 13, RecipeId = 2, IngredientId = 2, UnitId = 1, Quantity = 1m, Preparation = "optional, to balance", SortOrder = 7, IsOptional = false },
+        new() { Id = 14, RecipeId = 3, IngredientId = 1, UnitId = 7, Quantity = 500m, DisplayText = "all-purpose flour", SortOrder = 1, IsOptional = false },
+        new() { Id = 15, RecipeId = 3, IngredientId = 11, UnitId = 1, Quantity = 2m, SortOrder = 2, IsOptional = false },
+        new() { Id = 16, RecipeId = 3, IngredientId = 10, UnitId = 5, Quantity = 60m, DisplayText = "plus more for the pan", SortOrder = 3, IsOptional = false },
+        new() { Id = 17, RecipeId = 3, IngredientId = 2, UnitId = 1, Quantity = 1m, SortOrder = 4, IsOptional = false },
+        new() { Id = 18, RecipeId = 4, IngredientId = 20, UnitId = 7, Quantity = 600m, Preparation = "butterflied and pounded thin", SortOrder = 1, IsOptional = false },
+        new() { Id = 19, RecipeId = 4, IngredientId = 1, UnitId = 3, Quantity = 1m, DisplayText = "all-purpose flour", Preparation = "for dredging", SortOrder = 2, IsOptional = false },
+        new() { Id = 20, RecipeId = 4, IngredientId = 5, UnitId = 11, Quantity = 2m, Preparation = "beaten", SortOrder = 3, IsOptional = false },
+        new() { Id = 21, RecipeId = 4, IngredientId = 7, UnitId = 3, Quantity = 0.5m, Preparation = "grated", SortOrder = 4, IsOptional = false },
+        new() { Id = 22, RecipeId = 4, IngredientId = 8, UnitId = 7, Quantity = 200m, Preparation = "sliced", SortOrder = 5, IsOptional = false },
+        new() { Id = 23, RecipeId = 4, IngredientId = 30, UnitId = 3, Quantity = 0.5m, Preparation = "for frying", SortOrder = 6, IsOptional = false },
+        new() { Id = 24, RecipeId = 4, IngredientId = 11, UnitId = 1, Quantity = 1m, SortOrder = 7, IsOptional = false },
+        new() { Id = 25, RecipeId = 5, IngredientId = 19, UnitId = 7, Quantity = 500m, DisplayText = "boneless skin-on chicken thighs", SortOrder = 1, IsOptional = false },
+        new() { Id = 26, RecipeId = 5, IngredientId = 22, UnitId = 2, Quantity = 3m, SortOrder = 2, IsOptional = false },
+        new() { Id = 27, RecipeId = 5, IngredientId = 23, UnitId = 2, Quantity = 3m, SortOrder = 3, IsOptional = false },
+        new() { Id = 28, RecipeId = 5, IngredientId = 24, UnitId = 2, Quantity = 2m, SortOrder = 4, IsOptional = false },
+        new() { Id = 29, RecipeId = 5, IngredientId = 2, UnitId = 2, Quantity = 1m, SortOrder = 5, IsOptional = false },
+        new() { Id = 30, RecipeId = 5, IngredientId = 30, UnitId = 2, Quantity = 1m, SortOrder = 6, IsOptional = false },
+        new() { Id = 31, RecipeId = 5, IngredientId = 26, UnitId = 14, Quantity = 1m, Preparation = "sliced, to garnish", SortOrder = 7, IsOptional = false },
+        new() { Id = 32, RecipeId = 6, IngredientId = 27, UnitId = 3, Quantity = 2m, DisplayText = "short-grain (sushi) rice", Preparation = "rinsed", SortOrder = 1, IsOptional = false },
+        new() { Id = 33, RecipeId = 6, IngredientId = 11, UnitId = 1, Quantity = 1m, SortOrder = 2, IsOptional = false },
+        new() { Id = 34, RecipeId = 6, IngredientId = 29, UnitId = 1, Quantity = 1m, Preparation = "for the hands", SortOrder = 3, IsOptional = false },
+        new() { Id = 35, RecipeId = 7, IngredientId = 20, UnitId = 7, Quantity = 300m, Preparation = "sliced thin", SortOrder = 1, IsOptional = false },
+        new() { Id = 36, RecipeId = 7, IngredientId = 49, UnitId = 11, Quantity = 1m, DisplayText = "head of broccoli", Preparation = "cut into florets", SortOrder = 2, IsOptional = false },
+        new() { Id = 37, RecipeId = 7, IngredientId = 48, UnitId = 11, Quantity = 1m, Preparation = "sliced", SortOrder = 3, IsOptional = false },
+        new() { Id = 38, RecipeId = 7, IngredientId = 13, UnitId = 12, Quantity = 3m, Preparation = "minced", SortOrder = 4, IsOptional = false },
+        new() { Id = 39, RecipeId = 7, IngredientId = 25, UnitId = 7, Quantity = 15m, Preparation = "grated", SortOrder = 5, IsOptional = false },
+        new() { Id = 40, RecipeId = 7, IngredientId = 22, UnitId = 2, Quantity = 2m, SortOrder = 6, IsOptional = false },
+        new() { Id = 41, RecipeId = 7, IngredientId = 50, UnitId = 2, Quantity = 1m, SortOrder = 7, IsOptional = false },
+        new() { Id = 42, RecipeId = 7, IngredientId = 29, UnitId = 1, Quantity = 1m, SortOrder = 8, IsOptional = false },
+        new() { Id = 43, RecipeId = 7, IngredientId = 30, UnitId = 2, Quantity = 2m, SortOrder = 9, IsOptional = false },
+        new() { Id = 44, RecipeId = 7, IngredientId = 28, UnitId = 2, Quantity = 1m, SortOrder = 10, IsOptional = false },
+        new() { Id = 45, RecipeId = 8, IngredientId = 1, UnitId = 3, Quantity = 2m, DisplayText = "all-purpose flour", SortOrder = 1, IsOptional = false },
+        new() { Id = 46, RecipeId = 8, IngredientId = 2, UnitId = 2, Quantity = 2m, SortOrder = 2, IsOptional = false },
+        new() { Id = 47, RecipeId = 8, IngredientId = 39, UnitId = 1, Quantity = 2m, SortOrder = 3, IsOptional = false },
+        new() { Id = 48, RecipeId = 8, IngredientId = 11, UnitId = 1, Quantity = 0.5m, SortOrder = 4, IsOptional = false },
+        new() { Id = 49, RecipeId = 8, IngredientId = 6, UnitId = 3, Quantity = 1.5m, SortOrder = 5, IsOptional = false },
+        new() { Id = 50, RecipeId = 8, IngredientId = 5, UnitId = 11, Quantity = 2m, SortOrder = 6, IsOptional = false },
+        new() { Id = 51, RecipeId = 8, IngredientId = 4, UnitId = 2, Quantity = 3m, Preparation = "melted", SortOrder = 7, IsOptional = false },
+        new() { Id = 52, RecipeId = 8, IngredientId = 40, UnitId = 1, Quantity = 1m, SortOrder = 8, IsOptional = false },
+        new() { Id = 53, RecipeId = 9, IngredientId = 42, UnitId = 3, Quantity = 2.5m, SortOrder = 1, IsOptional = false },
+        new() { Id = 54, RecipeId = 9, IngredientId = 6, UnitId = 3, Quantity = 2.5m, SortOrder = 2, IsOptional = false },
+        new() { Id = 55, RecipeId = 9, IngredientId = 45, UnitId = 3, Quantity = 1m, SortOrder = 3, IsOptional = false },
+        new() { Id = 56, RecipeId = 9, IngredientId = 44, UnitId = 2, Quantity = 3m, SortOrder = 4, IsOptional = false },
+        new() { Id = 57, RecipeId = 9, IngredientId = 43, UnitId = 11, Quantity = 2m, Preparation = "mashed", SortOrder = 5, IsOptional = false },
+        new() { Id = 58, RecipeId = 9, IngredientId = 46, UnitId = 7, Quantity = 150m, SortOrder = 6, IsOptional = false },
+        new() { Id = 59, RecipeId = 9, IngredientId = 40, UnitId = 1, Quantity = 1m, SortOrder = 7, IsOptional = false },
+        new() { Id = 60, RecipeId = 10, IngredientId = 21, UnitId = 7, Quantity = 500m, SortOrder = 1, IsOptional = false },
+        new() { Id = 61, RecipeId = 10, IngredientId = 14, UnitId = 11, Quantity = 1m, Preparation = "diced", SortOrder = 2, IsOptional = false },
+        new() { Id = 62, RecipeId = 10, IngredientId = 13, UnitId = 12, Quantity = 2m, Preparation = "minced", SortOrder = 3, IsOptional = false },
+        new() { Id = 63, RecipeId = 10, IngredientId = 37, UnitId = 1, Quantity = 2m, SortOrder = 4, IsOptional = false },
+        new() { Id = 64, RecipeId = 10, IngredientId = 38, UnitId = 2, Quantity = 1m, SortOrder = 5, IsOptional = false },
+        new() { Id = 65, RecipeId = 10, IngredientId = 11, UnitId = 1, Quantity = 1m, SortOrder = 6, IsOptional = false },
+        new() { Id = 66, RecipeId = 10, IngredientId = 33, UnitId = 11, Quantity = 8m, Preparation = "warmed", SortOrder = 7, IsOptional = false },
+        new() { Id = 67, RecipeId = 10, IngredientId = 31, UnitId = 11, Quantity = 2m, Preparation = "cut in wedges", SortOrder = 8, IsOptional = false },
+        new() { Id = 68, RecipeId = 10, IngredientId = 32, UnitId = 14, Quantity = 1m, Preparation = "chopped", SortOrder = 9, IsOptional = false },
+        new() { Id = 69, RecipeId = 11, IngredientId = 34, UnitId = 13, Quantity = 1m, DisplayText = "15 oz can chickpeas", Preparation = "drained, skins removed", SortOrder = 1, IsOptional = false },
+        new() { Id = 70, RecipeId = 11, IngredientId = 35, UnitId = 3, Quantity = 0.25m, SortOrder = 2, IsOptional = false },
+        new() { Id = 71, RecipeId = 11, IngredientId = 36, UnitId = 11, Quantity = 1m, Preparation = "juiced", SortOrder = 3, IsOptional = false },
+        new() { Id = 72, RecipeId = 11, IngredientId = 13, UnitId = 12, Quantity = 1m, SortOrder = 4, IsOptional = false },
+        new() { Id = 73, RecipeId = 11, IngredientId = 10, UnitId = 2, Quantity = 2m, SortOrder = 5, IsOptional = false },
+        new() { Id = 74, RecipeId = 11, IngredientId = 37, UnitId = 1, Quantity = 0.5m, SortOrder = 6, IsOptional = false },
+        new() { Id = 75, RecipeId = 11, IngredientId = 11, UnitId = 1, Quantity = 0.5m, SortOrder = 7, IsOptional = false },
+        new() { Id = 76, RecipeId = 12, IngredientId = 4, UnitId = 3, Quantity = 1m, Preparation = "browned and cooled", SortOrder = 1, IsOptional = false },
+        new() { Id = 77, RecipeId = 12, IngredientId = 3, UnitId = 3, Quantity = 1m, Preparation = "packed", SortOrder = 2, IsOptional = false },
+        new() { Id = 78, RecipeId = 12, IngredientId = 2, UnitId = 3, Quantity = 0.5m, SortOrder = 3, IsOptional = false },
+        new() { Id = 79, RecipeId = 12, IngredientId = 5, UnitId = 11, Quantity = 2m, SortOrder = 4, IsOptional = false },
+        new() { Id = 80, RecipeId = 12, IngredientId = 40, UnitId = 1, Quantity = 2m, SortOrder = 5, IsOptional = false },
+        new() { Id = 81, RecipeId = 12, IngredientId = 1, UnitId = 3, Quantity = 2.25m, DisplayText = "all-purpose flour", SortOrder = 6, IsOptional = false },
+        new() { Id = 82, RecipeId = 12, IngredientId = 39, UnitId = 1, Quantity = 1m, SortOrder = 7, IsOptional = false },
+        new() { Id = 83, RecipeId = 12, IngredientId = 11, UnitId = 1, Quantity = 1m, SortOrder = 8, IsOptional = false },
+        new() { Id = 84, RecipeId = 12, IngredientId = 41, UnitId = 7, Quantity = 340m, SortOrder = 9, IsOptional = false },
+    ];
+
+    public static Product[] Products =>
+    [
+        new() { Id = 1, CreatorId = 3, Type = ProductType.RecipeCollection, Title = "Roman Pasta Collection", Description = "Carbonara, marinara, and the techniques behind them, with shopping lists built in.", PriceCents = 799, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 18, 12, 0) },
+        new() { Id = 2, CreatorId = 3, Type = ProductType.RecipeCollection, Title = "The Bread Box", Description = "Focaccia and friends.", PriceCents = 499, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 21, 12, 0) },
+        new() { Id = 3, CreatorId = 4, Type = ProductType.MealPlan, Title = "Three Weeknights in Japan", Description = "Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less.", PriceCents = 1299, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 19, 12, 0) },
+        new() { Id = 4, CreatorId = 5, Type = ProductType.MealPlan, Title = "Family Week on a Budget", Description = "Seven dinners, two breakfasts, one grocery trip.", PriceCents = 999, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 27, 12, 0) },
+        new() { Id = 5, CreatorId = 5, Type = ProductType.RecipeCollection, Title = "Summer Grilling (retired)", PriceCents = 599, Currency = "USD", IsActive = false, CreatedAt = Utc(2026, 6, 22, 12, 0) },
+    ];
+
+    public static ProductRecipe[] ProductRecipes =>
+    [
+        new() { Id = 1, ProductId = 1, RecipeId = 1, SortOrder = 1 },
+        new() { Id = 2, ProductId = 1, RecipeId = 2, SortOrder = 2 },
+        new() { Id = 3, ProductId = 1, RecipeId = 4, SortOrder = 3 },
+        new() { Id = 4, ProductId = 2, RecipeId = 3, SortOrder = 1 },
+        new() { Id = 5, ProductId = 3, RecipeId = 5, SortOrder = 1, DayOffset = 0, Slot = MealSlot.Dinner },
+        new() { Id = 6, ProductId = 3, RecipeId = 7, SortOrder = 2, DayOffset = 1, Slot = MealSlot.Dinner },
+        new() { Id = 7, ProductId = 3, RecipeId = 6, SortOrder = 3, DayOffset = 2, Slot = MealSlot.Dinner },
+        new() { Id = 8, ProductId = 4, RecipeId = 9, SortOrder = 1, DayOffset = 0, Slot = MealSlot.Breakfast },
+        new() { Id = 9, ProductId = 4, RecipeId = 10, SortOrder = 2, DayOffset = 0, Slot = MealSlot.Dinner },
+        new() { Id = 10, ProductId = 4, RecipeId = 11, SortOrder = 3, DayOffset = 2, Slot = MealSlot.Snack },
+        new() { Id = 11, ProductId = 4, RecipeId = 9, SortOrder = 4, DayOffset = 3, Slot = MealSlot.Breakfast },
+        new() { Id = 12, ProductId = 4, RecipeId = 8, SortOrder = 5, DayOffset = 5, Slot = MealSlot.Breakfast },
+        new() { Id = 13, ProductId = 4, RecipeId = 12, SortOrder = 6, DayOffset = 6, Slot = MealSlot.Snack },
+    ];
+
+    public static SavedRecipe[] SavedRecipes =>
+    [
+        new() { UserId = 1, RecipeId = 1, SavedAt = Utc(2026, 8, 2, 12, 0) },
+        new() { UserId = 1, RecipeId = 3, SavedAt = Utc(2026, 8, 3, 12, 0) },
+        new() { UserId = 1, RecipeId = 8, SavedAt = Utc(2026, 8, 4, 12, 0) },
+        new() { UserId = 1, RecipeId = 5, SavedAt = Utc(2026, 8, 5, 12, 0) },
+        new() { UserId = 1, RecipeId = 12, SavedAt = Utc(2026, 8, 6, 12, 0) },
+        new() { UserId = 1, RecipeId = 7, SavedAt = Utc(2026, 8, 7, 12, 0) },
+        new() { UserId = 2, RecipeId = 12, SavedAt = Utc(2026, 8, 5, 12, 0) },
+        new() { UserId = 2, RecipeId = 5, SavedAt = Utc(2026, 8, 9, 12, 0) },
+        new() { UserId = 2, RecipeId = 3, SavedAt = Utc(2026, 8, 10, 12, 0) },
+        new() { UserId = 2, RecipeId = 9, SavedAt = Utc(2026, 8, 22, 12, 0) },
+        new() { UserId = 3, RecipeId = 5, SavedAt = Utc(2026, 8, 3, 12, 0) },
+        new() { UserId = 3, RecipeId = 12, SavedAt = Utc(2026, 8, 14, 12, 0) },
+        new() { UserId = 3, RecipeId = 7, SavedAt = Utc(2026, 8, 15, 12, 0) },
+        new() { UserId = 4, RecipeId = 12, SavedAt = Utc(2026, 8, 4, 12, 0) },
+        new() { UserId = 4, RecipeId = 3, SavedAt = Utc(2026, 8, 11, 12, 0) },
+        new() { UserId = 4, RecipeId = 1, SavedAt = Utc(2026, 8, 12, 12, 0) },
+        new() { UserId = 5, RecipeId = 5, SavedAt = Utc(2026, 8, 1, 12, 0) },
+        new() { UserId = 5, RecipeId = 1, SavedAt = Utc(2026, 8, 13, 12, 0) },
+        new() { UserId = 5, RecipeId = 3, SavedAt = Utc(2026, 8, 13, 12, 0) },
+        new() { UserId = 5, RecipeId = 2, SavedAt = Utc(2026, 8, 20, 12, 0) },
+        new() { UserId = 7, RecipeId = 12, SavedAt = Utc(2026, 8, 7, 12, 0) },
+        new() { UserId = 7, RecipeId = 5, SavedAt = Utc(2026, 8, 7, 12, 0) },
+        new() { UserId = 7, RecipeId = 3, SavedAt = Utc(2026, 8, 8, 12, 0) },
+        new() { UserId = 7, RecipeId = 9, SavedAt = Utc(2026, 8, 16, 12, 0) },
+        new() { UserId = 7, RecipeId = 1, SavedAt = Utc(2026, 8, 17, 12, 0) },
+        new() { UserId = 8, RecipeId = 12, SavedAt = Utc(2026, 8, 9, 12, 0) },
+        new() { UserId = 8, RecipeId = 5, SavedAt = Utc(2026, 8, 9, 12, 0) },
+        new() { UserId = 8, RecipeId = 8, SavedAt = Utc(2026, 8, 18, 12, 0) },
+        new() { UserId = 8, RecipeId = 2, SavedAt = Utc(2026, 8, 19, 12, 0) },
+        new() { UserId = 9, RecipeId = 12, SavedAt = Utc(2026, 8, 11, 12, 0) },
+        new() { UserId = 9, RecipeId = 5, SavedAt = Utc(2026, 8, 11, 12, 0) },
+        new() { UserId = 9, RecipeId = 3, SavedAt = Utc(2026, 8, 12, 12, 0) },
+        new() { UserId = 9, RecipeId = 10, SavedAt = Utc(2026, 8, 23, 12, 0) },
+        new() { UserId = 9, RecipeId = 11, SavedAt = Utc(2026, 8, 24, 12, 0) },
+        new() { UserId = 10, RecipeId = 12, SavedAt = Utc(2026, 8, 13, 12, 0) },
+        new() { UserId = 10, RecipeId = 9, SavedAt = Utc(2026, 8, 13, 12, 0) },
+        new() { UserId = 10, RecipeId = 2, SavedAt = Utc(2026, 8, 25, 12, 0) },
+        new() { UserId = 10, RecipeId = 8, SavedAt = Utc(2026, 8, 26, 12, 0) },
+    ];
+
+    public static MealPlan[] MealPlans =>
+    [
+        new() { Id = 1, UserId = 1, Name = "Week of Sept 21", WeekStart = new DateOnly(2026, 9, 21) },
+    ];
+
+    public static MealPlanEntry[] MealPlanEntries =>
+    [
+        new() { Id = 1, MealPlanId = 1, RecipeId = 5, PlannedDate = new DateOnly(2026, 9, 21), Slot = MealSlot.Dinner, ServingsOverride = 4 },
+        new() { Id = 2, MealPlanId = 1, RecipeId = 10, PlannedDate = new DateOnly(2026, 9, 22), Slot = MealSlot.Dinner },
+        new() { Id = 3, MealPlanId = 1, RecipeId = 1, PlannedDate = new DateOnly(2026, 9, 23), Slot = MealSlot.Dinner },
+        new() { Id = 4, MealPlanId = 1, RecipeId = 9, PlannedDate = new DateOnly(2026, 9, 21), Slot = MealSlot.Breakfast },
+    ];
+
+    public static CartItem[] CartItems =>
+    [
+        new() { UserId = 1, ProductId = 2 },
+    ];
+
+    public static Order[] Orders =>
+    [
+        new() { Id = 1, UserId = 1, Status = OrderStatus.Paid, PlacedAt = Utc(2026, 8, 11, 12, 0), PaidAt = Utc(2026, 8, 11, 12, 1), TotalCents = 2098, Currency = "USD", PaymentReference = "pi_seed_0001" },
+        new() { Id = 2, UserId = 1, Status = OrderStatus.Paid, PlacedAt = Utc(2026, 8, 31, 12, 0), PaidAt = Utc(2026, 8, 31, 12, 2), TotalCents = 999, Currency = "USD", PaymentReference = "pi_seed_0002" },
+        new() { Id = 3, UserId = 1, Status = OrderStatus.Cancelled, PlacedAt = Utc(2026, 9, 5, 12, 0), TotalCents = 499, Currency = "USD" },
+        new() { Id = 4, UserId = 2, Status = OrderStatus.Paid, PlacedAt = Utc(2026, 8, 21, 12, 0), PaidAt = Utc(2026, 8, 21, 12, 0), TotalCents = 999, Currency = "USD", PaymentReference = "pi_seed_0003" },
+        new() { Id = 5, UserId = 2, Status = OrderStatus.Paid, PlacedAt = Utc(2026, 8, 8, 12, 0), PaidAt = Utc(2026, 8, 8, 12, 0), TotalCents = 1299, Currency = "USD", PaymentReference = "pi_seed_0004" },
+        new() { Id = 6, UserId = 5, Status = OrderStatus.Paid, PlacedAt = Utc(2026, 8, 1, 12, 0), PaidAt = Utc(2026, 8, 1, 12, 0), TotalCents = 1299, Currency = "USD", PaymentReference = "pi_seed_0005" },
+    ];
+
+    public static OrderItem[] OrderItems =>
+    [
+        new() { Id = 1, OrderId = 1, ProductId = 1, CreatorId = 3, ProductTitle = "Roman Pasta Collection", UnitPriceCents = 799 },
+        new() { Id = 2, OrderId = 1, ProductId = 3, CreatorId = 4, ProductTitle = "Three Weeknights in Japan", UnitPriceCents = 1299 },
+        new() { Id = 3, OrderId = 2, ProductId = 4, CreatorId = 5, ProductTitle = "Family Week on a Budget", UnitPriceCents = 999 },
+        new() { Id = 4, OrderId = 3, ProductId = 2, CreatorId = 3, ProductTitle = "The Bread Box", UnitPriceCents = 499 },
+        new() { Id = 5, OrderId = 4, ProductId = 4, CreatorId = 5, ProductTitle = "Family Week on a Budget", UnitPriceCents = 999 },
+        new() { Id = 6, OrderId = 5, ProductId = 3, CreatorId = 4, ProductTitle = "Three Weeknights in Japan", UnitPriceCents = 1299 },
+        new() { Id = 7, OrderId = 6, ProductId = 3, CreatorId = 4, ProductTitle = "Three Weeknights in Japan", UnitPriceCents = 1299 },
+    ];
+
+    public static OrderItemRecipe[] OrderItemRecipes =>
+    [
+        new() { Id = 1, OrderItemId = 1, RecipeId = 1, SortOrder = 1 },
+        new() { Id = 2, OrderItemId = 1, RecipeId = 2, SortOrder = 2 },
+        new() { Id = 3, OrderItemId = 1, RecipeId = 3, SortOrder = 3 },
+        new() { Id = 4, OrderItemId = 1, RecipeId = 4, SortOrder = 4 },
+        new() { Id = 5, OrderItemId = 2, RecipeId = 5, SortOrder = 1, DayOffset = 0, Slot = MealSlot.Dinner },
+        new() { Id = 6, OrderItemId = 2, RecipeId = 7, SortOrder = 2, DayOffset = 1, Slot = MealSlot.Dinner },
+        new() { Id = 7, OrderItemId = 2, RecipeId = 6, SortOrder = 3, DayOffset = 2, Slot = MealSlot.Dinner },
+        new() { Id = 8, OrderItemId = 3, RecipeId = 9, SortOrder = 1, DayOffset = 0, Slot = MealSlot.Breakfast },
+        new() { Id = 9, OrderItemId = 3, RecipeId = 10, SortOrder = 2, DayOffset = 0, Slot = MealSlot.Dinner },
+        new() { Id = 10, OrderItemId = 3, RecipeId = 11, SortOrder = 3, DayOffset = 2, Slot = MealSlot.Snack },
+        new() { Id = 11, OrderItemId = 3, RecipeId = 9, SortOrder = 4, DayOffset = 3, Slot = MealSlot.Breakfast },
+        new() { Id = 12, OrderItemId = 3, RecipeId = 8, SortOrder = 5, DayOffset = 5, Slot = MealSlot.Breakfast },
+        new() { Id = 13, OrderItemId = 3, RecipeId = 12, SortOrder = 6, DayOffset = 6, Slot = MealSlot.Snack },
+        new() { Id = 14, OrderItemId = 4, RecipeId = 3, SortOrder = 1 },
+        new() { Id = 15, OrderItemId = 5, RecipeId = 9, SortOrder = 1, DayOffset = 0, Slot = MealSlot.Breakfast },
+        new() { Id = 16, OrderItemId = 5, RecipeId = 10, SortOrder = 2, DayOffset = 0, Slot = MealSlot.Dinner },
+        new() { Id = 17, OrderItemId = 5, RecipeId = 11, SortOrder = 3, DayOffset = 2, Slot = MealSlot.Snack },
+        new() { Id = 18, OrderItemId = 5, RecipeId = 9, SortOrder = 4, DayOffset = 3, Slot = MealSlot.Breakfast },
+        new() { Id = 19, OrderItemId = 5, RecipeId = 8, SortOrder = 5, DayOffset = 5, Slot = MealSlot.Breakfast },
+        new() { Id = 20, OrderItemId = 5, RecipeId = 12, SortOrder = 6, DayOffset = 6, Slot = MealSlot.Snack },
+        new() { Id = 21, OrderItemId = 6, RecipeId = 5, SortOrder = 1, DayOffset = 0, Slot = MealSlot.Dinner },
+        new() { Id = 22, OrderItemId = 6, RecipeId = 7, SortOrder = 2, DayOffset = 1, Slot = MealSlot.Dinner },
+        new() { Id = 23, OrderItemId = 6, RecipeId = 6, SortOrder = 3, DayOffset = 2, Slot = MealSlot.Dinner },
+        new() { Id = 24, OrderItemId = 7, RecipeId = 5, SortOrder = 1, DayOffset = 0, Slot = MealSlot.Dinner },
+        new() { Id = 25, OrderItemId = 7, RecipeId = 7, SortOrder = 2, DayOffset = 1, Slot = MealSlot.Dinner },
+        new() { Id = 26, OrderItemId = 7, RecipeId = 6, SortOrder = 3, DayOffset = 2, Slot = MealSlot.Dinner },
+    ];
+
+    public static Review[] Reviews =>
+    [
+        new() { Id = 1, ProductId = 3, UserId = 1, Rating = 5, Recommends = true, Body = "I bought this on a Sunday and had all three dinners on the table by Wednesday. The shopping list is the whole reason it worked. One trip, nothing left over.", CreatedAt = Utc(2026, 8, 12, 12, 0) },
+        new() { Id = 2, ProductId = 3, UserId = 2, Rating = 4, Recommends = true, Body = "Teriyaki alone was worth the price. I scaled the plan to six for my family and the quantities came out right. Taking one star off because I wanted a fourth night.", CreatedAt = Utc(2026, 8, 9, 12, 0) },
+        new() { Id = 3, ProductId = 3, UserId = 5, Rating = 3, Recommends = false, Body = "Good recipes, but I already cook Japanese food most weeks so there was not much here I did not know. Better suited to someone just starting out.", CreatedAt = Utc(2026, 8, 2, 12, 0) },
+    ];
+
+    private static DateTimeOffset Utc(int year, int month, int day, int hour, int minute) =>
+        new(year, month, day, hour, minute, 0, TimeSpan.Zero);
+}

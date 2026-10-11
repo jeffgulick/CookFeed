@@ -3,7 +3,7 @@
 --
 -- Invariants this file demonstrates (DesignDocument.md §3):
 --   * recipes.save_count is never written here; the saved_recipes trigger derives it, so the counter equals
---     the save rows from the first commit (queries.sql Q15 proves it).
+--     the save rows from the first commit (queries.sql Q16 proves it).
 --   * every reviewer holds a Paid order for the product they review; no creator reviews or buys their own work.
 --   * a creator (Dan) buys another creator's (Kenji's) product.
 --   * a meal plan repeats a recipe (overnight oats, Monday and Thursday in "Family Week on a Budget").
