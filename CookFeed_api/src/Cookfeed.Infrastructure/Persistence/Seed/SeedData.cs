@@ -56,26 +56,26 @@ internal static class SeedData
 
     public static UserRole[] UserRoles =>
     [
-        new() { UserId = 1, RoleId = 1 },
-        new() { UserId = 2, RoleId = 1 },
-        new() { UserId = 3, RoleId = 1 },
-        new() { UserId = 3, RoleId = 2 },
-        new() { UserId = 4, RoleId = 1 },
-        new() { UserId = 4, RoleId = 2 },
-        new() { UserId = 5, RoleId = 1 },
-        new() { UserId = 5, RoleId = 2 },
-        new() { UserId = 6, RoleId = 3 },
-        new() { UserId = 7, RoleId = 1 },
-        new() { UserId = 8, RoleId = 1 },
-        new() { UserId = 9, RoleId = 1 },
-        new() { UserId = 10, RoleId = 1 },
+        new() { UserId = 1, RoleId = 1, GrantedAt = Utc(2026, 8, 1, 12, 0) },
+        new() { UserId = 2, RoleId = 1, GrantedAt = Utc(2026, 8, 4, 12, 0) },
+        new() { UserId = 3, RoleId = 1, GrantedAt = Utc(2026, 7, 2, 12, 0) },
+        new() { UserId = 3, RoleId = 2, GrantedAt = Utc(2026, 7, 2, 12, 0) },
+        new() { UserId = 4, RoleId = 1, GrantedAt = Utc(2026, 7, 7, 12, 0) },
+        new() { UserId = 4, RoleId = 2, GrantedAt = Utc(2026, 7, 7, 12, 0) },
+        new() { UserId = 5, RoleId = 1, GrantedAt = Utc(2026, 7, 22, 12, 0) },
+        new() { UserId = 5, RoleId = 2, GrantedAt = Utc(2026, 7, 22, 12, 0) },
+        new() { UserId = 6, RoleId = 3, GrantedAt = Utc(2026, 6, 2, 12, 0) },
+        new() { UserId = 7, RoleId = 1, GrantedAt = Utc(2026, 8, 6, 12, 0) },
+        new() { UserId = 8, RoleId = 1, GrantedAt = Utc(2026, 8, 8, 12, 0) },
+        new() { UserId = 9, RoleId = 1, GrantedAt = Utc(2026, 8, 10, 12, 0) },
+        new() { UserId = 10, RoleId = 1, GrantedAt = Utc(2026, 8, 12, 12, 0) },
     ];
 
     public static CreatorProfile[] CreatorProfiles =>
     [
-        new() { UserId = 3, Handle = "maria-cooks", Bio = "Roman trattoria classics, filmed in a tiny Chicago kitchen. Weeknight pasta is a right, not a privilege.", IsVerified = true },
-        new() { UserId = 4, Handle = "kenji-kitchen", Bio = "Japanese home cooking with a weeknight clock. Most dinners under 30 minutes, everything shoppable.", IsVerified = true },
-        new() { UserId = 5, Handle = "dan-meal-preps", Bio = "Dad of three. I cook on Sunday so we eat all week. No fancy gear.", IsVerified = false },
+        new() { UserId = 3, Handle = "maria-cooks", Bio = "Roman trattoria classics, filmed in a tiny Chicago kitchen. Weeknight pasta is a right, not a privilege.", AvatarUrl = "images/creators/maria-cooks.svg", IsVerified = true },
+        new() { UserId = 4, Handle = "kenji-kitchen", Bio = "Japanese home cooking with a weeknight clock. Most dinners under 30 minutes, everything shoppable.", AvatarUrl = "images/creators/kenji-kitchen.svg", IsVerified = true },
+        new() { UserId = 5, Handle = "dan-meal-preps", Bio = "Dad of three. I cook on Sunday so we eat all week. No fancy gear.", AvatarUrl = "images/creators/dan-meal-preps.svg", IsVerified = false },
     ];
 
     public static Ingredient[] Ingredients =>
@@ -130,22 +130,28 @@ internal static class SeedData
         new() { Id = 48, Name = "bell pepper", Category = "Produce", PreferredShoppingUnitId = 11 },
         new() { Id = 49, Name = "broccoli", Category = "Produce", PreferredShoppingUnitId = 11 },
         new() { Id = 50, Name = "cornstarch", Category = "Pantry", DensityGPerMl = 0.54m, PreferredShoppingUnitId = 7 },
+        // Onigiri Three Ways' fillings and wrapper (salmon, umeboshi, tuna-mayo, nori).
+        new() { Id = 51, Name = "salmon fillet", Category = "Seafood", PreferredShoppingUnitId = 7 },
+        new() { Id = 52, Name = "umeboshi", Category = "Pantry", PreferredShoppingUnitId = 11 },
+        new() { Id = 53, Name = "canned tuna", Category = "Pantry", PreferredShoppingUnitId = 13 },
+        new() { Id = 54, Name = "mayonnaise", Category = "Pantry", DensityGPerMl = 0.91m, PreferredShoppingUnitId = 7 },
+        new() { Id = 55, Name = "nori", Category = "Pantry", PreferredShoppingUnitId = 11 },
     ];
 
     public static Recipe[] Recipes =>
     [
-        new() { Id = 1, CreatorId = 3, Title = "15-Minute Spaghetti Carbonara", Description = "No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.", VideoUrl = "https://cdn.cookfeed.app/videos/001.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/001.jpg", Servings = 4, PrepMinutes = 5, CookMinutes = 12, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 12, 12, 0), PublishedAt = Utc(2026, 7, 12, 12, 0) },
-        new() { Id = 2, CreatorId = 3, Title = "Sunday Marinara from Scratch", Description = "One can of tomatoes, one onion, one hour. Freezes beautifully.", VideoUrl = "https://cdn.cookfeed.app/videos/002.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/002.jpg", Servings = 6, PrepMinutes = 10, CookMinutes = 60, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 14, 12, 0), PublishedAt = Utc(2026, 7, 14, 12, 0) },
-        new() { Id = 3, CreatorId = 3, Title = "No-Knead Focaccia", Description = "Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.", VideoUrl = "https://cdn.cookfeed.app/videos/003.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/003.jpg", Servings = 8, PrepMinutes = 15, CookMinutes = 25, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 20, 12, 0), PublishedAt = Utc(2026, 7, 20, 12, 0) },
-        new() { Id = 4, CreatorId = 3, Title = "Weeknight Chicken Parm", Description = "Thin cutlets, quick fry, broiled with marinara and mozzarella.", VideoUrl = "https://cdn.cookfeed.app/videos/004.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/004.jpg", Servings = 4, PrepMinutes = 15, CookMinutes = 20, IsPublished = true, Visibility = RecipeVisibility.ProductOnly, CreatedAt = Utc(2026, 7, 26, 12, 0), PublishedAt = Utc(2026, 7, 26, 12, 0) },
-        new() { Id = 5, CreatorId = 4, Title = "Chicken Teriyaki, the Real Way", Description = "Four ingredients in the sauce. Skin-on thighs. That's the whole secret.", VideoUrl = "https://cdn.cookfeed.app/videos/005.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/005.jpg", Servings = 2, PrepMinutes = 5, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 13, 12, 0), PublishedAt = Utc(2026, 7, 13, 12, 0) },
-        new() { Id = 6, CreatorId = 4, Title = "Onigiri Three Ways", Description = "Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.", VideoUrl = "https://cdn.cookfeed.app/videos/006.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/006.jpg", Servings = 4, PrepMinutes = 20, CookMinutes = 20, IsPublished = true, Visibility = RecipeVisibility.ProductOnly, CreatedAt = Utc(2026, 7, 17, 12, 0), PublishedAt = Utc(2026, 7, 17, 12, 0) },
-        new() { Id = 7, CreatorId = 4, Title = "10-Minute Ginger Garlic Stir-Fry", Description = "The one-pan dinner I make when I have nothing planned.", VideoUrl = "https://cdn.cookfeed.app/videos/007.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/007.jpg", Servings = 2, PrepMinutes = 5, CookMinutes = 8, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 23, 12, 0), PublishedAt = Utc(2026, 7, 23, 12, 0) },
-        new() { Id = 8, CreatorId = 5, Title = "Saturday Buttermilk-Style Pancakes", Description = "Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.", VideoUrl = "https://cdn.cookfeed.app/videos/008.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/008.jpg", Servings = 4, PrepMinutes = 10, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 24, 12, 0), PublishedAt = Utc(2026, 7, 24, 12, 0) },
-        new() { Id = 9, CreatorId = 5, Title = "Five-Day Overnight Oats", Description = "One mixing bowl on Sunday, five breakfasts done.", VideoUrl = "https://cdn.cookfeed.app/videos/009.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/009.jpg", Servings = 5, PrepMinutes = 10, CookMinutes = 0, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 25, 12, 0), PublishedAt = Utc(2026, 7, 25, 12, 0) },
-        new() { Id = 10, CreatorId = 5, Title = "Weeknight Beef Tacos", Description = "Skip the packet. Cumin, chili powder, and a squeeze of lime.", VideoUrl = "https://cdn.cookfeed.app/videos/010.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/010.jpg", Servings = 4, PrepMinutes = 10, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 28, 12, 0), PublishedAt = Utc(2026, 7, 28, 12, 0) },
-        new() { Id = 11, CreatorId = 5, Title = "Smooth Hummus", Description = "Peel the chickpeas. Yes, really. It's worth it.", VideoUrl = "https://cdn.cookfeed.app/videos/011.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/011.jpg", Servings = 6, PrepMinutes = 15, CookMinutes = 0, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 29, 12, 0), PublishedAt = Utc(2026, 7, 29, 12, 0) },
-        new() { Id = 12, CreatorId = 5, Title = "Brown Butter Chocolate Chip Cookies", Description = "Brown the butter. Chill the dough. Thank me later.", VideoUrl = "https://cdn.cookfeed.app/videos/012.mp4", ThumbnailUrl = "https://cdn.cookfeed.app/thumbs/012.jpg", Servings = 24, PrepMinutes = 20, CookMinutes = 12, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 30, 12, 0), PublishedAt = Utc(2026, 7, 30, 12, 0) },
+        new() { Id = 1, CreatorId = 3, Title = "15-Minute Spaghetti Carbonara", Description = "No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.", VideoUrl = "https://cdn.cookfeed.app/videos/001.mp4", ThumbnailUrl = "images/recipes/1.svg", Servings = 4, PrepMinutes = 5, CookMinutes = 12, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 12, 12, 0), PublishedAt = Utc(2026, 7, 12, 12, 0) },
+        new() { Id = 2, CreatorId = 3, Title = "Sunday Marinara from Scratch", Description = "One can of tomatoes, one onion, one hour. Freezes beautifully.", VideoUrl = "https://cdn.cookfeed.app/videos/002.mp4", ThumbnailUrl = "images/recipes/2.svg", Servings = 6, PrepMinutes = 10, CookMinutes = 60, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 14, 12, 0), PublishedAt = Utc(2026, 7, 14, 12, 0) },
+        new() { Id = 3, CreatorId = 3, Title = "No-Knead Focaccia", Description = "Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.", VideoUrl = "https://cdn.cookfeed.app/videos/003.mp4", ThumbnailUrl = "images/recipes/3.svg", Servings = 8, PrepMinutes = 15, CookMinutes = 25, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 20, 12, 0), PublishedAt = Utc(2026, 7, 20, 12, 0) },
+        new() { Id = 4, CreatorId = 3, Title = "Weeknight Chicken Parm", Description = "Thin cutlets, quick fry, broiled with marinara and mozzarella.", VideoUrl = "https://cdn.cookfeed.app/videos/004.mp4", ThumbnailUrl = "images/recipes/4.svg", Servings = 4, PrepMinutes = 15, CookMinutes = 20, IsPublished = true, Visibility = RecipeVisibility.ProductOnly, CreatedAt = Utc(2026, 7, 26, 12, 0), PublishedAt = Utc(2026, 7, 26, 12, 0) },
+        new() { Id = 5, CreatorId = 4, Title = "Chicken Teriyaki, the Real Way", Description = "Four ingredients in the sauce. Skin-on thighs. That's the whole secret.", VideoUrl = "https://cdn.cookfeed.app/videos/005.mp4", ThumbnailUrl = "images/recipes/5.svg", Servings = 2, PrepMinutes = 5, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 13, 12, 0), PublishedAt = Utc(2026, 7, 13, 12, 0) },
+        new() { Id = 6, CreatorId = 4, Title = "Onigiri Three Ways", Description = "Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.", VideoUrl = "https://cdn.cookfeed.app/videos/006.mp4", ThumbnailUrl = "images/recipes/6.svg", Servings = 4, PrepMinutes = 20, CookMinutes = 20, IsPublished = true, Visibility = RecipeVisibility.ProductOnly, CreatedAt = Utc(2026, 7, 17, 12, 0), PublishedAt = Utc(2026, 7, 17, 12, 0) },
+        new() { Id = 7, CreatorId = 4, Title = "10-Minute Ginger Garlic Stir-Fry", Description = "The one-pan dinner I make when I have nothing planned.", VideoUrl = "https://cdn.cookfeed.app/videos/007.mp4", ThumbnailUrl = "images/recipes/7.svg", Servings = 2, PrepMinutes = 5, CookMinutes = 8, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 23, 12, 0), PublishedAt = Utc(2026, 7, 23, 12, 0) },
+        new() { Id = 8, CreatorId = 5, Title = "Saturday Buttermilk-Style Pancakes", Description = "Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.", VideoUrl = "https://cdn.cookfeed.app/videos/008.mp4", ThumbnailUrl = "images/recipes/8.svg", Servings = 4, PrepMinutes = 10, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 24, 12, 0), PublishedAt = Utc(2026, 7, 24, 12, 0) },
+        new() { Id = 9, CreatorId = 5, Title = "Five-Day Overnight Oats", Description = "One mixing bowl on Sunday, five breakfasts done.", VideoUrl = "https://cdn.cookfeed.app/videos/009.mp4", ThumbnailUrl = "images/recipes/9.svg", Servings = 5, PrepMinutes = 10, CookMinutes = 0, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 25, 12, 0), PublishedAt = Utc(2026, 7, 25, 12, 0) },
+        new() { Id = 10, CreatorId = 5, Title = "Weeknight Beef Tacos", Description = "Skip the packet. Cumin, chili powder, and a squeeze of lime.", VideoUrl = "https://cdn.cookfeed.app/videos/010.mp4", ThumbnailUrl = "images/recipes/10.svg", Servings = 4, PrepMinutes = 10, CookMinutes = 15, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 28, 12, 0), PublishedAt = Utc(2026, 7, 28, 12, 0) },
+        new() { Id = 11, CreatorId = 5, Title = "Smooth Hummus", Description = "Peel the chickpeas. Yes, really. It's worth it.", VideoUrl = "https://cdn.cookfeed.app/videos/011.mp4", ThumbnailUrl = "images/recipes/11.svg", Servings = 6, PrepMinutes = 15, CookMinutes = 0, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 29, 12, 0), PublishedAt = Utc(2026, 7, 29, 12, 0) },
+        new() { Id = 12, CreatorId = 5, Title = "Brown Butter Chocolate Chip Cookies", Description = "Brown the butter. Chill the dough. Thank me later.", VideoUrl = "https://cdn.cookfeed.app/videos/012.mp4", ThumbnailUrl = "images/recipes/12.svg", Servings = 24, PrepMinutes = 20, CookMinutes = 12, IsPublished = true, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 30, 12, 0), PublishedAt = Utc(2026, 7, 30, 12, 0) },
         new() { Id = 13, CreatorId = 4, Title = "Miso Soup (draft)", VideoUrl = "https://cdn.cookfeed.app/videos/draft-miso.mp4", Servings = 2, IsPublished = false, Visibility = RecipeVisibility.Public, CreatedAt = Utc(2026, 7, 31, 12, 0) },
     ];
 
@@ -227,8 +233,8 @@ internal static class SeedData
         new() { Id = 30, RecipeId = 5, IngredientId = 30, UnitId = 2, Quantity = 1m, SortOrder = 6, IsOptional = false },
         new() { Id = 31, RecipeId = 5, IngredientId = 26, UnitId = 14, Quantity = 1m, Preparation = "sliced, to garnish", SortOrder = 7, IsOptional = false },
         new() { Id = 32, RecipeId = 6, IngredientId = 27, UnitId = 3, Quantity = 2m, DisplayText = "short-grain (sushi) rice", Preparation = "rinsed", SortOrder = 1, IsOptional = false },
-        new() { Id = 33, RecipeId = 6, IngredientId = 11, UnitId = 1, Quantity = 1m, SortOrder = 2, IsOptional = false },
-        new() { Id = 34, RecipeId = 6, IngredientId = 29, UnitId = 1, Quantity = 1m, Preparation = "for the hands", SortOrder = 3, IsOptional = false },
+        new() { Id = 33, RecipeId = 6, IngredientId = 11, UnitId = 1, Quantity = 1m, Preparation = "for the hands", SortOrder = 2, IsOptional = false },
+        new() { Id = 34, RecipeId = 6, IngredientId = 29, UnitId = 1, Quantity = 1m, SortOrder = 3, IsOptional = false },
         new() { Id = 35, RecipeId = 7, IngredientId = 20, UnitId = 7, Quantity = 300m, Preparation = "sliced thin", SortOrder = 1, IsOptional = false },
         new() { Id = 36, RecipeId = 7, IngredientId = 49, UnitId = 11, Quantity = 1m, DisplayText = "head of broccoli", Preparation = "cut into florets", SortOrder = 2, IsOptional = false },
         new() { Id = 37, RecipeId = 7, IngredientId = 48, UnitId = 11, Quantity = 1m, Preparation = "sliced", SortOrder = 3, IsOptional = false },
@@ -279,15 +285,20 @@ internal static class SeedData
         new() { Id = 82, RecipeId = 12, IngredientId = 39, UnitId = 1, Quantity = 1m, SortOrder = 7, IsOptional = false },
         new() { Id = 83, RecipeId = 12, IngredientId = 11, UnitId = 1, Quantity = 1m, SortOrder = 8, IsOptional = false },
         new() { Id = 84, RecipeId = 12, IngredientId = 41, UnitId = 7, Quantity = 340m, SortOrder = 9, IsOptional = false },
+        new() { Id = 85, RecipeId = 6, IngredientId = 51, UnitId = 7, Quantity = 150m, Preparation = "cooked and flaked", SortOrder = 4, IsOptional = false },
+        new() { Id = 86, RecipeId = 6, IngredientId = 52, UnitId = 11, Quantity = 4m, Preparation = "pitted", SortOrder = 5, IsOptional = false },
+        new() { Id = 87, RecipeId = 6, IngredientId = 53, UnitId = 13, Quantity = 1m, DisplayText = "5 oz can tuna", Preparation = "drained", SortOrder = 6, IsOptional = false },
+        new() { Id = 88, RecipeId = 6, IngredientId = 54, UnitId = 2, Quantity = 2m, DisplayText = "Japanese mayonnaise", Preparation = "mixed into the tuna", SortOrder = 7, IsOptional = false },
+        new() { Id = 89, RecipeId = 6, IngredientId = 55, UnitId = 11, Quantity = 4m, DisplayText = "nori sheets", Preparation = "cut into strips", SortOrder = 8, IsOptional = false },
     ];
 
     public static Product[] Products =>
     [
-        new() { Id = 1, CreatorId = 3, Type = ProductType.RecipeCollection, Title = "Roman Pasta Collection", Description = "Carbonara, marinara, and the techniques behind them, with shopping lists built in.", PriceCents = 799, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 18, 12, 0) },
-        new() { Id = 2, CreatorId = 3, Type = ProductType.RecipeCollection, Title = "The Bread Box", Description = "Focaccia and friends.", PriceCents = 499, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 21, 12, 0) },
-        new() { Id = 3, CreatorId = 4, Type = ProductType.MealPlan, Title = "Three Weeknights in Japan", Description = "Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less.", PriceCents = 1299, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 19, 12, 0) },
-        new() { Id = 4, CreatorId = 5, Type = ProductType.MealPlan, Title = "Family Week on a Budget", Description = "Seven dinners, two breakfasts, one grocery trip.", PriceCents = 999, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 27, 12, 0) },
-        new() { Id = 5, CreatorId = 5, Type = ProductType.RecipeCollection, Title = "Summer Grilling (retired)", PriceCents = 599, Currency = "USD", IsActive = false, CreatedAt = Utc(2026, 6, 22, 12, 0) },
+        new() { Id = 1, CreatorId = 3, Type = ProductType.RecipeCollection, Title = "Roman Pasta Collection", Description = "Carbonara, marinara, and the techniques behind them, with shopping lists built in.", CoverImageUrl = "images/products/1.svg", PriceCents = 799, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 18, 12, 0) },
+        new() { Id = 2, CreatorId = 3, Type = ProductType.RecipeCollection, Title = "The Bread Box", Description = "Focaccia and friends.", CoverImageUrl = "images/products/2.svg", PriceCents = 499, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 21, 12, 0) },
+        new() { Id = 3, CreatorId = 4, Type = ProductType.MealPlan, Title = "Three Weeknights in Japan", Description = "Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less.", CoverImageUrl = "images/products/3.svg", PriceCents = 1299, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 19, 12, 0) },
+        new() { Id = 4, CreatorId = 5, Type = ProductType.MealPlan, Title = "Family Week on a Budget", Description = "Seven dinners, two breakfasts, one grocery trip.", CoverImageUrl = "images/products/4.svg", PriceCents = 999, Currency = "USD", IsActive = true, CreatedAt = Utc(2026, 7, 27, 12, 0) },
+        new() { Id = 5, CreatorId = 5, Type = ProductType.RecipeCollection, Title = "Summer Grilling (retired)", CoverImageUrl = "images/products/5.svg", PriceCents = 599, Currency = "USD", IsActive = false, CreatedAt = Utc(2026, 6, 22, 12, 0) },
     ];
 
     public static ProductRecipe[] ProductRecipes =>
@@ -351,7 +362,7 @@ internal static class SeedData
 
     public static MealPlan[] MealPlans =>
     [
-        new() { Id = 1, UserId = 1, Name = "Week of Sept 21", WeekStart = new DateOnly(2026, 9, 21) },
+        new() { Id = 1, UserId = 1, Name = "Week of Sept 21", WeekStart = new DateOnly(2026, 9, 21), CreatedAt = Utc(2026, 9, 19, 12, 0) },
     ];
 
     public static MealPlanEntry[] MealPlanEntries =>
@@ -364,7 +375,7 @@ internal static class SeedData
 
     public static CartItem[] CartItems =>
     [
-        new() { UserId = 1, ProductId = 2 },
+        new() { UserId = 1, ProductId = 2, AddedAt = Utc(2026, 9, 6, 12, 0) },
     ];
 
     public static Order[] Orders =>

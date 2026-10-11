@@ -61,6 +61,7 @@ DevTools (F12), then right-click the reload button and choose **Empty cache and 
 | `recipe-teriyaki.html` | Recipe: Chicken Teriyaki, the Real Way |
 | `recipe-stirfry.html` | Recipe: 10-Minute Ginger Garlic Stir-Fry |
 | `recipe-onigiri.html` | Recipe: Onigiri Three Ways |
+| `signin.html` | Sign in as one of the seeded accounts, or browse signed out |
 
 ## Folder layout
 
@@ -72,17 +73,22 @@ prototype/
   cart.html           cart and checkout page
   kitchen.html        My kitchen: saved recipes and their shopping list
   recipe-*.html       the three recipes in the plan
-  css/styles.css      one stylesheet for all seven pages
-  js/data.js          the store's data, shaped like the database rows
-  js/common.js        functions used by more than one page (cart, saves, storage, toast)
+  signin.html         sign in as a seeded account
+  css/styles.css      one stylesheet for every page
+  js/seed-data.js     every seeded table, exported from the database (generated, do not edit)
+  js/data.js          builds each page's data from seed-data.js
+  js/common.js        functions used by more than one page (cart, saves, sign-in, storage, toast)
   js/product.js       product page behavior
   js/reviews.js       reviews page behavior
   js/creator.js       creator page behavior
   js/cart.js          cart and checkout behavior
   js/kitchen.js       My kitchen behavior
   js/recipe.js        all three recipes and the recipe page behavior
-  images/             illustrations (SVG)
+  js/signin.js        sign-in page behavior
+  images/             illustrations (SVG) in recipes/, creators/ and products/, the paths the seed stores
 ```
+
+The export that writes `js/seed-data.js` lives next to this folder, in `CookFeed_frontend/tools/`.
 
 ## Homework 3 additions
 
@@ -124,8 +130,35 @@ All event handlers are attached with `addEventListener`; there are no inline `on
 - The servings pop-up is replaced by the same minus / plus box as the product page.
 
 **Wording for first-time visitors**
-- "saved by 733 cooks" instead of "733 saves", "Coming soon" instead of "Planned", "Already have"
+- "saved by 7 cooks" instead of "7 saves", "Coming soon" instead of "Planned", "Already have"
   instead of "Have it", and tooltips explaining saving and verified creators.
+
+## Project Deliverable 2: data from the database
+
+The prototype now shows exactly what the PostgreSQL database holds, so it and the Angular
+application describe the same store.
+
+- **`js/seed-data.js` is generated, not typed.** `CookFeed_frontend/tools/export-seed-data.sh` runs
+  `tools/export-seed-data.sql` against the seeded database and writes every table as JSON, with
+  camelCase keys (`price_cents` becomes `priceCents`). Passwords and email addresses are left out.
+  Save counts are the database's own, so recipes read "saved by 7 cooks", not invented numbers.
+- **The API tests check it.** `PrototypeDataTests` runs the same SQL on a freshly seeded database and
+  fails if `seed-data.js` no longer matches, so a seed change cannot leave the prototype behind.
+- **Sign in.** `signin.html` lists the seeded accounts by role: home cooks, creators (who can also
+  shop) and the admin. The chosen account is kept in `localStorage` as `cookfeed.userId`, the
+  prototype's stand-in for the API's `X-User-Id` header, and every page's nav shows who is signed in.
+- **Images are local files.** The seed stores app-relative paths (`images/recipes/{id}.svg`,
+  `images/creators/{handle}.svg`, `images/products/{id}.svg`), and the files are in `images/`, so the
+  pictures work from the file system and Angular can serve the same paths from its assets.
+- **Followers are gone.** The database has no followers table, so the follower count and Follow
+  button were removed from the creator page.
+
+To regenerate `seed-data.js` after changing the seed:
+
+1. Reset and seed the database (see `CookFeed_api/DOCKER.md`), then start the API once in Development
+   so it seeds the empty database.
+2. From `CookFeed_frontend/tools`, run `./export-seed-data.sh`. It uses `psql` if installed, otherwise
+   the Postgres container from `CookFeed_api/docker-compose.yml`.
 
 ## Planned for the Angular production build
 
@@ -136,8 +169,8 @@ application (Assignment 4), where they can be built against the real API and dat
   or millilitres, the way the database design already converts units for the shopping list.
 - **Review trust labels.** Mark reviews from buyers as "Verified purchase", and label reviews written
   by other Cookfeed creators, using the orders and creator profile data.
-- **Creator page header layout.** Keep the avatar, name and Follow button on one row on laptop-width
-  screens; today they wrap onto separate lines.
+- **Creator page header layout.** Keep the avatar and name on one row on laptop-width screens; today
+  they wrap onto separate lines.
 - **Order history.** A "Your orders" page linked from the receipt, listing past orders and gift codes.
 - **Send to Instacart and Send to Favor.** Connect the delivery partners that are marked Coming soon.
 - **Custom confirmation pop-ups.** Replace every browser `confirm()` and `alert()` box (removing
@@ -156,6 +189,6 @@ application (Assignment 4), where they can be built against the real API and dat
   step moves the progress bar and the clock to show how the steps and the video line up.
 - Checkout does not take payment. Placing an order shows the confirmation a real checkout
   would produce, with a generated order number.
-- The content is the same data the semester project is built on: the meal plan, its three
-  recipes, the ingredient quantities, and the creator are all taken from the project's
-  seed data, so the prototype and the finished application describe the same store.
+- The content is the semester project's seed data, exported from the database into
+  `js/seed-data.js`: the meal plan, its three recipes, the ingredient quantities, the creators,
+  the accounts and the reviews.

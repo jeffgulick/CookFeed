@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A bowl of smooth hummus with olive oil, paprika and chickpeas">
+  <rect width="400" height="300" fill="#fbf5ea"/>
+  <circle cx="200" cy="140" r="108" fill="#f3e7cf"/>
+  <ellipse cx="200" cy="248" rx="128" ry="14" fill="#e2d2b3"/>
+  <path d="M84 168 Q200 280 316 168 Z" fill="#3f7f86"/>
+  <ellipse cx="200" cy="168" rx="116" ry="28" fill="#4f949b"/>
+  <ellipse cx="200" cy="166" rx="102" ry="22" fill="#ecd9b0"/>
+  <ellipse cx="200" cy="166" rx="56" ry="11" fill="none" stroke="#dcc493" stroke-width="5"/>
+  <ellipse cx="200" cy="166" rx="30" ry="7" fill="#c9a43a" opacity=".85"/>
+  <g fill="#c2410c"><circle cx="186" cy="162" r="2.5"/><circle cx="210" cy="168" r="2.5"/><circle cx="198" cy="160" r="2"/><circle cx="220" cy="162" r="2"/></g>
+  <g fill="#e2bf7c"><circle cx="150" cy="160" r="6"/><circle cx="246" cy="172" r="6"/><circle cx="256" cy="160" r="6"/></g>
+  <path d="M232 176 q8 -10 16 0 q-8 6 -16 0 Z" fill="#4d7c0f"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A chicken parm cutlet with marinara and melted mozzarella on a plate">
+  <rect width="400" height="300" fill="#fdf0e6"/>
+  <circle cx="200" cy="140" r="108" fill="#f9dfcb"/>
+  <ellipse cx="200" cy="232" rx="140" ry="30" fill="#ebcdb5"/>
+  <ellipse cx="200" cy="224" rx="126" ry="26" fill="#fffdf8"/>
+  <path d="M110 200 Q118 152 196 150 Q282 148 292 196 Q290 226 200 230 Q112 230 110 200 Z" fill="#c98a3f"/>
+  <path d="M124 196 Q132 162 198 160 Q270 160 278 194 Q270 216 200 218 Q130 218 124 196 Z" fill="#b91c1c"/>
+  <path d="M138 190 Q150 168 196 170 Q250 168 262 188 Q256 206 200 208 Q146 208 138 190 Z" fill="#fbf3d5"/>
+  <g fill="#e8c766" opacity=".9"><circle cx="170" cy="186" r="9"/><circle cx="214" cy="192" r="10"/><circle cx="240" cy="182" r="7"/></g>
+  <path d="M186 172 q10 -10 20 0 q-10 7 -20 0 Z" fill="#4d7c0f"/>
+  <path d="M166 104 q10 -16 0 -30" stroke="#e8c9b4" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M232 104 q10 -16 0 -30" stroke="#e8c9b4" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>

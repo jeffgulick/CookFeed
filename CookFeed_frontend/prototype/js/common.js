@@ -59,7 +59,8 @@ var STORAGE_KEYS = {
   cart: "cookfeed.cart",
   saves: "cookfeed.saves",
   reviews: "cookfeed.reviews",
-  orders: "cookfeed.orders"
+  orders: "cookfeed.orders",
+  userId: "cookfeed.userId"
 };
 
 function loadJson(key, fallback) {
@@ -380,10 +381,72 @@ function showStorageNotice() {
   main.insertBefore(notice, main.firstChild);
 }
 
-/* Every page shows the cart count as soon as it loads, and the storage
+/* ---------- who is signed in ----------
+   The prototype's stand-in for logging in, the same idea as the API's X-User-Id header until real login
+   arrives: signin.html stores the id of one of the seeded accounts, and every page reads it back. */
+
+var ROLE_LABELS = { HomeCook: "Home cook", Creator: "Creator", Admin: "Admin" };
+
+/* The roles a user holds, by name (user_roles joined to roles). */
+function rolesFor(userId) {
+  return window.COOKFEED_SEED.userRoles
+    .filter(function (ur) { return ur.userId === userId; })
+    .map(function (ur) {
+      return window.COOKFEED_SEED.roles.filter(function (r) { return r.id === ur.roleId; })[0].name;
+    });
+}
+
+/* The signed-in account, or null when browsing signed out (or the stored id no longer names a user). */
+function currentUser() {
+  var id = loadJson(STORAGE_KEYS.userId, null);
+  var user = window.COOKFEED_SEED.users.filter(function (u) { return u.id === id; })[0];
+  if (!user) {
+    return null;
+  }
+  var profile = window.COOKFEED_SEED.creatorProfiles.filter(function (p) { return p.userId === id; })[0];
+  return { id: user.id, displayName: user.displayName, roles: rolesFor(user.id), handle: profile ? profile.handle : null };
+}
+
+function signIn(userId) {
+  saveJson(STORAGE_KEYS.userId, userId);
+}
+
+function signOut() {
+  try {
+    window.localStorage.removeItem(STORAGE_KEYS.userId);
+  } catch (error) {
+    // Storage is blocked: there was nothing stored to remove.
+  }
+}
+
+/* The nav's account area: "Sign in" when signed out, otherwise the account's name and a Sign out button. */
+function updateAccountArea() {
+  var area = document.getElementById("accountArea");
+  if (!area) {
+    return;
+  }
+  var user = currentUser();
+  if (!user) {
+    area.innerHTML = '<a class="navlink" href="signin.html">Sign in</a>';
+    return;
+  }
+  area.innerHTML =
+    '<a class="account-name" href="signin.html" title="Switch account">Signed in as <strong>' +
+    escapeHtml(user.displayName) + '</strong></a>' +
+    '<button type="button" class="link-button" id="signOutButton">Sign out</button>';
+  document.getElementById("signOutButton").addEventListener("click", function () {
+    signOut();
+    updateAccountArea();
+    showToast("Signed out. You are browsing as a guest.");
+    document.dispatchEvent(new CustomEvent("cookfeed:accountchange"));
+  });
+}
+
+/* Every page shows the cart count and who is signed in as soon as it loads, and the storage
    notice when saving is blocked. */
 document.addEventListener("DOMContentLoaded", function () {
   updateCartChip();
+  updateAccountArea();
   if (storageWorks() === false) {
     showStorageNotice();
   }

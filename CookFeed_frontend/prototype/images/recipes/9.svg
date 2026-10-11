@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Three jars of overnight oats topped with berries">
+  <rect width="400" height="300" fill="#f1f5fb"/>
+  <circle cx="200" cy="140" r="108" fill="#e1e9f5"/>
+  <ellipse cx="200" cy="248" rx="150" ry="14" fill="#cdd8ea"/>
+  <g id="jar">
+    <rect x="72" y="118" width="76" height="124" rx="14" fill="#dfe8f2" opacity=".9"/>
+    <rect x="78" y="150" width="64" height="86" rx="10" fill="#efe2c9"/>
+    <rect x="78" y="186" width="64" height="10" fill="#e3cfaa"/>
+    <rect x="78" y="136" width="64" height="18" rx="6" fill="#f7f2e8"/>
+    <circle cx="96" cy="138" r="7" fill="#4c4ec2"/><circle cx="114" cy="134" r="7" fill="#b91c3c"/><circle cx="130" cy="140" r="6" fill="#4c4ec2"/>
+    <rect x="68" y="106" width="84" height="16" rx="5" fill="#9aa9bf"/>
+  </g>
+  <use href="#jar" x="90" y="-10"/>
+  <use href="#jar" x="180"/>
+</svg>
