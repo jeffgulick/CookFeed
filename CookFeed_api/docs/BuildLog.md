@@ -37,6 +37,8 @@ its generated SQL verified in `docs/Queries.md`.
 | Shopping list: `MyShoppingListController` → `ShoppingListService` → `ShoppingListRepository` (SQL half) + `ShoppingListAggregator` in Domain (C# half) | `src/*/ShoppingList/`, `Persistence/Repositories/`, `Api/Controllers/` |
 | Shopping-list tests: 14 Domain tests for the aggregator, 3 service tests, 9 HTTP tests checked against `queries.sql` Q8 (130 tests in all); SQL verified and rewritten after review | `tests/*/ShoppingList*`, `docs/Queries.md` §3 |
 
+| CI: `.github/workflows/api-tests.yml` runs a locked restore, the build and all tests against a `postgres:16.15` service on every PR and push to `main` that touches `CookFeed_api/` | `.github/workflows/` |
+
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
 with reviewed SQL and justified indexes, the design document, and the API with tests.
 
@@ -124,8 +126,7 @@ Deliverable 2 (due **Oct 17**) is complete once the `shopping-list` branch is me
 1. **Comment the existing database-layer code** to the commenting rule above. Mainly the 19
    configurations, `CookfeedDbContext.cs` and `Program.cs`. Comments only: the build and the tests must be
    unchanged.
-2. **CI** (see Open items), so every pull request runs the 130 tests.
-3. **Assignment 4:** the Angular app against these endpoints, and login (JWT) replacing the `X-User-Id`
+2. **Assignment 4:** the Angular app against these endpoints, and login (JWT) replacing the `X-User-Id`
    header (`DesignDocument.md` §9). Then the write features (saves, cart, checkout, reviews) and the
    business rules below.
 
@@ -152,8 +153,6 @@ them off here as they land. The status codes are proposals, to confirm when each
 
 ## Open items
 
-- **CI:** a GitHub Actions workflow that runs `dotnet test` with a `postgres:16.15` service, so every pull
-  request shows green or red.
 - **Old branch:** the auto-named branch ending in `relaxed-newton-gutkwp` is still on GitHub and can be
   deleted (its work is in `main`). This environment cannot delete branches; do it under **Branches** on
   GitHub.
