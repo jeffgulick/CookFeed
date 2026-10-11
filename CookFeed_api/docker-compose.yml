@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:16
+    # Exact version, so every machine tests against the same PostgreSQL the build was verified on.
+    image: postgres:16.15
     container_name: cookfeed-postgres
     restart: unless-stopped
     environment:

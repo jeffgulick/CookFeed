@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cookfeed.Application\Cookfeed.Application.csproj" />
+    <ProjectReference Include="..\Cookfeed.Domain\Cookfeed.Domain.csproj" />
+    <ProjectReference Include="..\Cookfeed.Contracts\Cookfeed.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="EFCore.NamingConventions" />
+  </ItemGroup>
+</Project>

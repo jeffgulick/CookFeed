@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Cookfeed.Api/Cookfeed.Api.csproj" />
+    <Project Path="src/Cookfeed.Application/Cookfeed.Application.csproj" />
+    <Project Path="src/Cookfeed.Contracts/Cookfeed.Contracts.csproj" />
+    <Project Path="src/Cookfeed.Domain/Cookfeed.Domain.csproj" />
+    <Project Path="src/Cookfeed.Infrastructure/Cookfeed.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cookfeed.Application.Tests/Cookfeed.Application.Tests.csproj" />
+    <Project Path="tests/Cookfeed.Domain.Tests/Cookfeed.Domain.Tests.csproj" />
+    <Project Path="tests/Cookfeed.IntegrationTests/Cookfeed.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

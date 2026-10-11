@@ -1,22 +1,26 @@
 # Running Cookfeed's database in Docker
 
-PostgreSQL 16 runs in a container; the API runs on the WSL host and connects to it over
-`localhost:5432`. There is no Dockerfile — we use the official `postgres:16` image as-is, so
-`docker-compose.yml` is the whole setup.
+PostgreSQL 16 runs in a container and listens on `localhost:5432`. There is no Dockerfile — we use
+the official `postgres:16` image as-is, so `docker-compose.yml` is the whole setup.
+
+**What works today:** everything on this page except the parts marked *planned*. The schema, seed and
+queries in `docs/` load and run against this container now. The ASP.NET Core API, its EF Core
+migration and its tests are not built yet (`docs/DesignDocument.md` §1); when they are, the API will
+run on the WSL host and connect over `localhost:5432`.
 
 | Database | Used by | Created by |
 |---|---|---|
-| `cookfeed` | development, `dotnet run` | the container, from `POSTGRES_DB` |
-| `cookfeed_test` | `tests/Cookfeed.IntegrationTests` | `docker/init/01-create-test-db.sql` |
+| `cookfeed` | development: `docs/` scripts now, `dotnet run` once the API exists | the container, from `POSTGRES_DB` |
+| `cookfeed_test` | `tests/Cookfeed.IntegrationTests` (*planned*) | `docker/init/01-create-test-db.sql` |
 
-Connection string (both live in `appsettings.Development.json` / test config):
+Connection strings (*planned*: they will live in `appsettings.Development.json` and the test config):
 
 ```
 Host=localhost;Port=5432;Database=cookfeed;Username=postgres;Password=postgres
 Host=localhost;Port=5432;Database=cookfeed_test;Username=postgres;Password=postgres
 ```
 
-The test connection can be overridden with the `COOKFEED_TEST_CONNECTION` environment variable.
+The test connection will be overridable with the `COOKFEED_TEST_CONNECTION` environment variable.
 
 ---
 
@@ -99,7 +103,9 @@ psql -h localhost -p 5432 -U postgres -d cookfeed -f docs/sql/seed.sql
 ## The fidelity test
 
 The project requires the EF migration to produce a schema that the submitted seed and queries run
-against unchanged. After `dotnet ef database update`:
+against unchanged. After `dotnet ef database update` (*planned*: until the migration exists, load
+`docs/schema.sql` instead, as in "Talking to the database" above, and steps 1 and 2 work today;
+step 3 needs the migration):
 
 ```bash
 # 1. Load the submitted seed data into the dev database.
@@ -109,7 +115,8 @@ docker compose exec -T postgres psql -U postgres -d cookfeed -v ON_ERROR_STOP=1 
 failed INSERT scrolls past unnoticed.
 
 ```bash
-# 2. Run the submitted queries and compare against write-up section 7.
+# 2. Run the submitted queries and compare against the results quoted in docs/DesignDocument.md
+#    (Q5: 5 recipes / 6 meals; Q8: 41 lines, flour 1032.91 g, milk 946.35 ml; Q15; Q16: 0 rows).
 docker compose exec -T postgres psql -U postgres -d cookfeed < docs/sql/queries.sql
 ```
 
