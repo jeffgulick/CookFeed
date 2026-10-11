@@ -12,8 +12,8 @@ session; update **Where we are** and **Next steps** at the end of each step, in 
 The **database layer** is built, tested and merged into `main` (PR #2). The first feature on top of it,
 **the recipe feed** (`GET /api/feed`), is built on the `feed-endpoint` branch: the first controller, service,
 repository and DTOs, and the pattern the other three core queries will follow. **The creator storefront**
-(`GET /api/creators/{handle}`) follows it on the `creator-storefront` branch, which branches off
-`feed-endpoint`.
+(`GET /api/creators/{handle}`) follows it; both are in PR #6. **Order history** (`GET /api/me/orders`) is
+on the `order-history` branch, which branches off `creator-storefront`.
 
 | Done | Where |
 |---|---|
@@ -29,9 +29,10 @@ repository and DTOs, and the pattern the other three core queries will follow. *
 | Feed SQL captured from the EF Core log, with `EXPLAIN ANALYZE`, and marked verified | `docs/Queries.md` §1 |
 | Storefront: `CreatorsController` → `StorefrontService` → `CreatorRepository.GetStorefrontAsync`, DTOs in `Contracts/Storefront/` | `src/*/Storefront/`, `Persistence/Repositories/`, `Api/Controllers/` |
 | Storefront tests: 4 service tests, 20 HTTP tests (90 tests in all); SQL verified, split query chosen after review | `tests/*/Storefront*`, `docs/Queries.md` §2 |
+| Order history: `MyOrdersController` → `OrderHistoryService` → `OrderRepository.GetOrderHistoryAsync`, DTOs in `Contracts/Orders/` | `src/*/Orders/`, `Persistence/Repositories/`, `Api/Controllers/` |
+| Order history tests: 2 service tests, 12 HTTP tests (104 tests in all), incl. the snapshot and order-total checks; SQL verified | `tests/*/Order*`, `docs/Queries.md` §4 |
 
-Not built yet: the order-history and shopping-list endpoints, `ShoppingListAggregator`, and the Domain
-tests.
+Not built yet: the shopping-list endpoint, `ShoppingListAggregator`, and the Domain tests.
 
 ---
 
@@ -87,6 +88,7 @@ cart" on a creator's own product, ProductOnly recipes, no shop controls for the 
 | EF Core model | Code-first. Entities and configurations written by hand; migrations generated with `dotnet ef migrations add`; triggers added to the migration by hand | Configurations are the source of truth from now on |
 | Connection | Configured at registration (`AddInfrastructure`, `UseCookfeedDatabase`), not in `OnConfiguring` | Configuration and tests supply the connection string |
 | Enums | Stored as their names in varchar columns | `CookfeedDbContext.ConfigureConventions`, `DesignDocument.md` §5 |
+| Caller identity | `X-User-Id` header until login (Assignment 4). A user's own data is under `/api/me/…`, where the header is required (400 if missing); no route takes a user id. No custom authentication handler: JWT replaces the header then | `DesignDocument.md` §9 |
 | Tests | xUnit v3 on Microsoft.Testing.Platform (run with `dotnet test --solution`); NSubstitute for fakes; integration tests create and drop throwaway databases and roll back their changes | `DesignDocument.md` §1 "Tests" |
 
 ---
@@ -111,16 +113,12 @@ Commands to migrate, run and test: [`README.md`](../README.md#getting-started) a
 
 ## Next steps
 
-Deliverable 2 is due **Oct 17**; steps 1–3 are what it still needs.
+Deliverable 2 is due **Oct 17**; step 1 is what it still needs.
 
-1. **Decide how the API knows who is calling** before the first per-user read. Proposed: the `X-User-Id`
-   header, with per-user routes under `/api/me/…` so no route takes another user's id. (The feed reads
-   `X-User-Id` already, but only to mark the caller's own saves.)
-2. **Order history**, `GET /api/me/orders` (`docs/Queries.md` §4).
-3. **Shopping list**, `GET /api/me/shopping-list`: the repository's per-category aggregation plus
+1. **Shopping list**, `GET /api/me/shopping-list`: the repository's per-category aggregation plus
    `ShoppingListAggregator` in Domain, tested line for line against `queries.sql` Q8 (`docs/Queries.md` §3,
    `DesignDocument.md` §7.5).
-4. **Comment the existing database-layer code** to the commenting rule above (moved here from first, to
+2. **Comment the existing database-layer code** to the commenting rule above (moved here from first, to
    protect the deadline). Mainly the 19 configurations, `CookfeedDbContext.cs` and `Program.cs`. Comments
    only: the build and the tests must be unchanged.
 
@@ -134,7 +132,7 @@ them off here as they land. The status codes are proposals, to confirm when each
 
 | Rule | Design doc | Feature it lands with | Refused with |
 |---|---|---|---|
-| Saving, cart, checkout, meal plans and reviews require the `HomeCook` role. Every creator holds it; the admin does not, so the admin is shut out of all of them with no special case. | §3.1 | Each of those features, through the caller-identity decision in Next steps 3 | 403 |
+| Saving, cart, checkout, meal plans and reviews require the `HomeCook` role. Every creator holds it; the admin does not, so the admin is shut out of all of them with no special case. | §3.1 | Each of those features, checked against the caller (Decisions so far, "Caller identity") | 403 |
 | A creator cannot add their own product to the cart: the service refuses it with a clear message before the `cart_items_refuse_self_purchase` trigger would. | §3.1, `Queries.md` "Add to cart" | Cart | 400 |
 | Checkout refuses a self-purchase the same way (the `order_items_refuse_self_purchase` trigger stays as the last line of defence). | §3.1 | Checkout | 400 |
 | A database refusal (`check_violation` with a `ck_…` constraint name, or a unique violation) that slips past a service becomes a 4xx with a readable message, never a 500. | §5 | First write feature (saves or cart) | 400 / 409 |
