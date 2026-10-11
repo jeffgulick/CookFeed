@@ -67,12 +67,16 @@ function onCartClicked(event) {
   }
 
   var product = rowById("products", Number(button.closest(".line-item").getAttribute("data-product-id")));
-  if (confirm("Remove " + product.title + " from your cart?") === false) {
-    return;
-  }
-  removeFromCart(currentUser().id, product.id);
-  renderCart();
-  showToast(product.title + " was removed.");
+  confirmDialog("Remove " + product.title + " from your cart?", "Remove").then(function (ok) {
+    if (!ok) {
+      return;
+    }
+    removeFromCart(currentUser().id, product.id);
+    renderCart();
+    showToast(product.title + " was removed.");
+    // The line and its button are gone: put focus somewhere that still exists.
+    document.getElementById("main").focus({ preventScroll: true });
+  });
 }
 
 /* Take everything out of the cart at once, after checking that is what was meant. */
@@ -82,13 +86,15 @@ function emptyCart() {
     return;
   }
 
-  if (confirm("Remove all " + plural(count, "item", "items") + " from your cart?") === false) {
-    return;
-  }
-
-  clearCartOf(currentUser().id);
-  renderCart();
-  showToast("Your cart is empty.");
+  confirmDialog("Remove all " + plural(count, "item", "items") + " from your cart?", "Empty cart").then(function (ok) {
+    if (!ok) {
+      return;
+    }
+    clearCartOf(currentUser().id);
+    renderCart();
+    showToast("Your cart is empty.");
+    document.getElementById("main").focus({ preventScroll: true });
+  });
 }
 
 function orderNumber(order) {
@@ -104,11 +110,16 @@ function checkout() {
     return;
   }
 
-  if (confirm("Place this order for " + formatPrice(cartTotal(products)) + "?") === false) {
-    return;
-  }
+  confirmDialog("Place this order for " + formatPrice(cartTotal(products)) + "?", "Place order").then(function (ok) {
+    if (ok) {
+      showReceipt(placeOrder(currentUser().id));
+    }
+  });
+}
 
-  var order = placeOrder(currentUser().id);
+/* The receipt replaces the cart. Focus moves to its heading, so a screen reader announces the order
+   and a keyboard user carries on from there rather than from a button that no longer exists. */
+function showReceipt(order) {
   var links = order.items.map(function (item) {
     return "<li><a href='" + productUrl(item.productId) + "'>" + escapeHtml(item.productTitle) + "</a></li>";
   }).join("");
@@ -116,7 +127,7 @@ function checkout() {
   var html = "";
   html = html + "<div class='receipt'>";
   html = html + "<div class='receipt-check'>&#10003;</div>";
-  html = html + "<h2 style='margin:6px 0'>Order confirmed</h2>";
+  html = html + "<h2 style='margin:6px 0' id='receiptHeading' tabindex='-1'>Order confirmed</h2>";
   html = html + "<p class='meta'>Order " + orderNumber(order) + "</p>";
   html = html + "<p>You paid <strong>" + formatPrice(order.totalCents) + "</strong> for " +
                 plural(order.items.length, "plan", "plans") + ":</p><ul class='receipt-items'>" + links + "</ul>";
@@ -129,6 +140,7 @@ function checkout() {
   document.getElementById("itemCount").textContent = "0";
   document.getElementById("itemWord").textContent = "items";
   updateCartChip();
+  document.getElementById("receiptHeading").focus();
   showToast("Thank you. Your order number is " + orderNumber(order) + ".");
 }
 

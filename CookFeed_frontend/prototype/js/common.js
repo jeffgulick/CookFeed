@@ -458,6 +458,85 @@ function showToast(message, kind) {
   }, 3200);
 }
 
+/* ---------- confirmation dialog ----------
+   Cookfeed's own version of confirm(): the same question and two buttons, in the site's style, as a
+   modal <dialog>. It returns a Promise of true (confirmed) or false (cancelled, Escape, or a click on
+   the backdrop), so callers write confirmDialog(...).then(function (ok) { ... }). Focus goes back to
+   whatever had it before, usually the button that asked. */
+
+function confirmDialog(message, confirmLabel) {
+  var dialog = document.getElementById("confirmDialog");
+  var opener = document.activeElement;
+
+  if (dialog === null) {
+    dialog = document.createElement("dialog");
+    dialog.id = "confirmDialog";
+    dialog.className = "confirm-dialog";
+    dialog.setAttribute("aria-labelledby", "confirmMessage");
+    dialog.innerHTML =
+      "<form method='dialog'>" +
+      "<p id='confirmMessage'></p>" +
+      "<div class='dialog-actions'>" +
+      "<button type='submit' value='cancel' class='btn-secondary' id='confirmCancel'>Cancel</button>" +
+      "<button type='submit' value='confirm' class='btn-primary' id='confirmOk'></button>" +
+      "</div></form>";
+    document.body.appendChild(dialog);
+
+    // A click on the backdrop lands on the dialog element itself, outside its form: treat it as Cancel.
+    dialog.addEventListener("click", function (event) {
+      if (event.target === dialog) { dialog.close("cancel"); }
+    });
+  }
+
+  document.getElementById("confirmMessage").textContent = message;
+  document.getElementById("confirmOk").textContent = confirmLabel || "OK";
+  dialog.returnValue = "cancel";
+
+  return new Promise(function (resolve) {
+    dialog.addEventListener("close", function onClose() {
+      dialog.removeEventListener("close", onClose);
+      if (opener && typeof opener.focus === "function" && document.contains(opener)) {
+        opener.focus();
+      }
+      resolve(dialog.returnValue === "confirm");
+    });
+    dialog.showModal();
+    document.getElementById("confirmCancel").focus();
+  });
+}
+
+/* ---------- the menu on small screens ----------
+   On a phone the nav's links fold into a Menu button (see "small screens" in styles.css). The button
+   is hidden in the HTML and shown here, so without JavaScript the links simply stay visible. */
+
+function setUpMenu() {
+  var nav = document.querySelector(".nav");
+  var button = document.getElementById("menuButton");
+  if (nav === null || button === null) {
+    return;
+  }
+
+  function setOpen(open) {
+    nav.classList.toggle("open", open);
+    button.setAttribute("aria-expanded", String(open));
+    button.textContent = open ? "Close" : "Menu";
+  }
+
+  nav.classList.add("has-menu");
+  button.hidden = false;
+  button.addEventListener("click", function () {
+    setOpen(!nav.classList.contains("open"));
+  });
+
+  // Escape closes the open menu and puts focus back on its button.
+  nav.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && nav.classList.contains("open")) {
+      setOpen(false);
+      button.focus();
+    }
+  });
+}
+
 /* ---------- storage check ----------
    Some browsers are set to stop sites from saving data. The prototype still
    works there, but the cart, saves and reviews reset on every page. Rather than
@@ -494,6 +573,7 @@ function showStorageNotice() {
 /* Every page shows who is signed in, the shopper's links and cart count as soon as it loads, and the
    storage notice when saving is blocked. */
 document.addEventListener("DOMContentLoaded", function () {
+  setUpMenu();
   updateAccountArea();
   updateShopLinks();
   updateCartChip();

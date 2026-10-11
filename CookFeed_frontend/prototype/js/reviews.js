@@ -195,14 +195,16 @@ function onReviewListClicked(event) {
   }
 
   var id = Number(button.getAttribute("data-id"));
-  if (confirm("Remove your review? This cannot be undone.") === false) {
-    return;
-  }
-
-  removeReview(currentUser().id, id);
-  refreshPage();
-  renderFormGate();
-  showToast("Your review was removed.");
+  confirmDialog("Remove your review? This cannot be undone.", "Remove review").then(function (ok) {
+    if (!ok) {
+      return;
+    }
+    removeReview(currentUser().id, id);
+    refreshPage();
+    renderFormGate();
+    showToast("Your review was removed.");
+    document.getElementById("main").focus({ preventScroll: true });
+  });
 }
 
 /* ---------- star picker ---------- */
@@ -330,10 +332,16 @@ function onFormSubmitted(event) {
 
   var user = currentUser();
 
-  if (confirm("Post this review publicly as " + user.displayName + "?") === false) {
-    return;
-  }
+  confirmDialog("Post this review publicly as " + user.displayName + "?", "Post review").then(function (ok) {
+    if (ok) {
+      postReview(user);
+    }
+  });
+}
 
+/* Post the review. The form then gives way to "You have reviewed", so focus moves to the page rather
+   than staying on a Post button that is no longer shown. */
+function postReview(user) {
   var review = addReview(user.id, product.id, selectedRating,
     document.getElementById("recommendYes").checked,
     document.getElementById("reviewComment").value.trim());
@@ -343,6 +351,7 @@ function onFormSubmitted(event) {
   resetForm();
   renderFormGate();
   showToast("Thanks, " + user.displayName + ". Your review is at the top of the list.");
+  document.getElementById("main").focus({ preventScroll: true });
   document.getElementById("reviewList").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 

@@ -4,23 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My kitchen | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=9">
+  <link rel="stylesheet" href="css/styles.css?v=10">
 </head>
 <body>
 
-  <nav class="nav">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <nav class="nav" aria-label="Main">
     <div class="nav-inner">
       <a class="brand" href="index.html">Cook<span>feed</span></a>
-      <a class="navlink" href="index.html">Discover</a>
-      <a class="navlink active" href="kitchen.html" data-shop aria-current="page">My kitchen</a>
-      <a class="navlink" href="orders.html" data-shop>Your orders</a>
-      <a class="navlink" href="help.html">Help</a>
-      <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
       <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+      <button type="button" class="menu-button" id="menuButton" aria-expanded="false" aria-controls="navLinks" hidden>Menu</button>
+      <div class="nav-links" id="navLinks">
+        <a class="navlink" href="index.html">Discover</a>
+        <a class="navlink active" href="kitchen.html" data-shop aria-current="page">My kitchen</a>
+        <a class="navlink" href="orders.html" data-shop>Your orders</a>
+        <a class="navlink" href="help.html">Help</a>
+        <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      </div>
     </div>
   </nav>
 
-  <main class="wrap">
+  <main class="wrap" id="main" tabindex="-1">
     <span class="pill">My kitchen</span>
     <h1>Your saved recipes</h1>
     <p class="byline" id="kitchenSummary">Recipes you save show up here, with one shopping list for all of them.</p>
@@ -34,7 +39,7 @@
     </div>
 
     <h2>Your shopping list</h2>
-    <div class="card">
+    <div class="card print-area">
       <div class="list-head">
         <h3 id="kitchenListHeading">Everything for your saved recipes</h3>
         <button class="send ready" id="kitchenPrint">
@@ -47,7 +52,7 @@
       </p>
       <table>
         <thead>
-          <tr><th>Amount</th><th>Ingredient</th><th>For</th><th>Aisle</th></tr>
+          <tr><th>Amount</th><th>Ingredient</th><th class="col-wide">For</th><th class="col-wide">Aisle</th></tr>
         </thead>
         <tbody id="kitchenRows"></tbody>
       </table>
@@ -61,10 +66,10 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=9"></script>
-  <script src="js/db.js?v=9"></script>
-  <script src="js/rules.js?v=9"></script>
-  <script src="js/common.js?v=9"></script>
-  <script src="js/kitchen.js?v=9"></script>
+  <script src="js/seed-data.js?v=10"></script>
+  <script src="js/db.js?v=10"></script>
+  <script src="js/rules.js?v=10"></script>
+  <script src="js/common.js?v=10"></script>
+  <script src="js/kitchen.js?v=10"></script>
 </body>
 </html>

@@ -75,12 +75,14 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   document.getElementById("resetData").addEventListener("click", function () {
-    if (confirm("Put every account back to what the database holds? Carts, saves, orders and reviews made " +
-                "in this browser are removed.") === false) {
-      return;
-    }
-    resetDb();
-    refresh();
-    showToast("The prototype's data is back to the database's seed.");
+    confirmDialog("Put every account back to what the database holds? Carts, saves, orders and reviews made " +
+                  "in this browser are removed.", "Reset data").then(function (ok) {
+      if (!ok) {
+        return;
+      }
+      resetDb();
+      refresh();
+      showToast("The prototype's data is back to the database's seed.");
+    });
   });
 });

@@ -32,9 +32,10 @@ function renderKitchenList(ids) {
     var line = list[i];
     html = html + "<tr>";
     html = html + "<td class='qty'>" + formatQuantity(line.amount) + " " + escapeHtml(line.unit) + "</td>";
-    html = html + "<td>" + escapeHtml(line.name) + "</td>";
-    html = html + "<td class='aisle'>" + escapeHtml(line.recipes.join(", ")) + "</td>";
-    html = html + "<td class='aisle'>" + escapeHtml(line.aisle) + "</td>";
+    html = html + "<td>" + escapeHtml(line.name) + "<span class='cell-note'>" +
+                  escapeHtml(line.aisle + " \u00b7 for " + line.recipes.join(", ")) + "</span></td>";
+    html = html + "<td class='aisle col-wide'>" + escapeHtml(line.recipes.join(", ")) + "</td>";
+    html = html + "<td class='aisle col-wide'>" + escapeHtml(line.aisle) + "</td>";
     html = html + "</tr>";
   }
 

@@ -4,30 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Discover | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=9">
+  <link rel="stylesheet" href="css/styles.css?v=10">
 </head>
 <body>
 
-  <nav class="nav">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <nav class="nav" aria-label="Main">
     <div class="nav-inner">
       <a class="brand" href="index.html">Cook<span>feed</span></a>
-      <a class="navlink active" href="index.html" aria-current="page">Discover</a>
-      <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
-      <a class="navlink" href="orders.html" data-shop>Your orders</a>
-      <a class="navlink" href="help.html">Help</a>
-      <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
       <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+      <button type="button" class="menu-button" id="menuButton" aria-expanded="false" aria-controls="navLinks" hidden>Menu</button>
+      <div class="nav-links" id="navLinks">
+        <a class="navlink active" href="index.html" aria-current="page">Discover</a>
+        <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+        <a class="navlink" href="orders.html" data-shop>Your orders</a>
+        <a class="navlink" href="help.html">Help</a>
+        <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      </div>
     </div>
   </nav>
 
-  <main class="wrap">
+  <main class="wrap" id="main" tabindex="-1">
     <span class="pill">Discover</span>
     <h1>Cook the week, shop once</h1>
     <p class="lede" id="greeting">Short cooking videos, real recipes, and one shopping list for the week.</p>
 
     <h2>Meal plans and collections</h2>
     <p class="meta">Buy once and keep it: every recipe, its video, and one shopping list for all of them.</p>
-    <div class="product-grid" id="discoverProducts"></div>
+    <div class="tile-grid" id="discoverProducts"></div>
 
     <h2>Trending recipes</h2>
     <p class="hover-hint">The recipes home cooks save most. Point at one for a quick look; save it to keep it in
@@ -35,15 +40,15 @@
     <div class="grid" id="trendingRecipes"></div>
 
     <h2>Creators</h2>
-    <div class="creator-grid" id="discoverCreators"></div>
+    <div class="tile-grid" id="discoverCreators"></div>
   </main>
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=9"></script>
-  <script src="js/db.js?v=9"></script>
-  <script src="js/rules.js?v=9"></script>
-  <script src="js/common.js?v=9"></script>
-  <script src="js/discover.js?v=9"></script>
+  <script src="js/seed-data.js?v=10"></script>
+  <script src="js/db.js?v=10"></script>
+  <script src="js/rules.js?v=10"></script>
+  <script src="js/common.js?v=10"></script>
+  <script src="js/discover.js?v=10"></script>
 </body>
 </html>
