@@ -101,8 +101,8 @@ app can reuse what it needs:
   templates;
 - sign-in uses tokens (roadmap item 12, JWT), which a mobile app can hold as well as a browser can.
 
-Whether the app wraps the Angular code (for example with Capacitor) or is built natively against the same
-API is decided when that work starts.
+**No tech stack is chosen for the mobile app yet. Whatever it is, it uses this API**, so the API stays the
+one place for data and rules, and nothing the app needs may live only in the Angular code.
 
 ---
 
