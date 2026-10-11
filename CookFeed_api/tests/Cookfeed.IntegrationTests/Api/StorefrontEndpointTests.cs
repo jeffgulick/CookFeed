@@ -141,6 +141,17 @@ public sealed class StorefrontEndpointTests(DatabaseFixture databases) : IAsyncD
         Assert.Equal("maria-cooks", s.Handle);
     }
 
+    [Theory]
+    [InlineData("%E2%84%AAenji-kitchen")]   // the Kelvin sign, which ToLowerInvariant would fold to "k"
+    [InlineData("kenji_kitchen")]
+    [InlineData("kenji%20kitchen")]
+    public async Task A_handle_that_is_not_letters_digits_and_hyphens_is_404(string handle)
+    {
+        var response = await SendAsync($"/api/creators/{handle}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     [Fact]
     public async Task Product_types_are_sent_as_names()
     {

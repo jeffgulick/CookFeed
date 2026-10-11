@@ -41,6 +41,18 @@ public class StorefrontServiceTests
         Assert.Same(storefront, await Service.GetStorefrontAsync("maria-cooks", null, CancellationToken.None));
     }
 
+    [Theory]
+    [InlineData("\u212Aenji-kitchen")]   // the Kelvin sign: ToLowerInvariant would turn it into "k"
+    [InlineData("kenji_kitchen")]
+    [InlineData("")]
+    [InlineData("a-handle-that-is-much-longer-than-forty-characters")]
+    public async Task A_handle_that_cannot_exist_returns_null_without_asking_the_repository(string handle)
+    {
+        Assert.Null(await Service.GetStorefrontAsync(handle, viewerId: null, CancellationToken.None));
+
+        await _creators.DidNotReceiveWithAnyArgs().GetStorefrontAsync(default!, default, TestContext.Current.CancellationToken);
+    }
+
     [Fact]
     public async Task An_unknown_handle_returns_null()
     {
