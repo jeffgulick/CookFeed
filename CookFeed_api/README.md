@@ -16,21 +16,21 @@ and PostgreSQL 16, laid out as Clean Architecture. The design, and why it is bui
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 24 tests; SQL verified in `docs/Queries.md` §2 |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
-| Shopping list | Next, test-first |
+| Shopping list, `GET /api/me/shopping-list` | Done: 26 tests, incl. 14 Domain tests for `ShoppingListAggregator`; SQL verified in `docs/Queries.md` §3 |
 
 ## Layout
 
 ```
 Cookfeed.slnx
 src/
-  Cookfeed.Domain/           entities and enums; no framework references
+  Cookfeed.Domain/           entities, enums and the shopping-list aggregator; no framework references
   Cookfeed.Contracts/        request and response DTOs
   Cookfeed.Application/      services and repository interfaces
   Cookfeed.Infrastructure/   CookfeedDbContext, table mappings, migrations, DbSeeder, repositories
   Cookfeed.Api/              the web host and its controllers
 tests/
   Cookfeed.IntegrationTests/ xUnit tests against real PostgreSQL, including the API over HTTP
-  Cookfeed.Domain.Tests/     xUnit; first tests come with the shopping-list logic
+  Cookfeed.Domain.Tests/     xUnit: the shopping-list aggregator, no database
   Cookfeed.Application.Tests/ xUnit + NSubstitute: service rules against fake repositories
 docs/                        design document, ER diagrams, schema.sql, seed.sql, queries.sql
 ```

@@ -349,7 +349,24 @@ JOIN recipe_ingredients          →     choose main vs unmerged lines
 (ingredient, unit category)      →     round, sort by aisle
 ```
 
-The database does the part that benefits from being close to the data (the join and the sum over potentially hundreds of rows). The application does the part that is a *policy* — when to merge, which way, when to refuse, how to present — because policies change and are far easier to unit-test in C# than in SQL. The C# half will live in `ShoppingListAggregator` in `Cookfeed.Domain` (pure, no EF), so `tests/Cookfeed.Domain.Tests` can pin the flour example to ±0.5 g and the milk example to millilitres without a database. `docs/sql/queries.sql` Q8 already implements the whole algorithm in SQL (41 lines for Alex, flour 1,032.91 g, milk 946.35 ml); it is the reference the aggregator's output will be tested against line for line.
+The database does the part that benefits from being close to the data: the join and the sum over potentially hundreds of rows. The application does the part that is a *policy* — when to merge, which way, when to refuse, how to present — because policies change and are far easier to unit-test in C# than in SQL.
+
+**As built:**
+
+- **The SQL half** is one statement in `ShoppingListRepository` (`docs/Queries.md` §3). It returns one `IngredientTotal` per (ingredient, unit category), already scaled and in the category's base unit.
+- **The preferred unit travels with each total** through a `LEFT JOIN`, so the C# half needs no separate lookup of the `units` table.
+- **The C# half** is `ShoppingListAggregator` in `Cookfeed.Domain`: pure, no EF Core.
+- **Its tests** in `tests/Cookfeed.Domain.Tests` pin each rule without a database: the flour example to 1,032.91 g, milk to millilitres, mozzarella with no density kept as two unmerged lines, count never merging with mass, and the base-unit fallbacks.
+- **Rounding** is to two places, half away from zero as PostgreSQL's `ROUND` does. **Sorting** is by aisle, then ingredient.
+
+`docs/sql/queries.sql` Q8 implements the whole algorithm in SQL (41 lines for Alex, flour 1,032.91 g, milk 946.35 ml). `ShoppingListEndpointTests` holds the API to it line for line: for every plan, for a single week, and with a recipe planned on two nights.
+
+Two things learned from reading the SQL EF Core generated, both recorded in `docs/Queries.md` §3:
+
+- **Explicit joins in the grouped query.** Summing through navigations made EF Core run a correlated subquery per output line, so the repository joins explicitly.
+- **Rounding inside the sum.** PostgreSQL's exact division of the serving scale can carry more digits than a .NET `decimal` holds, so each line is rounded to six places inside the `SUM`.
+
+The "which recipes is this line from" labels are deferred. They need a second, flat query and do not change this one.
 
 ### 7.6 Scaling
 
