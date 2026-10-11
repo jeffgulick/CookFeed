@@ -22,8 +22,8 @@ To see the planner's choice, prefix any statement with `EXPLAIN (ANALYZE, BUFFER
 The shopping-list section below is the one place where the SQL is deliberately only half the algorithm:
 the reader aggregates per (ingredient, unit category) and the pure-C# `ShoppingListAggregator` in
 `Cookfeed.Domain` does the density conversion, preferred-unit presentation, and unmerged-line policy.
-See `DesignDocument.md` §6.5. `docs/sql/queries.sql` Q8 does the whole thing in SQL instead — that is a
-standalone reference query, not what the API runs.
+See `DesignDocument.md` §7.5. `docs/sql/queries.sql` Q8 does the whole thing in SQL instead — that is a
+standalone reference query, not what the API runs; after the Assignment 2 feedback revision the two agree line for line.
 
 ---
 
@@ -33,7 +33,7 @@ standalone reference query, not what the API runs.
 
 ```csharp
 db.Recipes.AsNoTracking()
-  .Where(r => r.IsPublished)
+  .Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public)   // ProductOnly recipes never reach the feed
   .OrderByDescending(r => r.PublishedAt).ThenByDescending(r => r.Id)
   .Skip((page - 1) * pageSize)
   .Take(pageSize + 1)                       // +1 row => HasMore without a COUNT(*)
@@ -58,12 +58,12 @@ SELECT r.id, r.title, r.video_url, r.thumbnail_url, r.servings,
 FROM recipes AS r
 INNER JOIN creator_profiles AS c ON r.creator_id = c.user_id
 INNER JOIN users AS u ON c.user_id = u.id
-WHERE r.is_published
+WHERE r.is_published AND r.visibility = 'Public'
 ORDER BY r.published_at DESC, r.id DESC
 LIMIT @take OFFSET @skip
 ```
 
-**Index:** `ix_recipes_is_published_published_at (is_published, published_at DESC)`. The `WHERE is_published` + `ORDER BY published_at DESC` + `LIMIT` shape is served by walking this index forward from the top and stopping after `pageSize + 1` rows: no sort node, no scan of unpublished drafts. `Trending` uses the sibling index `(is_published, save_count DESC)` with the same plan shape. The creator/user joins are PK lookups. The `EXISTS` for `SavedByViewer` hits the composite PK of `saved_recipes(user_id, recipe_id)`.
+**Index:** `ix_recipes_is_published_visibility_published_at (is_published, visibility, published_at DESC)`. Both leading columns are equality predicates, so the `ORDER BY published_at DESC` + `LIMIT` shape is served by walking this index forward from the top and stopping after `pageSize + 1` rows: no sort node, no scan of unpublished drafts or product-only recipes. `Trending` uses the sibling index `(is_published, visibility, save_count DESC)` with the same plan shape. The creator/user joins are PK lookups. The `EXISTS` for `SavedByViewer` hits the composite PK of `saved_recipes(user_id, recipe_id)`.
 
 **Reviewed:** the `Take(pageSize + 1)` trick avoids the separate `SELECT COUNT(*)` that offset pagination normally needs. At scale, keyset pagination (`WHERE published_at < @last`) would replace `OFFSET`; the index is already the right one for that.
 
@@ -75,7 +75,10 @@ LIMIT @take OFFSET @skip
 
 ```csharp
 db.Recipes.AsNoTracking()
-  .Where(r => r.Id == recipeId && r.IsPublished)
+  .Where(r => r.Id == recipeId && r.IsPublished
+           && (r.Visibility == RecipeVisibility.Public
+               || r.OrderItemRecipes.Any(oir => oir.OrderItem.Order.UserId == viewerId
+                                              && oir.OrderItem.Order.Status == OrderStatus.Paid)))
   .Select(r => new RecipeDetailDto(..., 
       r.Ingredients.OrderBy(i => i.SortOrder).Select(i => new RecipeIngredientDto(...)).ToList(),
       r.Steps.OrderBy(s => s.StepNumber).Select(s => new RecipeStepDto(...)).ToList()))
@@ -94,10 +97,15 @@ JOIN users u ON c.user_id = u.id
 LEFT JOIN (recipe_ingredients ri JOIN ingredients i ON ... JOIN units un ON ...) ON ri.recipe_id = r.id
 LEFT JOIN recipe_steps st ON st.recipe_id = r.id
 WHERE r.id = @id AND r.is_published
+  AND (r.visibility = 'Public' OR EXISTS (
+        SELECT 1 FROM order_item_recipes oir
+        JOIN order_items oi ON oir.order_item_id = oi.id
+        JOIN orders o ON oi.order_id = o.id
+        WHERE oir.recipe_id = r.id AND o.user_id = @viewerId AND o.status = 'Paid'))
 ORDER BY r.id, ri.sort_order, ri.id, st.step_number
 ```
 
-**Indexes:** PK `recipes(id)`; `ix_recipe_ingredients_recipe_id_sort_order (recipe_id, sort_order)` returns the ingredient rows already in display order; unique `ix_recipe_steps_recipe_id_step_number (recipe_id, step_number)` does the same for steps.
+**Indexes:** PK `recipes(id)`; `ix_recipe_ingredients_recipe_id_sort_order (recipe_id, sort_order)` returns the ingredient rows already in display order; unique `ix_recipe_steps_recipe_id_step_number (recipe_id, step_number)` does the same for steps. The access `EXISTS` (DesignDocument.md §3.3, `queries.sql` Q14) probes `ix_order_item_recipes_recipe_id` then the PKs of `order_items` and `orders`; it is evaluated only for `ProductOnly` recipes because the `OR` short-circuits on the `visibility` column already in hand.
 
 ---
 
@@ -110,12 +118,13 @@ db.CreatorProfiles.AsNoTracking()
   .Where(c => c.Handle == handle)
   .Select(c => new StorefrontDto(
       c.Handle, c.User.DisplayName, c.Bio, c.AvatarUrl, c.IsVerified,
-      c.Recipes.Count(r => r.IsPublished),
-      c.Recipes.Where(r => r.IsPublished).Sum(r => r.SaveCount),
-      c.Recipes.Where(r => r.IsPublished).OrderByDescending(r => r.PublishedAt).Select(...).ToList(),
+      c.Recipes.Count(r => r.IsPublished && r.Visibility == RecipeVisibility.Public),
+      c.Recipes.Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public).Sum(r => r.SaveCount),
+      c.Recipes.Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public).OrderByDescending(r => r.PublishedAt).Select(...).ToList(),
       c.Products.Where(p => p.IsActive).OrderBy(p => p.CreatedAt).Select(p => new StorefrontProductDto(
-          ..., p.ProductRecipes.Count,
-          viewerId != null && p.OrderItems.Any(oi => oi.Order.UserId == viewerId && oi.Order.Status == "Paid"))).ToList()))
+          ..., p.ProductRecipes.Select(pr => pr.RecipeId).Distinct().Count(),   // a meal plan may repeat a recipe
+          viewerId != null && p.OrderItems.Any(oi => oi.Order.UserId == viewerId && oi.Order.Status == "Paid"),
+          viewerId == c.UserId)).ToList()))                                         // IsOwn: the client hides "Add to cart"
   .SingleOrDefaultAsync()
 ```
 
@@ -123,17 +132,17 @@ db.CreatorProfiles.AsNoTracking()
 
 ```sql
 SELECT c.handle, u.display_name, c.bio, c.avatar_url, c.is_verified,
-       (SELECT count(*)::int FROM recipes r WHERE r.creator_id = c.user_id AND r.is_published),
-       (SELECT COALESCE(sum(r.save_count), 0)::int FROM recipes r WHERE r.creator_id = c.user_id AND r.is_published),
+       (SELECT count(*)::int FROM recipes r WHERE r.creator_id = c.user_id AND r.is_published AND r.visibility = 'Public'),
+       (SELECT COALESCE(sum(r.save_count), 0)::int FROM recipes r WHERE r.creator_id = c.user_id AND r.is_published AND r.visibility = 'Public'),
        r2.id, r2.title, r2.thumbnail_url, r2.save_count, r2.published_at,
        p.id, p.type, p.title, p.description, p.price_cents, p.currency,
-       (SELECT count(*)::int FROM product_recipes pr WHERE pr.product_id = p.id),
+       (SELECT count(DISTINCT pr.recipe_id)::int FROM product_recipes pr WHERE pr.product_id = p.id),
        CASE WHEN @viewerId IS NOT NULL AND EXISTS (
             SELECT 1 FROM order_items oi JOIN orders o ON oi.order_id = o.id
             WHERE oi.product_id = p.id AND o.user_id = @viewerId AND o.status = 'Paid') THEN TRUE ELSE FALSE END
 FROM creator_profiles c
 JOIN users u ON c.user_id = u.id
-LEFT JOIN recipes r2 ON r2.creator_id = c.user_id AND r2.is_published
+LEFT JOIN recipes r2 ON r2.creator_id = c.user_id AND r2.is_published AND r2.visibility = 'Public'
 LEFT JOIN products p ON p.creator_id = c.user_id AND p.is_active
 WHERE c.handle = @handle
 ORDER BY c.user_id, r2.published_at DESC, r2.id, p.created_at
@@ -149,7 +158,7 @@ ORDER BY c.user_id, r2.published_at DESC, r2.id, p.created_at
 
 **Endpoint:** `GET /api/users/{id}/shopping-list?weekStart=2026-09-21`
 
-This is two SQL statements (aggregation, then a distinct recipe count over the same source set) plus a units lookup, followed by in-memory reconciliation described in the design document §6.5.
+This is two SQL statements (aggregation, then a distinct recipe count over the same source set) plus a units lookup, followed by in-memory reconciliation described in the design document §7.5.
 
 ### Step A — which recipes, at what scale
 
@@ -229,7 +238,7 @@ A second, flat query over the same `src` set returns `DISTINCT (ingredient_id, r
 
 ### Step C — application
 
-Covered in `DesignDocument.md` §6.3–6.5. Volume→Mass via density, preferred unit, rounding, aisle sort. The `Units` table (14 rows) is loaded once per call with `ToDictionaryAsync`.
+Covered in `DesignDocument.md` §7.3–7.5. Volume↔Mass via density *toward the preferred unit's category*, fall back to the base unit when the line still cannot be expressed in the preferred unit, rounding, aisle sort. The direction rule is the fix for the dropped-liquids defect the Assignment 2 review found in Q8 (§3.6). The `Units` table (14 rows) is loaded once per call with `ToDictionaryAsync`.
 
 ---
 
@@ -270,12 +279,14 @@ ORDER BY o.placed_at DESC, o.id, oi.id
 
 Not "queries" in the assignment's sense, but the two writes that keep the denormalized columns correct:
 
-**Save a recipe** (`POST /api/users/{u}/saves/{r}`): inside one transaction, `INSERT INTO saved_recipes` then
+**Save a recipe** (`POST /api/users/{u}/saves/{r}`): requires the `HomeCook` role and, for a `ProductOnly` recipe, the same access check as the detail endpoint. The handler does one thing: `INSERT INTO saved_recipes`. The `saved_recipes_save_count` trigger runs
 
 ```sql
 UPDATE recipes SET save_count = save_count + 1 WHERE id = @r
 ```
 
-via `ExecuteUpdateAsync` — a single atomic statement, so two users saving simultaneously cannot both read 41 and write 42.
+inside the same statement — a single atomic increment, so two users saving simultaneously cannot both read 41 and write 42, and the application never touches the counter. Unsave is the mirror `DELETE`; the trigger decrements. A cascaded delete from a hard-deleted account is decremented the same way (DesignDocument.md §3.4). `queries.sql` Q16 is the consistency check the integration tests run after each of these.
 
-**Checkout** (`POST /api/users/{u}/checkout`): reads the cart's products, inserts an `orders` row with `total_cents = SUM(price_cents)` and one `order_items` row per product carrying `product_title`, `unit_price_cents`, and `creator_id` snapshots, then `DELETE FROM cart_items WHERE user_id = @u` — all in one transaction, so a failure anywhere leaves the cart intact and no partial order.
+**Add to cart** (`POST /api/users/{u}/cart/{p}`): requires `HomeCook`; the handler returns `400` if `product.CreatorId == u` ("you cannot buy your own product"), and the `cart_items_refuse_self_purchase` trigger refuses the row if anything else tries.
+
+**Checkout** (`POST /api/users/{u}/checkout`): requires `HomeCook`. Reads the cart's products, inserts an `orders` row with `total_cents = SUM(price_cents)`, one `order_items` row per product carrying `product_title`, `unit_price_cents`, and `creator_id` snapshots, and one `order_item_recipes` row per `product_recipes` row of each product (`recipe_id`, `sort_order`, `day_offset`, `slot` copied as they are that moment), then `DELETE FROM cart_items WHERE user_id = @u` — all in one transaction, so a failure anywhere leaves the cart intact and no partial order. The `order_items_refuse_self_purchase` trigger is the last line of defense against a self-purchase reaching an order.

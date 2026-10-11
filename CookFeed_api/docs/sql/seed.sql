@@ -1,5 +1,14 @@
--- Cookfeed seed data (PostgreSQL). Same content as src/Cookfeed.Api/Data/Seed/DbSeeder.cs.
+-- Cookfeed seed data (PostgreSQL). Same content as the DbSeeder in Cookfeed.Infrastructure.
 -- Run after schema.sql:  psql -d cookfeed -f seed.sql
+--
+-- Invariants this file demonstrates (DesignDocument.md §3):
+--   * recipes.save_count is never written here; the saved_recipes trigger derives it, so the counter equals
+--     the save rows from the first commit (queries.sql Q15 proves it).
+--   * every reviewer holds a Paid order for the product they review; no creator reviews or buys their own work.
+--   * a creator (Dan) buys another creator's (Kenji's) product.
+--   * a meal plan repeats a recipe (overnight oats, Monday and Thursday in "Family Week on a Budget").
+--   * two recipes are ProductOnly and absent from the feed; buyers reach them through order_item_recipes.
+--   * Alex's snapshot of "Roman Pasta Collection" still contains the focaccia Maria later removed from it.
 BEGIN;
 
 -- Roles
@@ -32,9 +41,14 @@ INSERT INTO users (id, email, display_name, password_hash, created_at) VALUES
   (3, 'maria@example.com', 'Maria Conti', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-07-02 12:00:00+00'),
   (4, 'kenji@example.com', 'Kenji Watanabe', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-07-07 12:00:00+00'),
   (5, 'dan@example.com', 'Dan Okafor', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-07-22 12:00:00+00'),
-  (6, 'admin@cookfeed.app', 'Cookfeed Admin', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-06-02 12:00:00+00');
+  (6, 'admin@cookfeed.app', 'Cookfeed Admin', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-06-02 12:00:00+00'),
+  (7, 'sam@example.com', 'Sam Lee', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-08-06 12:00:00+00'),
+  (8, 'noor@example.com', 'Noor Haddad', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-08-08 12:00:00+00'),
+  (9, 'tomas@example.com', 'Tomás Reyes', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-08-10 12:00:00+00'),
+  (10, 'grace@example.com', 'Grace Kim', '$2a$11$devonlydevonlydevonlydevonlydevonlydevonlydevonlyde', '2026-08-12 12:00:00+00');
 
--- User roles (creators are also home cooks)
+-- User roles. Every buyer holds HomeCook; creators hold HomeCook + Creator; the admin holds Admin alone
+-- (the user_roles_admin_only trigger refuses any other combination).
 INSERT INTO user_roles (user_id, role_id) VALUES
   (1, 1),
   (2, 1),
@@ -44,7 +58,11 @@ INSERT INTO user_roles (user_id, role_id) VALUES
   (4, 2),
   (5, 1),
   (5, 2),
-  (6, 3);
+  (6, 3),
+  (7, 1),
+  (8, 1),
+  (9, 1),
+  (10, 1);
 
 -- Creator profiles (1:1 with users)
 INSERT INTO creator_profiles (user_id, handle, bio, is_verified) VALUES
@@ -106,20 +124,23 @@ INSERT INTO ingredients (id, name, category, density_g_per_ml, preferred_shoppin
   (50, 'cornstarch', 'Pantry', 0.54, 7);
 
 -- Recipes (12 published + 1 draft). created_at shown equal to published_at for brevity.
-INSERT INTO recipes (id, creator_id, title, description, video_url, thumbnail_url, servings, prep_minutes, cook_minutes, is_published, created_at, published_at, save_count) VALUES
-  (1, 3, '15-Minute Spaghetti Carbonara', 'No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.', 'https://cdn.cookfeed.app/videos/001.mp4', 'https://cdn.cookfeed.app/thumbs/001.jpg', 4, 5, 12, TRUE, '2026-07-12 12:00:00+00', '2026-07-12 12:00:00+00', 412),
-  (2, 3, 'Sunday Marinara from Scratch', 'One can of tomatoes, one onion, one hour. Freezes beautifully.', 'https://cdn.cookfeed.app/videos/002.mp4', 'https://cdn.cookfeed.app/thumbs/002.jpg', 6, 10, 60, TRUE, '2026-07-14 12:00:00+00', '2026-07-14 12:00:00+00', 289),
-  (3, 3, 'No-Knead Focaccia', 'Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.', 'https://cdn.cookfeed.app/videos/003.mp4', 'https://cdn.cookfeed.app/thumbs/003.jpg', 8, 15, 25, TRUE, '2026-07-20 12:00:00+00', '2026-07-20 12:00:00+00', 651),
-  (4, 3, 'Weeknight Chicken Parm', 'Thin cutlets, quick fry, broiled with marinara and mozzarella.', 'https://cdn.cookfeed.app/videos/004.mp4', 'https://cdn.cookfeed.app/thumbs/004.jpg', 4, 15, 20, TRUE, '2026-07-26 12:00:00+00', '2026-07-26 12:00:00+00', 198),
-  (5, 4, 'Chicken Teriyaki, the Real Way', 'Four ingredients in the sauce. Skin-on thighs. That''s the whole secret.', 'https://cdn.cookfeed.app/videos/005.mp4', 'https://cdn.cookfeed.app/thumbs/005.jpg', 2, 5, 15, TRUE, '2026-07-13 12:00:00+00', '2026-07-13 12:00:00+00', 733),
-  (6, 4, 'Onigiri Three Ways', 'Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.', 'https://cdn.cookfeed.app/videos/006.mp4', 'https://cdn.cookfeed.app/thumbs/006.jpg', 4, 20, 20, TRUE, '2026-07-17 12:00:00+00', '2026-07-17 12:00:00+00', 504),
-  (7, 4, '10-Minute Ginger Garlic Stir-Fry', 'The one-pan dinner I make when I have nothing planned.', 'https://cdn.cookfeed.app/videos/007.mp4', 'https://cdn.cookfeed.app/thumbs/007.jpg', 2, 5, 8, TRUE, '2026-07-23 12:00:00+00', '2026-07-23 12:00:00+00', 387),
-  (8, 5, 'Saturday Buttermilk-Style Pancakes', 'Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.', 'https://cdn.cookfeed.app/videos/008.mp4', 'https://cdn.cookfeed.app/thumbs/008.jpg', 4, 10, 15, TRUE, '2026-07-24 12:00:00+00', '2026-07-24 12:00:00+00', 276),
-  (9, 5, 'Five-Day Overnight Oats', 'One mixing bowl on Sunday, five breakfasts done.', 'https://cdn.cookfeed.app/videos/009.mp4', 'https://cdn.cookfeed.app/thumbs/009.jpg', 5, 10, 0, TRUE, '2026-07-25 12:00:00+00', '2026-07-25 12:00:00+00', 522),
-  (10, 5, 'Weeknight Beef Tacos', 'Skip the packet. Cumin, chili powder, and a squeeze of lime.', 'https://cdn.cookfeed.app/videos/010.mp4', 'https://cdn.cookfeed.app/thumbs/010.jpg', 4, 10, 15, TRUE, '2026-07-28 12:00:00+00', '2026-07-28 12:00:00+00', 341),
-  (11, 5, 'Smooth Hummus', 'Peel the chickpeas. Yes, really. It''s worth it.', 'https://cdn.cookfeed.app/videos/011.mp4', 'https://cdn.cookfeed.app/thumbs/011.jpg', 6, 15, 0, TRUE, '2026-07-29 12:00:00+00', '2026-07-29 12:00:00+00', 154),
-  (12, 5, 'Brown Butter Chocolate Chip Cookies', 'Brown the butter. Chill the dough. Thank me later.', 'https://cdn.cookfeed.app/videos/012.mp4', 'https://cdn.cookfeed.app/thumbs/012.jpg', 24, 20, 12, TRUE, '2026-07-30 12:00:00+00', '2026-07-30 12:00:00+00', 890),
-  (13, 4, 'Miso Soup (draft)', NULL, 'https://cdn.cookfeed.app/videos/draft-miso.mp4', NULL, 2, NULL, NULL, FALSE, '2026-07-31 12:00:00+00', NULL, 0);
+-- save_count is deliberately absent: the saved_recipes trigger computes it from the saves inserted below.
+-- Recipes 4 (Chicken Parm) and 6 (Onigiri) are ProductOnly: published, but reachable only by buying the
+-- product that contains them (Roman Pasta Collection / Three Weeknights in Japan).
+INSERT INTO recipes (id, creator_id, title, description, video_url, thumbnail_url, servings, prep_minutes, cook_minutes, is_published, visibility, created_at, published_at) VALUES
+  (1, 3, '15-Minute Spaghetti Carbonara', 'No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.', 'https://cdn.cookfeed.app/videos/001.mp4', 'https://cdn.cookfeed.app/thumbs/001.jpg', 4, 5, 12, TRUE, 'Public', '2026-07-12 12:00:00+00', '2026-07-12 12:00:00+00'),
+  (2, 3, 'Sunday Marinara from Scratch', 'One can of tomatoes, one onion, one hour. Freezes beautifully.', 'https://cdn.cookfeed.app/videos/002.mp4', 'https://cdn.cookfeed.app/thumbs/002.jpg', 6, 10, 60, TRUE, 'Public', '2026-07-14 12:00:00+00', '2026-07-14 12:00:00+00'),
+  (3, 3, 'No-Knead Focaccia', 'Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.', 'https://cdn.cookfeed.app/videos/003.mp4', 'https://cdn.cookfeed.app/thumbs/003.jpg', 8, 15, 25, TRUE, 'Public', '2026-07-20 12:00:00+00', '2026-07-20 12:00:00+00'),
+  (4, 3, 'Weeknight Chicken Parm', 'Thin cutlets, quick fry, broiled with marinara and mozzarella.', 'https://cdn.cookfeed.app/videos/004.mp4', 'https://cdn.cookfeed.app/thumbs/004.jpg', 4, 15, 20, TRUE, 'ProductOnly', '2026-07-26 12:00:00+00', '2026-07-26 12:00:00+00'),
+  (5, 4, 'Chicken Teriyaki, the Real Way', 'Four ingredients in the sauce. Skin-on thighs. That''s the whole secret.', 'https://cdn.cookfeed.app/videos/005.mp4', 'https://cdn.cookfeed.app/thumbs/005.jpg', 2, 5, 15, TRUE, 'Public', '2026-07-13 12:00:00+00', '2026-07-13 12:00:00+00'),
+  (6, 4, 'Onigiri Three Ways', 'Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.', 'https://cdn.cookfeed.app/videos/006.mp4', 'https://cdn.cookfeed.app/thumbs/006.jpg', 4, 20, 20, TRUE, 'ProductOnly', '2026-07-17 12:00:00+00', '2026-07-17 12:00:00+00'),
+  (7, 4, '10-Minute Ginger Garlic Stir-Fry', 'The one-pan dinner I make when I have nothing planned.', 'https://cdn.cookfeed.app/videos/007.mp4', 'https://cdn.cookfeed.app/thumbs/007.jpg', 2, 5, 8, TRUE, 'Public', '2026-07-23 12:00:00+00', '2026-07-23 12:00:00+00'),
+  (8, 5, 'Saturday Buttermilk-Style Pancakes', 'Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.', 'https://cdn.cookfeed.app/videos/008.mp4', 'https://cdn.cookfeed.app/thumbs/008.jpg', 4, 10, 15, TRUE, 'Public', '2026-07-24 12:00:00+00', '2026-07-24 12:00:00+00'),
+  (9, 5, 'Five-Day Overnight Oats', 'One mixing bowl on Sunday, five breakfasts done.', 'https://cdn.cookfeed.app/videos/009.mp4', 'https://cdn.cookfeed.app/thumbs/009.jpg', 5, 10, 0, TRUE, 'Public', '2026-07-25 12:00:00+00', '2026-07-25 12:00:00+00'),
+  (10, 5, 'Weeknight Beef Tacos', 'Skip the packet. Cumin, chili powder, and a squeeze of lime.', 'https://cdn.cookfeed.app/videos/010.mp4', 'https://cdn.cookfeed.app/thumbs/010.jpg', 4, 10, 15, TRUE, 'Public', '2026-07-28 12:00:00+00', '2026-07-28 12:00:00+00'),
+  (11, 5, 'Smooth Hummus', 'Peel the chickpeas. Yes, really. It''s worth it.', 'https://cdn.cookfeed.app/videos/011.mp4', 'https://cdn.cookfeed.app/thumbs/011.jpg', 6, 15, 0, TRUE, 'Public', '2026-07-29 12:00:00+00', '2026-07-29 12:00:00+00'),
+  (12, 5, 'Brown Butter Chocolate Chip Cookies', 'Brown the butter. Chill the dough. Thank me later.', 'https://cdn.cookfeed.app/videos/012.mp4', 'https://cdn.cookfeed.app/thumbs/012.jpg', 24, 20, 12, TRUE, 'Public', '2026-07-30 12:00:00+00', '2026-07-30 12:00:00+00'),
+  (13, 4, 'Miso Soup (draft)', NULL, 'https://cdn.cookfeed.app/videos/draft-miso.mp4', NULL, 2, NULL, NULL, FALSE, 'Public', '2026-07-31 12:00:00+00', NULL);
 
 -- Recipe steps
 INSERT INTO recipe_steps (id, recipe_id, step_number, instruction, video_timestamp_seconds) VALUES
@@ -259,7 +280,10 @@ INSERT INTO products (id, creator_id, type, title, description, price_cents, cur
   (4, 5, 'MealPlan', 'Family Week on a Budget', 'Seven dinners, two breakfasts, one grocery trip.', 999, 'USD', TRUE, '2026-07-27 12:00:00+00'),
   (5, 5, 'RecipeCollection', 'Summer Grilling (retired)', NULL, 599, 'USD', FALSE, '2026-06-22 12:00:00+00');
 
--- Product contents (meal plans carry day_offset and slot)
+-- Product contents (meal plans carry day_offset and slot). No explicit ids: the surrogate key is generated.
+-- "Family Week on a Budget" schedules Five-Day Overnight Oats twice (Monday and Thursday) — the reason
+-- product_recipes is no longer keyed on (product_id, recipe_id).
+-- "Roman Pasta Collection" no longer contains No-Knead Focaccia; Alex's purchase snapshot below still does.
 INSERT INTO product_recipes (product_id, recipe_id, sort_order, day_offset, slot) VALUES
   (1, 1, 1, NULL, NULL),
   (1, 2, 2, NULL, NULL),
@@ -270,11 +294,14 @@ INSERT INTO product_recipes (product_id, recipe_id, sort_order, day_offset, slot
   (3, 6, 3, 2, 'Dinner'),
   (4, 9, 1, 0, 'Breakfast'),
   (4, 10, 2, 0, 'Dinner'),
-  (4, 8, 3, 5, 'Breakfast'),
-  (4, 11, 4, 2, 'Snack'),
-  (4, 12, 5, 6, 'Snack');
+  (4, 11, 3, 2, 'Snack'),
+  (4, 9, 4, 3, 'Breakfast'),
+  (4, 8, 5, 5, 'Breakfast'),
+  (4, 12, 6, 6, 'Snack');
 
--- Saved recipes
+-- Saved recipes. Nobody saves their own recipe, nobody saves a ProductOnly recipe they have not bought,
+-- and the admin saves nothing. Resulting save_count (via trigger): cookies 8, teriyaki 7, focaccia 6,
+-- carbonara 4, oats 3, pancakes 3, marinara 3, stir-fry 2, tacos 1, hummus 1, chicken parm 0, onigiri 0.
 INSERT INTO saved_recipes (user_id, recipe_id, saved_at) VALUES
   (1, 1, '2026-08-02 12:00:00+00'),
   (1, 3, '2026-08-03 12:00:00+00'),
@@ -283,7 +310,37 @@ INSERT INTO saved_recipes (user_id, recipe_id, saved_at) VALUES
   (1, 12, '2026-08-06 12:00:00+00'),
   (1, 7, '2026-08-07 12:00:00+00'),
   (2, 12, '2026-08-05 12:00:00+00'),
-  (3, 5, '2026-08-03 12:00:00+00');
+  (2, 5, '2026-08-09 12:00:00+00'),
+  (2, 3, '2026-08-10 12:00:00+00'),
+  (2, 9, '2026-08-22 12:00:00+00'),
+  (3, 5, '2026-08-03 12:00:00+00'),
+  (3, 12, '2026-08-14 12:00:00+00'),
+  (3, 7, '2026-08-15 12:00:00+00'),
+  (4, 12, '2026-08-04 12:00:00+00'),
+  (4, 3, '2026-08-11 12:00:00+00'),
+  (4, 1, '2026-08-12 12:00:00+00'),
+  (5, 5, '2026-08-01 12:00:00+00'),
+  (5, 1, '2026-08-13 12:00:00+00'),
+  (5, 3, '2026-08-13 12:00:00+00'),
+  (5, 2, '2026-08-20 12:00:00+00'),
+  (7, 12, '2026-08-07 12:00:00+00'),
+  (7, 5, '2026-08-07 12:00:00+00'),
+  (7, 3, '2026-08-08 12:00:00+00'),
+  (7, 9, '2026-08-16 12:00:00+00'),
+  (7, 1, '2026-08-17 12:00:00+00'),
+  (8, 12, '2026-08-09 12:00:00+00'),
+  (8, 5, '2026-08-09 12:00:00+00'),
+  (8, 8, '2026-08-18 12:00:00+00'),
+  (8, 2, '2026-08-19 12:00:00+00'),
+  (9, 12, '2026-08-11 12:00:00+00'),
+  (9, 5, '2026-08-11 12:00:00+00'),
+  (9, 3, '2026-08-12 12:00:00+00'),
+  (9, 10, '2026-08-23 12:00:00+00'),
+  (9, 11, '2026-08-24 12:00:00+00'),
+  (10, 12, '2026-08-13 12:00:00+00'),
+  (10, 9, '2026-08-13 12:00:00+00'),
+  (10, 2, '2026-08-25 12:00:00+00'),
+  (10, 8, '2026-08-26 12:00:00+00');
 
 -- Meal plans
 INSERT INTO meal_plans (id, user_id, name, week_start) VALUES
@@ -300,12 +357,15 @@ INSERT INTO meal_plan_entries (id, meal_plan_id, recipe_id, planned_date, slot, 
 INSERT INTO cart_items (user_id, product_id) VALUES
   (1, 2);
 
--- Orders
+-- Orders. Priya and Dan each buy "Three Weeknights in Japan" so that every reviewer below owns the product;
+-- Dan is a creator buying another creator's work, which the model allows. No order contains the buyer's own product.
 INSERT INTO orders (id, user_id, status, placed_at, paid_at, total_cents, currency, payment_reference) VALUES
   (1, 1, 'Paid', '2026-08-11 12:00:00+00', '2026-08-11 12:01:00+00', 2098, 'USD', 'pi_seed_0001'),
   (2, 1, 'Paid', '2026-08-31 12:00:00+00', '2026-08-31 12:02:00+00', 999, 'USD', 'pi_seed_0002'),
   (3, 1, 'Cancelled', '2026-09-05 12:00:00+00', NULL, 499, 'USD', NULL),
-  (4, 2, 'Paid', '2026-08-21 12:00:00+00', '2026-08-21 12:00:00+00', 999, 'USD', 'pi_seed_0003');
+  (4, 2, 'Paid', '2026-08-21 12:00:00+00', '2026-08-21 12:00:00+00', 999, 'USD', 'pi_seed_0003'),
+  (5, 2, 'Paid', '2026-08-08 12:00:00+00', '2026-08-08 12:00:00+00', 1299, 'USD', 'pi_seed_0004'),
+  (6, 5, 'Paid', '2026-08-01 12:00:00+00', '2026-08-01 12:00:00+00', 1299, 'USD', 'pi_seed_0005');
 
 -- Order items (title, price and creator are snapshots taken at checkout)
 INSERT INTO order_items (id, order_id, product_id, creator_id, product_title, unit_price_cents) VALUES
@@ -313,9 +373,43 @@ INSERT INTO order_items (id, order_id, product_id, creator_id, product_title, un
   (2, 1, 3, 4, 'Three Weeknights in Japan', 1299),
   (3, 2, 4, 5, 'Family Week on a Budget', 999),
   (4, 3, 2, 3, 'The Bread Box', 499),
-  (5, 4, 4, 5, 'Family Week on a Budget', 999);
+  (5, 4, 4, 5, 'Family Week on a Budget', 999),
+  (6, 5, 3, 4, 'Three Weeknights in Japan', 1299),
+  (7, 6, 3, 4, 'Three Weeknights in Japan', 1299);
 
--- Reviews of "Three Weeknights in Japan" (added for Assignment 3; same three reviews the prototype shows)
+-- Order item recipes: the bundle as it was at checkout. This is what each buyer is entitled to.
+-- Item 1 (Alex, Roman Pasta Collection, 11 Aug) still lists No-Knead Focaccia (recipe 3): it was in the
+-- collection that day and Maria removed it afterwards. Alex keeps it; the next buyer will not get it.
+INSERT INTO order_item_recipes (order_item_id, recipe_id, sort_order, day_offset, slot) VALUES
+  (1, 1, 1, NULL, NULL),
+  (1, 2, 2, NULL, NULL),
+  (1, 3, 3, NULL, NULL),
+  (1, 4, 4, NULL, NULL),
+  (2, 5, 1, 0, 'Dinner'),
+  (2, 7, 2, 1, 'Dinner'),
+  (2, 6, 3, 2, 'Dinner'),
+  (3, 9, 1, 0, 'Breakfast'),
+  (3, 10, 2, 0, 'Dinner'),
+  (3, 11, 3, 2, 'Snack'),
+  (3, 9, 4, 3, 'Breakfast'),
+  (3, 8, 5, 5, 'Breakfast'),
+  (3, 12, 6, 6, 'Snack'),
+  (4, 3, 1, NULL, NULL),
+  (5, 9, 1, 0, 'Breakfast'),
+  (5, 10, 2, 0, 'Dinner'),
+  (5, 11, 3, 2, 'Snack'),
+  (5, 9, 4, 3, 'Breakfast'),
+  (5, 8, 5, 5, 'Breakfast'),
+  (5, 12, 6, 6, 'Snack'),
+  (6, 5, 1, 0, 'Dinner'),
+  (6, 7, 2, 1, 'Dinner'),
+  (6, 6, 3, 2, 'Dinner'),
+  (7, 5, 1, 0, 'Dinner'),
+  (7, 7, 2, 1, 'Dinner'),
+  (7, 6, 3, 2, 'Dinner');
+
+-- Reviews of "Three Weeknights in Japan" (added for Assignment 3; same three reviews the prototype shows).
+-- Each reviewer holds a Paid order for product 3: Alex (order 1), Priya (order 5), Dan (order 6).
 INSERT INTO reviews (id, product_id, user_id, rating, recommends, body, created_at) VALUES
   (1, 3, 1, 5, TRUE, 'I bought this on a Sunday and had all three dinners on the table by Wednesday. The shopping list is the whole reason it worked. One trip, nothing left over.', '2026-08-12 12:00:00+00'),
   (2, 3, 2, 4, TRUE, 'Teriyaki alone was worth the price. I scaled the plan to six for my family and the quantities came out right. Taking one star off because I wanted a fourth night.', '2026-08-09 12:00:00+00'),
@@ -334,5 +428,7 @@ SELECT setval(pg_get_serial_sequence('meal_plans', 'id'), (SELECT MAX(id) FROM m
 SELECT setval(pg_get_serial_sequence('meal_plan_entries', 'id'), (SELECT MAX(id) FROM meal_plan_entries));
 SELECT setval(pg_get_serial_sequence('orders', 'id'), (SELECT MAX(id) FROM orders));
 SELECT setval(pg_get_serial_sequence('order_items', 'id'), (SELECT MAX(id) FROM order_items));
+SELECT setval(pg_get_serial_sequence('order_item_recipes', 'id'), (SELECT MAX(id) FROM order_item_recipes));
+SELECT setval(pg_get_serial_sequence('product_recipes', 'id'), (SELECT MAX(id) FROM product_recipes));
 SELECT setval(pg_get_serial_sequence('reviews', 'id'), (SELECT MAX(id) FROM reviews));
 COMMIT;
