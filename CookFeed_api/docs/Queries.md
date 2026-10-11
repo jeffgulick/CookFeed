@@ -1,6 +1,6 @@
 # Cookfeed — Core Queries, Generated SQL, and Indexes
 
-> **Status: §1 (feed) is verified: its SQL is what EF Core logged. The other sections are still
+> **Status: §1 (feed) and §2 (storefront) are verified: their SQL is what EF Core logged. The other sections are still
 > expected output, not yet captured output;** they were written alongside the design, before the code
 > existed. As each vertical slice is built, the block for that
 > query gets replaced with the statement actually logged by
@@ -198,48 +198,195 @@ ORDER BY r.id, ri.sort_order, ri.id, st.step_number
 
 ---
 
-## 2. Creator storefront
+## 2. Creator storefront — *verified 2026-10-11*
 
-**Endpoint:** `GET /api/creators/{handle}`
+**Endpoint:** `GET /api/creators/{handle}`, optional header `X-User-Id`. An unknown handle is 404.
+
+**Code:** `CreatorsController` → `StorefrontService` → `CreatorRepository.GetStorefrontAsync`. The service
+lower-cases the handle, so `/api/creators/Maria-Cooks` works. It lower-cases the *argument*, not the
+column, so the lookup still uses the unique index.
 
 ```csharp
 db.CreatorProfiles.AsNoTracking()
-  .Where(c => c.Handle == handle)
-  .Select(c => new StorefrontDto(
-      c.Handle, c.User.DisplayName, c.Bio, c.AvatarUrl, c.IsVerified,
-      c.Recipes.Count(r => r.IsPublished && r.Visibility == RecipeVisibility.Public),
-      c.Recipes.Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public).Sum(r => r.SaveCount),
-      c.Recipes.Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public).OrderByDescending(r => r.PublishedAt).Select(...).ToList(),
-      c.Products.Where(p => p.IsActive).OrderBy(p => p.CreatedAt).Select(p => new StorefrontProductDto(
-          ..., p.ProductRecipes.Select(pr => pr.RecipeId).Distinct().Count(),   // a meal plan may repeat a recipe
-          viewerId != null && p.OrderItems.Any(oi => oi.Order.UserId == viewerId && oi.Order.Status == "Paid"),
-          viewerId == c.UserId)).ToList()))                                         // IsOwn: the client hides "Add to cart"
-  .SingleOrDefaultAsync()
+    .AsSplitQuery()
+    .Where(c => c.Handle == handle)
+    .Select(c => new
+    {
+        c.Handle, c.User.DisplayName, c.Bio, c.AvatarUrl, c.IsVerified,
+        ViewerIsCreator = viewerId != null && c.UserId == viewerId,
+        Recipes = c.Recipes
+            .Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public)
+            .OrderByDescending(r => r.PublishedAt).ThenByDescending(r => r.Id)
+            .Select(r => new StorefrontRecipeDto(r.Id, r.Title, r.ThumbnailUrl, /* total minutes */, r.SaveCount, r.PublishedAt!.Value))
+            .ToList(),
+        Products = c.Products
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.CreatedAt).ThenBy(p => p.Id)
+            .Select(p => new StorefrontProductDto(
+                p.Id, /* type */, p.Title, p.Description, p.CoverImageUrl, p.PriceCents, p.Currency,
+                p.Recipes.Select(pr => pr.RecipeId).Distinct().Count(),                    // distinct recipes
+                p.Type == ProductType.MealPlan ? p.Recipes.Count() : null,                  // meals; a plan may repeat a recipe
+                viewerId != null && db.OrderItems.Any(oi =>
+                    oi.ProductId == p.Id && oi.Order.UserId == viewerId && oi.Order.Status == OrderStatus.Paid)))
+            .ToList(),
+    })
+    .SingleOrDefaultAsync(cancellationToken);
 ```
 
-**Generated SQL (shape):**
+`RecipeCount` and `TotalSaves` are then worked out in C# from the recipe list already fetched
+(`Recipes.Count`, `Recipes.Sum(r => r.SaveCount)`).
+
+**Generated SQL, as logged** (`dan-meal-preps` with `X-User-Id: 1`). There are three statements, one per
+part of the page:
 
 ```sql
-SELECT c.handle, u.display_name, c.bio, c.avatar_url, c.is_verified,
-       (SELECT count(*)::int FROM recipes r WHERE r.creator_id = c.user_id AND r.is_published AND r.visibility = 'Public'),
-       (SELECT COALESCE(sum(r.save_count), 0)::int FROM recipes r WHERE r.creator_id = c.user_id AND r.is_published AND r.visibility = 'Public'),
-       r2.id, r2.title, r2.thumbnail_url, r2.save_count, r2.published_at,
-       p.id, p.type, p.title, p.description, p.price_cents, p.currency,
-       (SELECT count(DISTINCT pr.recipe_id)::int FROM product_recipes pr WHERE pr.product_id = p.id),
-       CASE WHEN @viewerId IS NOT NULL AND EXISTS (
-            SELECT 1 FROM order_items oi JOIN orders o ON oi.order_id = o.id
-            WHERE oi.product_id = p.id AND o.user_id = @viewerId AND o.status = 'Paid') THEN TRUE ELSE FALSE END
-FROM creator_profiles c
-JOIN users u ON c.user_id = u.id
-LEFT JOIN recipes r2 ON r2.creator_id = c.user_id AND r2.is_published AND r2.visibility = 'Public'
-LEFT JOIN products p ON p.creator_id = c.user_id AND p.is_active
+-- 1. the creator
+SELECT c.handle, u.display_name, c.bio, c.avatar_url, c.is_verified, c.user_id = @viewerId, c.user_id, u.id
+FROM creator_profiles AS c
+INNER JOIN users AS u ON c.user_id = u.id
 WHERE c.handle = @handle
-ORDER BY c.user_id, r2.published_at DESC, r2.id, p.created_at
+ORDER BY c.user_id, u.id
+LIMIT 2
+
+-- 2. the public recipes
+SELECT r2.id, r2.title, r2.thumbnail_url, r2.c, r2.save_count, r2.published_at, s.user_id, s.id
+FROM (
+    SELECT c.user_id, u.id
+    FROM creator_profiles AS c
+    INNER JOIN users AS u ON c.user_id = u.id
+    WHERE c.handle = @handle
+    ORDER BY c.user_id, u.id
+    LIMIT 1
+) AS s
+INNER JOIN (
+    SELECT r1.id, r1.title, r1.thumbnail_url, CASE
+        WHEN r1.prep_minutes IS NULL AND r1.cook_minutes IS NULL THEN NULL
+        ELSE COALESCE(r1.prep_minutes, 0) + COALESCE(r1.cook_minutes, 0)
+    END AS c, r1.save_count, r1.published_at, r1.creator_id
+    FROM recipes AS r1
+    WHERE r1.is_published AND r1.visibility = 'Public'
+) AS r2 ON s.user_id = r2.creator_id
+ORDER BY s.user_id, s.id, r2.published_at DESC, r2.id DESC
+
+-- 3. the active products
+SELECT p7.id, p7.c, p7.title, p7.description, p7.cover_image_url, p7.price_cents, p7.currency, p7.c0, p7.c1, p7.c2, s0.user_id, s0.id
+FROM (
+    SELECT c.user_id, u.id
+    FROM creator_profiles AS c
+    INNER JOIN users AS u ON c.user_id = u.id
+    WHERE c.handle = @handle
+    ORDER BY c.user_id, u.id
+    LIMIT 1
+) AS s0
+INNER JOIN (
+    SELECT p3.id, CASE
+        WHEN p3.type = 'MealPlan' THEN 1
+        ELSE 0
+    END AS c, p3.title, p3.description, p3.cover_image_url, p3.price_cents, p3.currency, (
+        SELECT count(*)::int
+        FROM (
+            SELECT DISTINCT p4.recipe_id
+            FROM product_recipes AS p4
+            WHERE p3.id = p4.product_id
+        ) AS p5) AS c0, CASE
+        WHEN p3.type = 'MealPlan' THEN (
+            SELECT count(*)::int
+            FROM product_recipes AS p6
+            WHERE p3.id = p6.product_id)
+    END AS c1, EXISTS (
+        SELECT 1
+        FROM order_items AS o1
+        INNER JOIN orders AS o2 ON o1.order_id = o2.id
+        WHERE o1.product_id = p3.id AND o2.user_id = @viewerId AND o2.status = 'Paid') AS c2, p3.created_at, p3.creator_id
+    FROM products AS p3
+    WHERE p3.is_active
+) AS p7 ON s0.user_id = p7.creator_id
+ORDER BY s0.user_id, s0.id, p7.created_at, p7.id
 ```
 
-**Indexes:** unique `ix_creator_profiles_handle` — the URL lookup is a single index probe. `ix_recipes_creator_id` serves the recipe list and both aggregate subqueries. `ix_products_creator_id_is_active (creator_id, is_active)` serves the product list. The ownership `EXISTS` uses `ix_order_items_product_id` then the PK on `orders`.
+**Reviewed.** Two changes from the design-time version, both made after reading the SQL:
 
-**Reviewed:** the two aggregate subqueries over `recipes` scan the same rows as the recipe list join. For a creator with thousands of recipes that would be worth collapsing into one grouped subquery; at this project's scale the readability of the single LINQ projection wins.
+1. **Split query.** Without `AsSplitQuery()`, EF Core sent one statement that `LEFT JOIN`ed the recipe
+   subquery *and* the product subquery to the creator. The two lists are independent, so every recipe
+   came back once per product: 5 × 1 rows for Dan, 3 × 2 for Maria. A creator with 200 recipes and 10
+   products would send 2,000 wide rows to show 210 items. EF Core warns about exactly this
+   (`MultipleCollectionIncludeWarning`, logged on the first run). Split, the three statements return
+   1 + recipes + products rows. The cost is two extra round trips, each re-finding the creator with one
+   probe of the unique `handle` index.
+2. **No aggregate subqueries for the header.** The design had two extra subqueries over `recipes`, for the
+   count and the sum of saves. Since the page already fetches every public recipe of the creator, the
+   repository counts and sums that list in C#. That is two fewer scans of the same rows.
+
+Retired products (`is_active = false`) are left out; they stay in the table only because orders refer to
+them. "Owned" means a **Paid** order for the product, so Alex's *Cancelled* order for *The Bread Box* does
+not count; `StorefrontEndpointTests` checks that case. The `MealPlan` → `ProductType` mapping compiles to
+a `CASE` on the stored name, and the JSON sends it as `"MealPlan"`, not a number.
+
+**Plans** (`EXPLAIN ANALYZE`, `enable_seqscan = off` because the seeded tables fit in one page, so a
+sequential scan wins on cost at this size):
+
+```
+-- 1. creator
+Limit -> Sort -> Nested Loop
+  ->  Index Scan using ix_creator_profiles_handle on creator_profiles c   (Index Cond: handle = 'dan-meal-preps')
+  ->  Index Scan using pk_users on users u                                 (Index Cond: id = c.user_id)
+
+-- 2. recipes
+Incremental Sort (Presorted Key: c.user_id)
+  ->  Nested Loop
+        ->  Limit -> … Index Scan using ix_creator_profiles_handle …
+        ->  Bitmap Heap Scan on recipes r1 (actual rows=5)
+              Filter: (is_published AND visibility = 'Public')
+              ->  Bitmap Index Scan on ix_recipes_creator_id (actual rows=5)   (Index Cond: creator_id = c.user_id)
+
+-- 3. products
+Incremental Sort (Presorted Key: c.user_id)
+  ->  Nested Loop
+        ->  Limit -> … Index Scan using ix_creator_profiles_handle …
+        ->  Index Scan using ix_products_creator_id_is_active on products p3   (Index Cond: creator_id = c.user_id AND is_active)
+        SubPlan 1  (distinct recipes)  ->  Bitmap Index Scan on ix_product_recipes_product_id_sort_order
+        SubPlan 2  (meals)             ->  Bitmap Index Scan on ix_product_recipes_product_id_sort_order
+        SubPlan 3  (owned)             ->  Index Scan using ix_order_items_product_id on order_items o1
+                                           ->  Index Scan using ix_orders_user_id_placed_at on orders o2
+                                                 (Index Cond: user_id = 1; Filter: status = 'Paid')
+```
+
+**Indexes, and why:**
+
+- **Unique `ix_creator_profiles_handle`.** The URL lookup is one index probe, and each of the three
+  statements starts with it.
+- **`ix_recipes_creator_id`.** Serves the recipe list. `is_published` and `visibility` are checked as a
+  filter on the creator's rows. That is a few dozen rows even for a prolific creator, so a composite
+  `(creator_id, is_published, visibility, published_at DESC)` index is not worth its write cost here.
+- **`ix_products_creator_id_is_active (creator_id, is_active)`.** Both predicates are in the index
+  condition, so retired products are never read.
+- **`ix_product_recipes_product_id_sort_order`.** Serves both counts through its leading `product_id`.
+  The same index returns a bundle in display order on the product page.
+- **The ownership `EXISTS`.** Uses `ix_order_items_product_id`, then `ix_orders_user_id_placed_at` for
+  the viewer's orders; `status` is a filter over that one user's handful of orders.
+
+**Seen while reviewing the plan: the cost of the `save_count` denormalization.** On the freshly seeded
+database, the recipes scan first read 21 index entries to return Dan's 5 rows. `pg_stat_user_tables`
+showed 38 updates to `recipes`, **0 of them HOT**, and 38 dead row versions. Each save fires the
+`saved_recipes_save_count` trigger (DesignDocument.md §3.4), which updates the recipe row. Because
+`save_count` is a column of `ix_recipes_is_published_visibility_save_count`, PostgreSQL cannot update the
+row in place; it writes a new row version and a new entry in *every* index on `recipes`. After `VACUUM`,
+the same scan read exactly 5 entries. Autovacuum does this on its own in production. The point stands,
+though: a save costs more than one small insert, and that is the price of reading `save_count` without a
+`COUNT(*)` on the feed (DesignDocument.md §6).
+
+**Tests:**
+
+- `tests/Cookfeed.Application.Tests/Storefront/StorefrontServiceTests.cs`: lower-casing the handle,
+  passing the viewer through, and null for an unknown handle.
+- `tests/Cookfeed.IntegrationTests/Api/StorefrontEndpointTests.cs`, over HTTP, for all three seeded
+  creators:
+  - The recipe list has only published Public recipes, newest first.
+  - `recipeCount` and `totalSaves` match `queries.sql` **Q2**; the product lines match **Q5**, with
+    distinct recipes and meals, and the retired product absent.
+  - Ownership matches Paid orders, and a cancelled order does not count.
+  - `viewerIsCreator` is true only for the creator.
+  - An unknown handle is 404, and a non-numeric `X-User-Id` is 400.
 
 ---
 

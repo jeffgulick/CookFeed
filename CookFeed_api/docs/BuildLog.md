@@ -11,7 +11,9 @@ session; update **Where we are** and **Next steps** at the end of each step, in 
 
 The **database layer** is built, tested and merged into `main` (PR #2). The first feature on top of it,
 **the recipe feed** (`GET /api/feed`), is built on the `feed-endpoint` branch: the first controller, service,
-repository and DTOs, and the pattern the other three core queries will follow.
+repository and DTOs, and the pattern the other three core queries will follow. **The creator storefront**
+(`GET /api/creators/{handle}`) follows it on the `creator-storefront` branch, which branches off
+`feed-endpoint`.
 
 | Done | Where |
 |---|---|
@@ -25,9 +27,11 @@ repository and DTOs, and the pattern the other three core queries will follow.
 | Feed: `FeedController` → `FeedService` → `RecipeRepository.GetFeedAsync`, DTOs in `Contracts/Feed/` | `src/*/Feed/`, `Persistence/Repositories/`, `Api/Controllers/` |
 | Feed tests: 7 service tests with NSubstitute, 14 HTTP tests with `WebApplicationFactory` (66 tests in all) | `tests/Cookfeed.Application.Tests/Feed/`, `tests/Cookfeed.IntegrationTests/Api/` |
 | Feed SQL captured from the EF Core log, with `EXPLAIN ANALYZE`, and marked verified | `docs/Queries.md` §1 |
+| Storefront: `CreatorsController` → `StorefrontService` → `CreatorRepository.GetStorefrontAsync`, DTOs in `Contracts/Storefront/` | `src/*/Storefront/`, `Persistence/Repositories/`, `Api/Controllers/` |
+| Storefront tests: 4 service tests, 20 HTTP tests (90 tests in all); SQL verified, split query chosen after review | `tests/*/Storefront*`, `docs/Queries.md` §2 |
 
-Not built yet: the storefront, order history and shopping-list endpoints, `ShoppingListAggregator`, and
-the Domain tests.
+Not built yet: the order-history and shopping-list endpoints, `ShoppingListAggregator`, and the Domain
+tests.
 
 ---
 
@@ -76,7 +80,7 @@ cart" on a creator's own product, ProductOnly recipes, no shop controls for the 
 
 | Area | Decision | Why / where it is written down |
 |---|---|---|
-| API style | Controllers → services → repositories; not minimal APIs | `DesignDocument.md` §1 |
+| API style | Controllers → services → repositories; not minimal APIs. One of each per area (feed, storefront, order history, shopping list), with a method per query | `DesignDocument.md` §1 |
 | Layers | One project per layer; each references only the layers inside it | `DesignDocument.md` §1, `README.md` |
 | Queries | LINQ lives only in repositories (`Infrastructure/Persistence/Repositories/`). Services hold the rules and see only repository interfaces | Lets Application tests use fakes; Application does not reference EF Core |
 | Repositories | One per area with specific methods; no generic `Repository<T>`. Reads project into Contracts DTOs | `DesignDocument.md` §1 |
@@ -107,18 +111,16 @@ Commands to migrate, run and test: [`README.md`](../README.md#getting-started) a
 
 ## Next steps
 
-Deliverable 2 is due **Oct 17**; steps 1–4 are what it still needs.
+Deliverable 2 is due **Oct 17**; steps 1–3 are what it still needs.
 
-1. **Creator storefront**, `GET /api/creators/{handle}`, the same pattern as the feed. Planned LINQ and
-   indexes: `docs/Queries.md` §2.
-2. **Decide how the API knows who is calling** before the first per-user read. Proposed: the `X-User-Id`
+1. **Decide how the API knows who is calling** before the first per-user read. Proposed: the `X-User-Id`
    header, with per-user routes under `/api/me/…` so no route takes another user's id. (The feed reads
    `X-User-Id` already, but only to mark the caller's own saves.)
-3. **Order history**, `GET /api/me/orders` (`docs/Queries.md` §4).
-4. **Shopping list**, `GET /api/me/shopping-list`: the repository's per-category aggregation plus
+2. **Order history**, `GET /api/me/orders` (`docs/Queries.md` §4).
+3. **Shopping list**, `GET /api/me/shopping-list`: the repository's per-category aggregation plus
    `ShoppingListAggregator` in Domain, tested line for line against `queries.sql` Q8 (`docs/Queries.md` §3,
    `DesignDocument.md` §7.5).
-5. **Comment the existing database-layer code** to the commenting rule above (moved here from first, to
+4. **Comment the existing database-layer code** to the commenting rule above (moved here from first, to
    protect the deadline). Mainly the 19 configurations, `CookfeedDbContext.cs` and `Program.cs`. Comments
    only: the build and the tests must be unchanged.
 
@@ -136,7 +138,7 @@ them off here as they land. The status codes are proposals, to confirm when each
 | A creator cannot add their own product to the cart: the service refuses it with a clear message before the `cart_items_refuse_self_purchase` trigger would. | §3.1, `Queries.md` "Add to cart" | Cart | 400 |
 | Checkout refuses a self-purchase the same way (the `order_items_refuse_self_purchase` trigger stays as the last line of defence). | §3.1 | Checkout | 400 |
 | A database refusal (`check_violation` with a `ck_…` constraint name, or a unique violation) that slips past a service becomes a 4xx with a readable message, never a 500. | §5 | First write feature (saves or cart) | 400 / 409 |
-| The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront | — |
+| The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront ✅ (`StorefrontEndpointTests`) | — |
 | A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14. | §3.3 | Recipe detail | 404 (do not reveal it exists) |
 | Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
 | Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |
