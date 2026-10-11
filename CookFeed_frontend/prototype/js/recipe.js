@@ -1,6 +1,7 @@
-/* Cookfeed prototype - recipe pages.
-   The recipes themselves live in data.js. Each page names its recipe with a
-   data-recipe-id attribute on <body>, and this file draws it. */
+/* Cookfeed prototype - recipe page (recipe.html?id=, with &product= when opened from a plan).
+
+   The recipe opens only for a viewer rules.js lets in: published and Public, bought through a plan, or
+   the viewer's own (design section 3.3). Anyone else sees which plan includes it. */
 
 var currentRecipe = null;
 var currentServings = 0;
@@ -24,8 +25,12 @@ function renderIngredients(people) {
     var amount = item.quantity * people / currentRecipe.servings;
     var note = item.preparation === null ? "" : ", " + item.preparation;
 
-    html = html + "<li><strong>" + formatQuantity(amount) + " " + item.unit + "</strong> ";
-    html = html + item.name + note + "</li>";
+    html = html + "<li><strong>" + formatQuantity(amount) + " " + escapeHtml(item.unit) + "</strong> ";
+    html = html + escapeHtml(item.name + note) + "</li>";
+  }
+
+  if (currentRecipe.ingredients.length === 0) {
+    html = "<li class='meta'>No ingredients yet.</li>";
   }
 
   document.getElementById("ingredientList").innerHTML = html;
@@ -75,6 +80,8 @@ function resetRecipeServings() {
   applyRecipeServings();
 }
 
+/* ---------- the mock video and the steps ---------- */
+
 /* Move the video to the moment a step happens and highlight that step. */
 function jumpToStep(seconds, stepNumber) {
   var percent = (seconds / currentRecipe.videoSeconds) * 100;
@@ -84,8 +91,9 @@ function jumpToStep(seconds, stepNumber) {
   document.getElementById("videoProgress").style.width = percent + "%";
   document.getElementById("videoLabel").textContent = "Step " + stepNumber + " of " + currentRecipe.steps.length;
 
-  for (var i = 1; i <= currentRecipe.steps.length; i = i + 1) {
-    document.getElementById("step" + i).className = i === stepNumber ? "step playing" : "step";
+  var steps = document.querySelectorAll("#stepList .step");
+  for (var i = 0; i < steps.length; i = i + 1) {
+    steps[i].classList.toggle("playing", steps[i].getAttribute("data-step") === String(stepNumber));
   }
 }
 
@@ -96,11 +104,13 @@ function renderSteps() {
   for (var i = 0; i < currentRecipe.steps.length; i = i + 1) {
     var step = currentRecipe.steps[i];
 
-    html = html + "<li class='step' id='step" + step.stepNumber + "'>";
-    html = html + "<div>" + step.instruction + "</div>";
-    html = html + "<button class='btn-small' data-seconds='" + step.videoTimestampSeconds +
-                  "' data-step='" + step.stepNumber + "'>";
-    html = html + "Watch at " + formatTime(step.videoTimestampSeconds) + "</button>";
+    html = html + "<li class='step' data-step='" + step.stepNumber + "'>";
+    html = html + "<div>" + escapeHtml(step.instruction) + "</div>";
+    if (step.videoTimestampSeconds !== null) {
+      html = html + "<button class='btn-small' data-seconds='" + step.videoTimestampSeconds +
+                    "' data-step='" + step.stepNumber + "'>";
+      html = html + "Watch at " + formatTime(step.videoTimestampSeconds) + "</button>";
+    }
     html = html + "</li>";
   }
 
@@ -115,36 +125,141 @@ function onStepClicked(event) {
   }
 }
 
-/* Make the save button and counter match whether this recipe is saved. */
-function renderSaveState() {
-  var saved = isSaved(currentRecipe.id);
-  var button = document.getElementById("saveButton");
+/* ---------- saving ---------- */
 
-  document.getElementById("saveCount").textContent = currentSaveCount(currentRecipe);
-  button.textContent = saved ? "Saved ✓" : "Save recipe";
-  button.className = saved ? "btn-secondary" : "btn-primary";
+/* The save button follows canSave: a guest gets a sign-in link, the admin gets nothing. */
+function renderSaveState() {
+  var user = currentUser();
+  var area = document.getElementById("saveArea");
+
+  document.getElementById("saveCount").textContent = saveCount(currentRecipe.id);
+
+  if (user === null) {
+    area.innerHTML = signInLink("save");
+    return;
+  }
+  if (!canSave(user, currentRecipe)) {
+    area.innerHTML = "";
+    return;
+  }
+  var saved = isSavedBy(user.id, currentRecipe.id);
+  area.innerHTML = "<button type='button' id='saveButton' class='" + (saved ? "btn-secondary" : "btn-primary") +
+    "' title='" + SAVE_HINT + "'>" + (saved ? "Saved &#10003;" : "Save recipe") + "</button>";
+  document.getElementById("saveButton").addEventListener("click", saveThisRecipe);
 }
 
-/* Save or unsave this recipe. The product page reads the same saved list. */
 function saveThisRecipe() {
-  var nowSaved = toggleSave(currentRecipe.id);
+  var user = currentUser();
+  var nowSaved = !isSavedBy(user.id, currentRecipe.id);
+  setSaved(user.id, currentRecipe.id, nowSaved);
   renderSaveState();
   showToast(nowSaved ? "Saved to My kitchen, with its ingredients on your shopping list."
                      : "Removed from your saved recipes.");
 }
 
+/* ---------- the header ---------- */
+
+/* When the page was opened from a plan that holds this recipe, the crumb leads back to it and the
+   pill names the day. Otherwise the crumb leads to the creator. */
+function renderHeader() {
+  var creator = creatorFor(currentRecipe.creatorId);
+  var productId = queryNumber("product");
+  var product = productId === null ? null : productWithRecipes(productId);
+  var placement = product === null ? null
+    : product.recipes.filter(function (p) { return p.recipeId === currentRecipe.id; })[0] || null;
+  var user = currentUser();
+
+  document.title = currentRecipe.title + " | Cookfeed";
+  document.getElementById("recipeTitle").textContent = currentRecipe.title;
+  document.getElementById("recipeByline").innerHTML = creatorByline(creator);
+  document.getElementById("recipeDescription").textContent = currentRecipe.description || "";
+  // A draft may not have a thumbnail yet; the player then shows only its controls.
+  var image = document.getElementById("recipeImage");
+  image.hidden = !currentRecipe.thumbnailUrl;
+  if (currentRecipe.thumbnailUrl) {
+    image.src = currentRecipe.thumbnailUrl;
+  } else {
+    image.removeAttribute("src");
+  }
+  image.alt = currentRecipe.title;
+  document.getElementById("servesCount").textContent = currentRecipe.servings;
+  document.getElementById("totalTime").textContent = (currentRecipe.prepMinutes || 0) + (currentRecipe.cookMinutes || 0);
+
+  var crumb = document.getElementById("recipeCrumb");
+  var pill = document.getElementById("recipePill");
+  var foot = document.getElementById("recipeFoot");
+
+  if (placement !== null) {
+    var day = placement.dayOffset === null ? "" : DAY_NAMES[placement.dayOffset] + " " + placement.slot.toLowerCase();
+    crumb.innerHTML = "<a href='" + productUrl(product.id) + "'>" + escapeHtml(product.title) + "</a>" +
+      (day ? " &rsaquo; " + escapeHtml(day) : "");
+    pill.textContent = day || productTypeLabel(product);
+    foot.innerHTML = "<p><strong>One of " + productCounts(product) + " in " + escapeHtml(product.title) + ".</strong></p>" +
+      "<p><a href='" + productUrl(product.id) + "'>&larr; Back to " + escapeHtml(product.title) + "</a></p>";
+  } else {
+    crumb.innerHTML = "<a href='creator.html?handle=" + encodeURIComponent(creator.handle) + "'>" +
+      escapeHtml(creator.displayName) + "</a> &rsaquo; Recipes";
+    pill.textContent = currentRecipe.isPublished ? "Recipe" : "Draft";
+    foot.innerHTML = "<p><strong>More from " + escapeHtml(creator.displayName) + "</strong></p>" +
+      "<p><a href='creator.html?handle=" + encodeURIComponent(creator.handle) + "'>See every recipe from " +
+      escapeHtml(creator.handle) + " &rarr;</a></p>";
+  }
+
+  var note = document.getElementById("ownedNote");
+  var through = currentRecipe.visibility === "ProductOnly" ? ownedThrough(user, currentRecipe.id) : null;
+  if (!currentRecipe.isPublished) {
+    note.textContent = "A draft. Only you can see it until you publish it.";
+    note.hidden = false;
+  } else if (through !== null) {
+    note.textContent = "Yours through " + through;
+    note.hidden = false;
+  } else if (currentRecipe.visibility === "ProductOnly" && user !== null && currentRecipe.creatorId === user.id) {
+    note.textContent = "Only buyers of your plans can open this recipe.";
+    note.hidden = false;
+  }
+}
+
+/* The active products whose recipes include this one, for the locked notice. */
+function productsWith(recipeId) {
+  return rowsWhere("productRecipes", function (pr) { return pr.recipeId === recipeId; })
+    .map(function (pr) { return rowById("products", pr.productId); })
+    .filter(function (p, index, all) { return p.isActive && all.indexOf(p) === index; });
+}
+
+function showLocked(recipe) {
+  var links = productsWith(recipe.id).map(function (p) {
+    return "<a href='" + productUrl(p.id) + "'>" + escapeHtml(p.title) + "</a>";
+  });
+  var where = links.length ? " It comes with " + links.join(" and ") + "." : "";
+  showMissing(recipe.title, "&#128274; This recipe is only for cooks who bought the plan it is in." + where);
+}
+
+/* ---------- start ---------- */
+
 document.addEventListener("DOMContentLoaded", function () {
-  currentRecipe = RECIPES[Number(document.body.getAttribute("data-recipe-id"))];
+  var id = queryNumber("id");
+  var row = id === null ? null : rowById("recipes", id);
+  var user = currentUser();
+
+  // A draft is visible only to its creator; to anyone else it does not exist.
+  if (row === null || (!row.isPublished && !canOpenRecipe(user, row))) {
+    showMissing("Recipe not found", "There is no recipe at this address.");
+    return;
+  }
+  if (!canOpenRecipe(user, row)) {
+    showLocked(row);
+    return;
+  }
+
+  currentRecipe = recipeWithDetails(id);
   currentServings = currentRecipe.servings;
 
+  renderHeader();
   document.getElementById("videoTime").textContent = "0:00 / " + formatTime(currentRecipe.videoSeconds);
-  document.getElementById("totalTime").textContent = currentRecipe.prepMinutes + currentRecipe.cookMinutes;
-
   renderSaveState();
   renderIngredients(currentServings);
   renderSteps();
 
-  document.getElementById("saveButton").addEventListener("click", saveThisRecipe);
   document.getElementById("servingsInput").value = currentRecipe.servings;
   document.getElementById("servingsReset").textContent = "Reset to " + currentRecipe.servings + " as written";
   updateServingsButtons();

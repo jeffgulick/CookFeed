@@ -1,5 +1,6 @@
 /* Sign-in page: lists the seeded accounts by role and stores the one chosen (see "who is signed in" in
-   common.js). Accounts, roles and creator handles all come from seed-data.js. */
+   common.js). Accounts, roles and creator handles all come from seed-data.js. The page also resets the
+   prototype's data back to what the database holds (db.js resetDb). */
 
 /* Which list an account belongs in: the admin first (it holds no other role), then creators, then home cooks. */
 function groupFor(user) {
@@ -26,7 +27,7 @@ function renderStatus() {
   var status = document.getElementById("signinStatus");
   status.innerHTML = user
     ? '<p>You are signed in as <strong>' + escapeHtml(user.displayName) + '</strong>. ' +
-      '<a href="index.html">Continue to the meal plan &rarr;</a></p>' +
+      '<a href="index.html">Continue to Discover &rarr;</a></p>' +
       '<button type="button" class="btn-small btn-secondary" id="browseSignedOut">Sign out and browse as a guest</button>'
     : '<p>You are browsing as a guest. Pick an account below to sign in.</p>';
   var browse = document.getElementById("browseSignedOut");
@@ -42,10 +43,8 @@ function renderStatus() {
 function renderAccounts() {
   var current = currentUser();
   var lists = { homeCooks: [], creators: [], admins: [] };
-  window.COOKFEED_SEED.users.forEach(function (row) {
-    var user = { id: row.id, displayName: row.displayName, roles: rolesFor(row.id), handle: null };
-    var profile = window.COOKFEED_SEED.creatorProfiles.filter(function (p) { return p.userId === row.id; })[0];
-    user.handle = profile ? profile.handle : null;
+  SEED.users.forEach(function (row) {
+    var user = userById(row.id);
     lists[groupFor(user)].push(accountCard(user, current !== null && current.id === user.id));
   });
   Object.keys(lists).forEach(function (id) {
@@ -57,6 +56,8 @@ function refresh() {
   renderStatus();
   renderAccounts();
   updateAccountArea();
+  updateShopLinks();
+  updateCartChip();
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -73,6 +74,13 @@ document.addEventListener("DOMContentLoaded", function () {
     showToast("Signed in as " + currentUser().displayName + ".");
   });
 
-  // Signing out from the nav redraws this page too.
-  document.addEventListener("cookfeed:accountchange", refresh);
+  document.getElementById("resetData").addEventListener("click", function () {
+    if (confirm("Put every account back to what the database holds? Carts, saves, orders and reviews made " +
+                "in this browser are removed.") === false) {
+      return;
+    }
+    resetDb();
+    refresh();
+    showToast("The prototype's data is back to the database's seed.");
+  });
 });

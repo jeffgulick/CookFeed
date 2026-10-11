@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Help | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=9">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Discover</a>
+      <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+      <a class="navlink" href="orders.html" data-shop>Your orders</a>
+      <a class="navlink active" href="help.html" aria-current="page">Help</a>
+      <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <span class="pill">Help</span>
+    <h1>Questions and answers</h1>
+    <p class="byline">The short version of how Cookfeed works.</p>
+
+    <div class="card faq">
+      <h3>What is the difference between a meal plan and a collection?</h3>
+      <p>A <strong>meal plan</strong> puts recipes on days and meals, such as Monday dinner, and gives you one
+        shopping list for the whole plan. A plan can use a recipe more than once: Family Week on a Budget has
+        5 recipes and 6 meals, because the overnight oats are on two mornings. A <strong>collection</strong>
+        is a set of recipes a creator chose to go together, with no days attached.</p>
+
+      <h3>What do I get when I buy one?</h3>
+      <p>Every recipe in it, its cooking video, and one shopping list scaled to the people you cook for. Some
+        recipes are only in a plan and never in the free feed; those open once you own the plan, marked
+        "Yours through" the plan. You keep exactly what you bought, even if the creator changes the plan later.</p>
+
+      <h3>Why is there no Add to cart on my own plan?</h3>
+      <p>Creators cannot buy their own plans, or review them. They can buy any other creator's plan, the same
+        as any home cook.</p>
+
+      <h3>Who can write a review?</h3>
+      <p>Only cooks who bought the plan, once each, under their account name. So every review comes from
+        someone who actually cooked it. You can remove your review and write a new one.</p>
+
+      <h3>Can I buy more than one copy?</h3>
+      <p>No. A plan is yours once you own it, so the cart holds one copy of each.</p>
+
+      <h3>Why does the admin account see no cart or Save buttons?</h3>
+      <p>The admin account runs the site and holds no other role, so it does not shop, save or review.</p>
+
+      <h3>Is this the real store?</h3>
+      <p>It is a prototype. The accounts, plans, recipes and reviews are the project database's rows, and
+        there are no passwords: <a href="signin.html">pick an account</a> to see the store as that person.
+        Carts, saves, orders and reviews are kept in this browser, and
+        <a href="signin.html#reset">Reset prototype data</a> puts everything back.</p>
+    </div>
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+
+  <script src="js/seed-data.js?v=9"></script>
+  <script src="js/db.js?v=9"></script>
+  <script src="js/rules.js?v=9"></script>
+  <script src="js/common.js?v=9"></script>
+</body>
+</html>

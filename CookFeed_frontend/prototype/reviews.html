@@ -3,31 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Reviews | Three Weeknights in Japan | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=8">
+  <title>Reviews | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=9">
 </head>
 <body>
 
   <nav class="nav">
     <div class="nav-inner">
       <a class="brand" href="index.html">Cook<span>feed</span></a>
-      <a class="navlink" href="index.html">Meal plan</a>
-      <a class="navlink active" href="reviews.html">Reviews</a>
-      <a class="navlink" href="creator.html">Creator</a>
-      <a class="navlink" href="kitchen.html">My kitchen</a>
+      <a class="navlink" href="index.html">Discover</a>
+      <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+      <a class="navlink" href="orders.html" data-shop>Your orders</a>
+      <a class="navlink" href="help.html">Help</a>
       <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
-      <a class="cart-chip" href="cart.html">Cart: <span id="cartCount">0</span></a>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
     </div>
   </nav>
 
   <main class="wrap">
-
     <span class="pill">Reviews</span>
-    <h1>Three Weeknights in Japan</h1>
-    <p class="byline">
-      by <a href="creator.html">kenji-kitchen</a> &middot;
-      <a href="index.html">back to the meal plan</a>
-    </p>
+    <h1 id="productTitle">Reviews</h1>
+    <p class="byline" id="productByline"></p>
 
     <div class="card summary">
       <div>
@@ -37,7 +33,7 @@
       </div>
       <div>
         <div class="big-num" id="recommendPercent">0%</div>
-        <div class="meta">would recommend this plan</div>
+        <div class="meta">would recommend this <span id="recommendNoun">plan</span></div>
       </div>
       <div class="breakdown" id="ratingBars" aria-label="Filter reviews by star rating"></div>
     </div>
@@ -60,14 +56,10 @@
     <div id="reviewList"></div>
 
     <h2>Leave your feedback</h2>
-    <form class="card" id="reviewForm" novalidate>
+    <p class="card notice-card" id="reviewGate" hidden></p>
+    <form class="card" id="reviewForm" novalidate hidden>
 
-      <div class="field">
-        <label for="reviewerName">Your name</label>
-        <input type="text" id="reviewerName" maxlength="80" autocomplete="name"
-               placeholder="First name and last initial">
-        <p class="field-error" id="nameError"></p>
-      </div>
+      <p class="meta" style="margin-top:0">Posting as <strong id="postingAs"></strong></p>
 
       <div class="field">
         <label id="ratingLabel">Rating</label>
@@ -83,7 +75,7 @@
       </div>
 
       <div class="field">
-        <label>Would you recommend this plan to another home cook?</label>
+        <label id="recommendQuestion">Would you recommend this plan to another home cook?</label>
         <div class="radio-row">
           <label><input type="radio" name="recommend" id="recommendYes" value="yes" checked> Yes</label>
           <label><input type="radio" name="recommend" id="recommendNo" value="no"> No</label>
@@ -93,7 +85,7 @@
       <div class="field">
         <label for="reviewComment">Your review</label>
         <textarea id="reviewComment" maxlength="2000"
-                  placeholder="Did the plan save you a trip? Did the shopping list match what you actually needed?"></textarea>
+                  placeholder="Did it save you a trip? Did the shopping list match what you actually needed?"></textarea>
         <div class="field-hint">
           <span id="commentHint">At least 15 characters</span>
           <span id="commentCount">0 / 2000</span>
@@ -102,22 +94,21 @@
       </div>
 
       <button type="submit" class="btn-primary" id="postButton" disabled>Post review</button>
-      <p class="meta" id="formStatus" style="margin:10px 0 0">Add your name, a rating and a few words to post.</p>
+      <p class="meta" id="formStatus" style="margin:10px 0 0">Add a rating and a few words to post.</p>
 
     </form>
 
     <div class="cta-foot">
-      <p><strong>Ready to cook these three?</strong></p>
-      <p><a href="index.html">&larr; Back to Three Weeknights in Japan</a></p>
+      <p><a href="index.html" id="footLink">&larr; Back</a></p>
     </div>
-
   </main>
 
-  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list</footer>
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=8"></script>
-  <script src="js/data.js?v=8"></script>
-  <script src="js/common.js?v=8"></script>
-  <script src="js/reviews.js?v=8"></script>
+  <script src="js/seed-data.js?v=9"></script>
+  <script src="js/db.js?v=9"></script>
+  <script src="js/rules.js?v=9"></script>
+  <script src="js/common.js?v=9"></script>
+  <script src="js/reviews.js?v=9"></script>
 </body>
 </html>

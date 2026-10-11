@@ -1,11 +1,15 @@
-/* Cookfeed prototype - reviews and feedback page
+/* Cookfeed prototype - reviews and feedback page (reviews.html?product=)
 
    Homework 3 interactions on this page:
      1. Review form      - input, blur and submit events check the form as you type
      2. Star picker      - mouseover / mouseleave preview a rating, click sets it
      3. Rating bars      - click a bar to show only reviews with that many stars
      4. Sort and filter  - change events re-order and filter the list
-     5. Posted reviews are remembered after a reload and can be removed */
+     5. Posted reviews are remembered after a reload and can be removed by their author
+
+   Only a buyer may review, once per product, and never their own product (design section 3.5): the form
+   appears only when rules.js reviewState says canReview, and the review is posted under the signed-in
+   account's name. */
 
 var RATING_WORDS = ["", "Poor", "Disappointing", "Fine", "Good", "Excellent"];
 
@@ -13,16 +17,35 @@ var selectedRating = 0;        // 0 means no star chosen yet
 var starFilter = 0;            // 0 means every rating is shown
 var touched = {};              // fields the shopper has already visited
 var freshReviewId = null;      // the review just posted, highlighted once
+var product = null;
 
-/* ---------- reading and saving reviews ---------- */
+/* Why the form is not shown, for every reviewState except canReview. */
+var REVIEW_GATES = {
+  noShop: "Admin accounts do not write reviews.",
+  yourOwn: "This is your own %noun%. Creators cannot review their own.",
+  alreadyReviewed: "You have reviewed this %noun%. Thank you! You can remove your review above and write a new one.",
+  mustBuy: "Only cooks who bought this %noun% can review it, so every review comes from someone who cooked it."
+};
 
-/* Posted reviews are stored in the browser, newest first. */
-function savePostedReviews(list) {
-  saveJson(STORAGE_KEYS.reviews, list);
+function isMine(review) {
+  var user = currentUser();
+  return user !== null && review.userId === user.id;
 }
 
-function isPostedHere(review) {
-  return review.userId === null;
+/* Show the form, or say why there is none. */
+function renderFormGate() {
+  var state = reviewState(currentUser(), product.id);
+  var gate = document.getElementById("reviewGate");
+
+  document.getElementById("reviewForm").hidden = state !== "canReview";
+  gate.hidden = state === "canReview";
+  if (state === "signIn") {
+    gate.innerHTML = signInLink("write a review") + ". Only cooks who bought this " + productNoun(product) + " can review it.";
+  } else if (state !== "canReview") {
+    gate.textContent = REVIEW_GATES[state].replace("%noun%", productNoun(product));
+  } else {
+    document.getElementById("postingAs").textContent = currentUser().displayName;
+  }
 }
 
 /* ---------- the list ---------- */
@@ -57,7 +80,7 @@ function visibleReviews(all) {
 
 /* Redraw the list of reviews. Text a shopper typed goes through escapeHtml. */
 function renderReviews() {
-  var all = getAllReviews(PRODUCT.id);
+  var all = reviewsFor(product.id);
   var shown = visibleReviews(all);
   var html = "";
 
@@ -82,7 +105,7 @@ function renderReviews() {
     html = html + "<span class='review-date'>" + formatDate(review.createdAt) + "</span>";
     html = html + "</div>";
     html = html + "<p>" + escapeHtml(review.body) + "</p>";
-    if (isPostedHere(review)) {
+    if (isMine(review)) {
       html = html + "<button type='button' class='link-button remove-review' data-id='" +
                     review.id + "'>Remove my review</button>";
     }
@@ -104,7 +127,7 @@ function renderReviews() {
 /* ---------- the summary: average, percent recommending, rating bars ---------- */
 
 function updateSummary() {
-  var all = getAllReviews(PRODUCT.id);
+  var all = reviewsFor(product.id);
   var total = 0;
   var recommendCount = 0;
   var perStar = [0, 0, 0, 0, 0, 0];
@@ -133,7 +156,7 @@ function updateSummary() {
     html = html + "<button type='button' class='bar-row" + active + "' data-star='" + star + "'" +
                   " aria-pressed='" + (starFilter === star) + "'" +
                   " title='Show only " + star + "-star reviews'>";
-    html = html + "<span>" + star + " ★</span>";
+    html = html + "<span>" + star + " \u2605</span>";
     html = html + "<span class='bar-track'><span class='bar-fill' style='display:block;width:" + width + "%'></span></span>";
     html = html + "<span class='bar-count'>" + perStar[star] + "</span>";
     html = html + "</button>";
@@ -176,8 +199,9 @@ function onReviewListClicked(event) {
     return;
   }
 
-  savePostedReviews(getPostedReviews().filter(function (review) { return review.id !== id; }));
+  removeReview(currentUser().id, id);
   refreshPage();
+  renderFormGate();
   showToast("Your review was removed.");
 }
 
@@ -250,15 +274,7 @@ function onStarKey(event) {
    appear under a field once the shopper has visited it, so an untouched form is
    not covered in red. */
 function validateForm() {
-  var name = document.getElementById("reviewerName").value.trim();
   var comment = document.getElementById("reviewComment").value.trim();
-
-  var nameProblem = "";
-  if (name === "") {
-    nameProblem = "Please add your name.";
-  } else if (name.length < 2) {
-    nameProblem = "Your name needs at least 2 characters.";
-  }
 
   var ratingProblem = selectedRating === 0 ? "Choose from 1 to 5 stars." : "";
 
@@ -270,7 +286,6 @@ function validateForm() {
                      " more characters so other cooks can judge it.";
   }
 
-  showFieldProblem("reviewerName", "nameError", nameProblem, touched.name === true);
   showFieldProblem(null, "ratingError", ratingProblem, touched.rating === true);
   showFieldProblem("reviewComment", "commentError", commentProblem, touched.comment === true);
 
@@ -279,17 +294,17 @@ function validateForm() {
   document.getElementById("commentCount").textContent = count + " / " + LIMITS.reviewBodyMax;
   var hint = document.getElementById("commentHint");
   if (comment.length >= LIMITS.reviewBodyMin) {
-    hint.innerHTML = "<span class='ok'>✓ Long enough</span>";
+    hint.innerHTML = "<span class='ok'>\u2713 Long enough</span>";
   } else {
     hint.textContent = "At least " + LIMITS.reviewBodyMin + " characters";
   }
 
-  var isValid = nameProblem === "" && ratingProblem === "" && commentProblem === "";
+  var isValid = ratingProblem === "" && commentProblem === "";
 
   document.getElementById("postButton").disabled = !isValid;
   document.getElementById("formStatus").textContent = isValid
-    ? "Ready to post as " + name + "."
-    : "Add your name, a rating and a few words to post.";
+    ? "Ready to post."
+    : "Add a rating and a few words to post.";
 
   return isValid;
 }
@@ -307,37 +322,27 @@ function showFieldProblem(inputId, errorId, problem, visible) {
 function onFormSubmitted(event) {
   event.preventDefault();
 
-  touched = { name: true, rating: true, comment: true };
+  touched = { rating: true, comment: true };
   if (validateForm() === false) {
     showToast("Please fix the highlighted fields.", "error");
     return;
   }
 
-  var name = document.getElementById("reviewerName").value.trim();
+  var user = currentUser();
 
-  if (confirm("Post this review publicly as " + name + "?") === false) {
+  if (confirm("Post this review publicly as " + user.displayName + "?") === false) {
     return;
   }
 
-  var review = {
-    id: Date.now(),
-    productId: PRODUCT.id,
-    userId: null,                // no sign-in yet; the database will store the user's id
-    reviewerName: name,
-    rating: selectedRating,
-    recommends: document.getElementById("recommendYes").checked,
-    body: document.getElementById("reviewComment").value.trim(),
-    createdAt: new Date().toISOString()
-  };
-
-  var posted = getPostedReviews();
-  posted.unshift(review);
-  savePostedReviews(posted);
+  var review = addReview(user.id, product.id, selectedRating,
+    document.getElementById("recommendYes").checked,
+    document.getElementById("reviewComment").value.trim());
 
   freshReviewId = review.id;
   clearFilters();
   resetForm();
-  showToast("Thanks, " + name + ". Your review is at the top of the list.");
+  renderFormGate();
+  showToast("Thanks, " + user.displayName + ". Your review is at the top of the list.");
   document.getElementById("reviewList").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -351,17 +356,37 @@ function resetForm() {
 
 /* ---------- start ---------- */
 
+/* The header: which product these reviews are for. */
+function renderHeader() {
+  var noun = productNoun(product);
+  document.title = "Reviews of " + product.title + " | Cookfeed";
+  document.getElementById("productTitle").textContent = product.title;
+  document.getElementById("productByline").innerHTML = creatorByline(creatorFor(product.creatorId)) +
+    " &middot; <a href='" + productUrl(product.id) + "'>back to the " + noun + "</a>";
+  document.getElementById("recommendNoun").textContent = noun;
+  document.getElementById("recommendQuestion").textContent =
+    "Would you recommend this " + noun + " to another home cook?";
+  document.getElementById("footLink").href = productUrl(product.id);
+  document.getElementById("footLink").innerHTML = "&larr; Back to " + escapeHtml(product.title);
+}
+
 document.addEventListener("DOMContentLoaded", function () {
+  var id = queryNumber("product");
+  product = id === null ? null : productWithRecipes(id);
+  if (product === null) {
+    showMissing("Reviews not found", "There is no meal plan or collection at this address.");
+    return;
+  }
+
+  renderHeader();
   refreshPage();
+  renderFormGate();
   paintStars(0, false);
   validateForm();
 
-  var nameBox = document.getElementById("reviewerName");
   var commentBox = document.getElementById("reviewComment");
 
   /* input fires on every keystroke; blur fires when the shopper leaves the box. */
-  nameBox.addEventListener("input", validateForm);
-  nameBox.addEventListener("blur", function () { touched.name = true; validateForm(); });
   commentBox.addEventListener("input", validateForm);
   commentBox.addEventListener("blur", function () { touched.comment = true; validateForm(); });
 

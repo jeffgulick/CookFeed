@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your orders | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=9">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="navlink" href="index.html">Discover</a>
+      <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+      <a class="navlink active" href="orders.html" data-shop aria-current="page">Your orders</a>
+      <a class="navlink" href="help.html">Help</a>
+      <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <span class="pill">Account</span>
+    <h1>Your orders</h1>
+    <p class="byline" id="orderSummary">Plans you buy show up here.</p>
+
+    <div id="orderArea">
+      <div id="orderList"></div>
+      <div class="card notice-card" id="noOrders" hidden>
+        <p><strong>No orders yet.</strong> <a href="index.html">Find a plan on Discover &rarr;</a></p>
+      </div>
+    </div>
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+
+  <script src="js/seed-data.js?v=9"></script>
+  <script src="js/db.js?v=9"></script>
+  <script src="js/rules.js?v=9"></script>
+  <script src="js/common.js?v=9"></script>
+  <script src="js/orders.js?v=9"></script>
+</body>
+</html>

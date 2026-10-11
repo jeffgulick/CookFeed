@@ -209,7 +209,21 @@ The standalone shopping-list query converted *every* volume line with a known de
 
 ### 3.7 What this means for the front end
 
-Nothing in the prototype changes for this assignment. When the Angular client is built (Assignment 4), the rules above surface in three places: no "Add to cart" on a creator's own product; a "yours through *Product*" label instead of a price on a `ProductOnly` recipe the viewer owns, and no link at all when they do not; and the admin account never seeing the shop, cart or save controls, which follows from the `HomeCook` check without any client-side role logic.
+The prototype (`CookFeed_frontend/prototype`) shows these rules for whichever seeded account is signed in. Each account starts from its own rows in the database (its cart, saves, orders and reviews), and the rules live in one file, `js/rules.js`, which every page asks before it draws a control:
+
+| Rule | Section | What the screen shows |
+|---|---|---|
+| Shopping needs `HomeCook`; the admin holds no other role | §3.1 | The admin sees no cart, My kitchen, Your orders, Save, buy or review controls. A signed-out visitor sees "Sign in to ..." links instead. |
+| A creator cannot buy their own product, but can buy anyone else's | §3.1 | Kenji's own plan reads "This is your plan" with no Add to cart; Maria's collection has one. |
+| A meal plan may repeat a recipe | §3.2 | *Family Week on a Budget* reads "5 recipes, 6 meals", and its shopping list buys the oats for both mornings. |
+| A buyer keeps the snapshot of what they bought | §3.3 | Checkout writes the order, its lines and the `order_item_recipes` snapshot; Your orders lists what each order holds. |
+| A `ProductOnly` recipe opens only for a buyer | §3.3 | A non-buyer sees its card without a link, its ingredients stay off the plan's shopping list, and its page explains which plan it comes with. A buyer sees "Yours through *plan*". Storefronts and the trending list never show it. |
+| Save counts follow the save rows | §3.4 | Every count is counted from the saves, so saving moves it by exactly one. |
+| Only buyers review, once per product | §3.5 | The review form appears only for a buyer who has not reviewed the product yet, and posts under their account name. Anyone else is told why there is no form. |
+
+**What the client does and does not decide.** The original note here said the admin rule would need no client-side role logic. That holds for enforcement: the API refuses every request the rules forbid, and the database refuses the rows that must never exist, whatever a client does. But a client that only reacted to refusals would offer the admin an Add to cart button that always fails. So the client also reads the rules, to decide what to *offer*: the same questions `rules.js` answers, asked of the caller's roles and purchases. The Angular client will get those answers from the API's DTOs (`ownedByViewer`, `viewerIsCreator`, `inCart` and the roles of the signed-in user), not by recomputing them.
+
+One case the queries leave open, settled in the prototype: a creator can always open their own recipes, including `ProductOnly` ones and drafts. Q14 covers buyers only; the recipe-detail endpoint (`docs/BuildLog.md` roadmap item 3) will add the creator.
 
 ---
 

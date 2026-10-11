@@ -52,17 +52,22 @@ with reviewed SQL and justified indexes, the design document, and the API with t
 ## Frontend
 
 **Today: an HTML/JavaScript prototype** in `CookFeed_frontend/prototype/` (Homework 1, extended in
-Homework 3). Eight pages — product, reviews, creator storefront, cart and checkout, My kitchen, and three
-recipe pages — run straight from the file system with no server. The cart, saves, reviews and orders are
-kept in the browser's `localStorage`, shaped like the database rows, and the content is the same seed data
-as `seed.sql`. How to run it and what each page does: `CookFeed_frontend/prototype/README.md`.
+Homework 3 and Project Deliverable 2). Ten pages run straight from the file system with no server:
+- Discover, Your orders, My kitchen, Help, the cart, and sign-in;
+- templates for every product, recipe, creator and review list (`product.html?id=`, `recipe.html?id=`,
+  `creator.html?handle=`, `reviews.html?product=`).
+
+Its data is the seeded database, exported to `js/seed-data.js` and checked against it by
+`PrototypeDataTests`. Each seeded account starts from its own rows, and changes are kept in the browser's
+`localStorage`. The marketplace rules of design doc §3 are in `js/rules.js`, with Node tests in
+`CookFeed_frontend/tests/` that CI runs (`prototype-tests.yml`). How to run it and what each page does:
+`CookFeed_frontend/prototype/README.md`.
 
 **Next: the Angular application (Assignment 4)**, built against this API once the endpoints it needs
 exist. It replaces the prototype, and the prototype folder is deleted then. The features deferred to it
 are listed under "Planned for the Angular production build" in the prototype README: real shopping units,
-review trust labels, the creator header layout, order history, the Instacart and Favor handoffs, and
-custom confirmation dialogs. Design doc §3.7 lists what the business rules change on screen (no "Add to
-cart" on a creator's own product, ProductOnly recipes, no shop controls for the admin).
+review trust labels, the creator header layout, the Instacart and Favor handoffs, and custom confirmation
+dialogs. Design doc §3.7 lists what the business rules change on screen, as the prototype now shows them.
 
 ---
 
@@ -185,9 +190,12 @@ Tick items off here as they merge.
      statement would multiply them, as the storefront's did (`docs/Queries.md` §2).
    - *Rules:* a `ProductOnly` recipe opens only for a viewer whose Paid snapshot contains it (Q14),
      reading the snapshot, never the live bundle. Everyone else gets **404**, so its existence isn't
-     revealed. Drafts are 404 too.
-   - *Tests:* Q4's lines; Q14's access matrix.
-4. **Plan page**, `GET /api/products/{id}`: the product page (`index.html` in the prototype) has no endpoint
+     revealed. Drafts are 404 too. The recipe's own creator always gets it, drafts included: Q14 covers
+     buyers only, and the prototype's `rules.js` `canOpenRecipe` already lets the creator in
+     (DesignDocument.md §3.7).
+   - *Tests:* Q4's lines; Q14's access matrix, plus the creator opening their own `ProductOnly` recipe and
+     draft.
+4. **Plan page**, `GET /api/products/{id}`: the product page (`product.html?id=` in the prototype) has no endpoint
    yet.
    - *DTO:* type, title, description, cover image, price and currency; the creator's handle, display name
      and verified flag; and its recipes in order.
@@ -286,7 +294,7 @@ Tick items off here as they merge.
     - *Tests:* the trigger refusals that `TriggerTests` already provoke, sent through the API, come back
       as 4xx.
 
-**Not planned:** followers and a Follow button (the prototype shows a follower count). The database has no
+**Not planned:** followers and a Follow button (the prototype's follower count was removed). The database has no
 followers table, so the Angular storefront leaves them out. Adding them later is a new table, a count on
 `StorefrontDto`, and a `PUT`/`DELETE /api/me/follows/{handle}` pair. The storefront's recipe cards gain
 `savedByViewer` with item 7.
@@ -309,7 +317,7 @@ them off here as they land. The status codes are proposals, to confirm when each
 | Checkout refuses a self-purchase the same way (the `order_items_refuse_self_purchase` trigger stays as the last line of defence). | §3.1 | Checkout | 400 |
 | A database refusal (`check_violation` with a `ck_…` constraint name, or a unique violation) that slips past a service becomes a 4xx with a readable message, never a 500. | §5 | First write feature (saves or cart) | 400 / 409 |
 | The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront ✅ (`StorefrontEndpointTests`) | — |
-| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail | 404 (do not reveal it exists) |
+| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14 — or for the recipe's own creator. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail | 404 (do not reveal it exists) |
 | Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
 | Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |
 | Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Storefront ✅ (owned = a Paid order item), shopping list ✅, recipe detail, My kitchen / purchases | — |

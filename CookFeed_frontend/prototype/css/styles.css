@@ -917,3 +917,91 @@ tr.have td.aisle { text-decoration: none; }
 .account-card p { margin: 0 0 6px; }
 .account-card .handle { color: var(--accent); }
 .account-card.current { border-color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- templates, Discover, orders and help ---------- */
+
+/* The hidden attribute wins over any display rule, so the nav can hide its shop links for the admin. */
+[hidden] { display: none !important; }
+
+a.btn-primary {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.buy-area { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.owned-label { color: var(--good); font-weight: 700; font-size: 14px; }
+p.owned-label { margin: 0 0 12px; }
+
+.lock-label { color: var(--muted); font-size: 13px; font-weight: 700; }
+.recipe-card.locked img { filter: grayscale(.6) opacity(.7); }
+.locked-note:empty { display: none; }
+
+.sign-in-to { font-weight: 700; font-size: 14px; }
+
+.notice-card { margin: 16px 0; }
+.notice-card h1 { margin-top: 0; }
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.product-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 0 0 16px;
+  overflow: hidden;
+}
+
+.product-tile img { width: 100%; height: 120px; object-fit: cover; display: block; }
+.product-tile > span { margin: 0 16px; }
+.product-tile .pill { align-self: flex-start; }
+.product-tile .price { font-size: 22px; }
+.product-tile:hover { border-color: #d8c6b2; }
+
+.creator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.creator-tile {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.creator-tile img { width: 56px; height: 56px; border-radius: 50%; }
+
+.product-card { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
+.product-card img { width: 140px; border-radius: 10px; }
+.product-card h3 { margin: 8px 0 4px; }
+
+.order-card { margin-bottom: 14px; }
+.order-card.cancelled { opacity: .75; }
+.order-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.order-items { list-style: none; padding: 0; margin: 12px 0; }
+.order-items li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.order-items .line-price { margin-left: auto; font-weight: 700; }
+.receipt-items { text-align: left; display: inline-block; }
+
+.faq h3 { margin: 18px 0 4px; }
+.faq h3:first-child { margin-top: 0; }
+.faq p { margin: 0; color: #4b3f34; }
+
+footer a { color: inherit; }
+
+@media (max-width: 760px) {
+  .product-card { flex-wrap: wrap; }
+  .product-card img { width: 100%; }
+}
