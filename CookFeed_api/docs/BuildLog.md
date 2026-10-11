@@ -156,9 +156,14 @@ Tick items off here as they merge.
 
 1. **CORS.** The Angular dev server (`http://localhost:4200`) is a different origin, so the browser blocks
    its calls until the API allows it. A named policy in `Program.cs`, with the allowed origins from
-   configuration so production can differ.
-   - *Test:* a request with `Origin: http://localhost:4200` gets `Access-Control-Allow-Origin` back, and
-     another origin does not.
+   configuration so production can differ. It must allow:
+   - the `X-User-Id` header now, and `Authorization` once login lands (item 12);
+   - the `PUT` and `DELETE` methods, alongside `GET` and `POST`.
+
+   Custom headers and those methods make the browser send a preflight `OPTIONS` request first, and an
+   origin-only policy would fail it.
+   - *Test:* a preflight from `http://localhost:4200` asking for `PUT` with `X-User-Id` is allowed; the same
+     preflight from another origin is not.
 2. **OpenAPI description** (optional but useful). `Microsoft.AspNetCore.OpenApi`, built into .NET 10,
    serves `/openapi/v1.json` in Development: every endpoint and DTO, from which the Angular client types
    can be generated.
@@ -168,62 +173,123 @@ Tick items off here as they merge.
 
 3. **Recipe detail**, `GET /api/recipes/{id}`: the recipe, its steps and its ingredient lines (Q4). The
    planned LINQ is in `docs/Queries.md` §1b.
+   - *DTO fields beyond the feed card:*
+     - `prepMinutes` and `cookMinutes` separately, not only the total;
+     - `savedByViewer`;
+     - each ingredient line's `displayText`, `preparation` and `isOptional`;
+     - each step's `videoTimestampSeconds`;
+     - `includedIn`: the products that contain it, with `productId`, `title`, `dayOffset`, `slot` and
+       `ownedByViewer`. This drives the breadcrumb, the "one of three dinners" link, and the "Yours through
+       *plan*" label (DesignDocument.md §3.7).
+   - *Query:* `AsSplitQuery()`. Steps and ingredient lines are two sibling collections, and one joined
+     statement would multiply them, as the storefront's did (`docs/Queries.md` §2).
    - *Rules:* a `ProductOnly` recipe opens only for a viewer whose Paid snapshot contains it (Q14),
      reading the snapshot, never the live bundle. Everyone else gets **404**, so its existence isn't
      revealed. Drafts are 404 too.
    - *Tests:* Q4's lines; Q14's access matrix.
-4. **My purchases**, `GET /api/me/purchases`: the recipes the caller owns through Paid orders, grouped by
+4. **Plan page**, `GET /api/products/{id}`: the product page (`index.html` in the prototype) has no endpoint
+   yet.
+   - *DTO:* type, title, description, cover image, price and currency; the creator's handle, display name
+     and verified flag; and its recipes in order.
+     - For a meal plan, each recipe carries its `dayOffset` and `slot`. A recipe may appear twice.
+     - Each recipe carries the feed-card fields, `visibility`, ingredient and step counts, and the first
+       step.
+     - Also: the review summary (count, average, percent recommending); `ownedByViewer`, `viewerIsCreator`
+       and `inCart`; and recipe and meal counts, as in the storefront.
+   - *Rules:* a `ProductOnly` recipe a viewer doesn't own shows only its title and placement, with no link
+     and no ingredients or steps (DesignDocument.md §3.3, §3.7). Retired products are 404.
+   - **Plan shopping list**, `GET /api/products/{id}/shopping-list?servings=N`: the combined list for the
+     whole plan, scaled to `N` people per meal, reusing `ShoppingListAggregator`. It lists only recipes the
+     viewer may open, the same rule as `/api/me/shopping-list`, so a non-buyer sees the Public recipes'
+     ingredients and a note that the rest come with the plan.
+   - *Tests:* the recipe and meal counts equal Q5; the locked recipes reveal nothing to a non-buyer; the
+     list equals the aggregator over the visible recipes.
+5. **My purchases**, `GET /api/me/purchases`: the recipes the caller owns through Paid orders, grouped by
    the product they came with (Q11).
+   - *DTO fields:* the product id and title as bought, and the order date; then, for each recipe: id,
+     title, thumbnail, `dayOffset`, `slot` and `sortOrder` from the snapshot.
    - *Rules:* reads `order_item_recipes`, so a later bundle edit changes nothing (Q15's drift case).
    - *Tests:* equal to Q11.
-5. **Reviews for a product**, `GET /api/products/{id}/reviews`: newest first, with the reviewer's name
-   (Q12), plus a summary of count, average rating and percent recommending (Q13).
+6. **Reviews for a product**, `GET /api/products/{id}/reviews`: newest first (Q12), plus a summary (Q13).
+   - *DTO fields:*
+     - each review's `id`, rating, `recommends`, body and date;
+     - the reviewer's display name, `isMine`, and `reviewerIsCreator` (the trust label);
+     - a summary of count, average, percent recommending, and the count for each star from 1 to 5, for
+       the rating bars;
+     - `canReview` for the viewer: signed in, with a Paid order for the product, and no review yet.
+   - *Note:* "Verified purchase" is true of every review, since only buyers may review (DesignDocument.md
+     §3.5). The label says that once, in the summary, rather than on each review.
    - *Tests:* equal to Q12 and Q13.
 
 **C. Writes**
 
-6. **Saves.** `PUT /api/me/saves/{recipeId}` and `DELETE /api/me/saves/{recipeId}`, both idempotent, plus
-   `GET /api/me/saves` (Q6). This is the first write feature, so it also brings item 12.
+7. **Saves.** `PUT /api/me/saves/{recipeId}` and `DELETE /api/me/saves/{recipeId}`, both idempotent, plus
+   `GET /api/me/saves`. This is the first write feature, so it also brings item 13.
+   - *List fields:* Q6 gives only title, handle and date. The My kitchen card also needs the recipe id,
+     thumbnail, servings, total minutes, ingredient count and visibility.
    - *Rules:* a `ProductOnly` recipe can be saved only with the same access as opening it (404 otherwise).
    - *Tests:* the `save_count` trigger keeps the feed's count right (Q16 stays empty).
-7. **Meal plans.** `GET /api/me/meal-plans/{weekStart}` (Q7), `PUT` to create the week's plan (one per
+8. **Meal plans.** `GET /api/me/meal-plans/{weekStart}` (Q7), `PUT` to create the week's plan (one per
    user per week), `POST …/entries` to add a recipe on a day and slot with an optional servings override,
    and `DELETE …/entries/{id}`. Today the shopping list reads plans, but nothing can create one through
    the API.
    - *Rules:* an entry's date falls inside its week; the same recipe may appear on several days
-     (DesignDocument.md §3.2).
+     (DesignDocument.md §3.2); only a recipe the caller may open can be planned.
    - *Tests:* after adding entries, the shopping list changes the way Q8 says it should.
-8. **Cart.** `GET /api/me/cart`, `PUT /api/me/cart/{productId}`, `DELETE /api/me/cart/{productId}`.
-   - *Rules:* a creator cannot add their own product (**400**, a readable message before the trigger
-     would refuse it); only active products can be added.
-9. **Checkout**, `POST /api/me/checkout`, in one transaction (DesignDocument.md §6):
-   - creates the `Paid` order (payment simulated, §9);
-   - writes each item's title, price and seller snapshot;
-   - copies every `product_recipes` row into `order_item_recipes`;
-   - sets `total_cents` to the sum of the lines;
-   - empties the cart.
-   - *Rules:* no self-purchase (**400**), and an empty cart is a **400**.
-   - *Tests:* the new order appears in `GET /api/me/orders`; its recipes open through recipe detail; a
-     failure part-way leaves nothing behind.
-10. **Reviews**, `POST /api/products/{id}/reviews`.
-    - *Rules:* requires a Paid order item for that product by the caller (**403**); one review per user
-      per product (**409**).
+9. **Cart.** `GET /api/me/cart`, `PUT /api/me/cart/{productId}`, `DELETE /api/me/cart/{productId}`.
+   - *DTO:* the lines (product id, type, title, cover, creator handle, recipe count, price) and the total.
+     Also the item count, for the nav's cart badge.
+   - *Rules:*
+     - a creator cannot add their own product (**400**, a readable message before the trigger would
+       refuse it);
+     - only active products can be added;
+     - a product the caller already owns through a Paid order is a **409**.
+10. **Checkout**, `POST /api/me/checkout`, in one transaction (DesignDocument.md §6):
+    - creates the `Paid` order (payment simulated, §9);
+    - writes each item's title, price and seller snapshot;
+    - copies every `product_recipes` row into `order_item_recipes`;
+    - sets `total_cents` to the sum of the lines;
+    - empties the cart.
+    - *Response:* **201 Created**, with the new `OrderDto` (the shape `GET /api/me/orders` returns) and a
+      `Location` header.
+    - *Rules:* no self-purchase (**400**); an empty cart is a **400**; a product already owned is a
+      **409**.
+    - *Tests:* the new order appears in `GET /api/me/orders`; its recipes open through recipe detail; a
+      failure part-way leaves nothing behind.
+11. **Reviews**, `POST /api/products/{id}/reviews` and `DELETE /api/products/{id}/reviews/mine`.
+    - *Rules:*
+      - requires a Paid order item for that product by the caller (**403**);
+      - one review per user per product (**409**);
+      - rating 1–5, body 15–2000 characters (**400**);
+      - the name shown is the account's display name, never typed in.
+    - *Tests:* each refusal, through the API.
 
 **D. Cross-cutting**
 
-11. **Login (JWT) and roles.** Replaces the `X-User-Id` header (DesignDocument.md §9). Controllers read
-    the caller from the token's user-id claim, and the routes, services and repositories stay as they
-    are.
+12. **Login (JWT), registration and roles.** Replaces the `X-User-Id` header (DesignDocument.md §9).
+    - *Endpoints:*
+      - `POST /api/auth/register`, which grants `HomeCook`;
+      - `POST /api/auth/login`, which returns a token;
+      - `GET /api/me`: id, display name, roles, and the creator handle if any.
+    - Controllers read the caller from the token's user-id claim; the routes, services and repositories
+      stay as they are.
     - *Rules:* saves, meal plans, cart, checkout and reviews require the `HomeCook` role. Every creator
       holds it and the admin does not, so the admin gets **403** on all of them with no special case.
+    - *Client:* the Angular app hides the cart, save and shop controls by reading `roles` from
+      `GET /api/me`. The server still enforces the 403, so hiding is only for the user's benefit.
     - *Tests:* each write endpoint, called as the admin, returns 403.
-12. **Database refusals become readable 4xx responses**, built with the first write feature (item 6). The
+13. **Database refusals become readable 4xx responses**, built with the first write feature (item 7). The
     ProblemDetails plumbing is already in place (every error has a ProblemDetails body); what remains is
     mapping PostgreSQL's refusal codes to 400 or 409.
     A `check_violation` (`ck_…`), unique violation or trigger refusal that gets past a service becomes a
     400 or 409 ProblemDetails naming the rule, never a 500.
     - *Tests:* the trigger refusals that `TriggerTests` already provoke, sent through the API, come back
       as 4xx.
+
+**Not planned:** followers and a Follow button (the prototype shows a follower count). The database has no
+followers table, so the Angular storefront leaves them out. Adding them later is a new table, a count on
+`StorefrontDto`, and a `PUT`/`DELETE /api/me/follows/{handle}` pair. The storefront's recipe cards gain
+`savedByViewer` with item 7.
 
 Housekeeping alongside: step 1 above (comments on the database layer), and keeping `docs/Queries.md`
 verified for every new query, with its logged SQL, plan and indexes.

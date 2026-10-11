@@ -141,6 +141,12 @@ The proposal estimated 12–14 tables; the submitted design had 17, Assignment 3
 
 The review asked for the implications of the role model to be made explicit, and raised four follow-up points. This section answers each in turn and says where in the schema, seed, and queries the rule is enforced or demonstrated.
 
+**What is built and what is planned:**
+- **Built and tested:**
+  - every rule the **database** enforces: the triggers, constraints and keys;
+  - the shopping list's ProductOnly rule (§3.3).
+- **Planned, with the write features:** the checks this section assigns to the **API**: the `HomeCook` role, the review rule, and access on recipe detail. They are listed with their endpoints in the `docs/BuildLog.md` API roadmap, and the prototype demonstrates them in the browser.
+
 ### 3.1 Who may do what
 
 Three roles, held through `user_roles`:
@@ -153,10 +159,10 @@ Three roles, held through `user_roles`:
 
 The answers to the questions as they were asked:
 
-- **Are buying and saving available to every `User`, or dependent on holding the Home Cook role?** They depend on the role. The API checks `HomeCook` on every save, cart, checkout, meal-plan and review endpoint (`[Authorize(Roles = "HomeCook")]`). This is why the seed grants `HomeCook` to every creator: without it a creator could publish but not shop. It also makes the admin rule below a consequence of the data rather than a special case in code.
+- **Are buying and saving available to every `User`, or dependent on holding the Home Cook role?** They depend on the role. The API will check `HomeCook` on every save, cart, checkout, meal-plan and review endpoint (`[Authorize(Roles = "HomeCook")]`, with login, roadmap item 12). This is why the seed grants `HomeCook` to every creator: without it a creator could publish but not shop. It also makes the admin rule below a consequence of the data rather than a special case in code.
 - **May creators purchase one another's products?** Yes. Nothing distinguishes a creator-buyer from any other buyer. The seed has Dan (`dan-meal-preps`) buying Kenji's *Three Weeknights in Japan*; Q10's earnings report attributes it to Kenji because `order_items.creator_id` is always the seller.
-- **May creators purchase their own products?** No. A row where the buyer is the product's creator is refused by the database at both points it could be created: `cart_items_refuse_self_purchase` (adding to cart) and `order_items_refuse_self_purchase` (the order line). The API rejects it earlier with a clear message; the triggers guarantee no caller can bypass that. Because reviews require a `Paid` order item for the product by the same user (API rule, §3.5), a creator can never review their own product either.
-- **May administrators also participate as buyers and sellers?** No — admins are operational only. The `user_roles_admin_only` trigger refuses granting `Admin` to an account holding another role and refuses granting another role to an admin. Someone who both administers and cooks uses two accounts. In the seed the admin holds `Admin` alone, so the `HomeCook` check above excludes it from every buying and saving endpoint automatically.
+- **May creators purchase their own products?** No. A row where the buyer is the product's creator is refused by the database at both points it could be created: `cart_items_refuse_self_purchase` (adding to cart) and `order_items_refuse_self_purchase` (the order line). The API will reject it earlier with a clear message (the cart, roadmap item 9); the triggers already guarantee that no caller can bypass it. Because reviews require a `Paid` order item for the product by the same user (API rule, §3.5), a creator can never review their own product either.
+- **May administrators also participate as buyers and sellers?** No — admins are operational only. The `user_roles_admin_only` trigger refuses granting `Admin` to an account holding another role and refuses granting another role to an admin. Someone who both administers and cooks uses two accounts. In the seed the admin holds `Admin` alone, so the `HomeCook` check above will exclude it from every buying and saving endpoint automatically.
 
 Where each lives: authorization rules (who may *act*) are enforced in the API's authorization layer, because that is the boundary where identity is known; data-integrity rules (which rows may *exist*) are enforced by triggers, because they must hold regardless of which caller writes the row. `queries.sql` Q17 demonstrates the refusals.
 
@@ -195,7 +201,7 @@ Soft deletion (an account with orders, §5) keeps the `saved_recipes` rows, so t
 
 ### 3.5 Reviews
 
-A review requires a `Paid` order item for the product by the same user. The API checks it on `POST /api/products/{id}/reviews`; the seed holds to it (Priya and Dan each buy *Three Weeknights in Japan* before reviewing it). Together with §3.1, this means a creator can neither buy nor review their own product. The rule is not a trigger because, unlike self-purchase, it is a policy that may loosen later (reviews from gifted copies, say); the authorization layer is the right place for a rule that may change.
+A review requires a `Paid` order item for the product by the same user. The API will check it on `POST /api/products/{id}/reviews` (roadmap item 11); the seed holds to it (Priya and Dan each buy *Three Weeknights in Japan* before reviewing it). Together with §3.1, this means a creator can neither buy nor review their own product. The rule is not a trigger because, unlike self-purchase, it is a policy that may loosen later (reviews from gifted copies, say); the authorization layer is the right place for a rule that may change.
 
 ### 3.6 The preferred-unit join (Q8)
 
@@ -301,7 +307,7 @@ Four deliberate departures from 3NF, each with the derivation rule and how it st
 
 **1. `recipes.save_count`.** Derivable as `COUNT(*) FROM saved_recipes WHERE recipe_id = ?`. The feed is the most-read page in the application and the "Trending" sort orders by this number; computing it per row with a correlated subquery, then sorting, defeats any index. The counter is maintained by a row-level trigger on `saved_recipes` — an atomic `UPDATE recipes SET save_count = save_count ± 1` per save row, so concurrent saves cannot lose updates, cascaded deletes are counted, and the seed cannot write a count the save rows do not support (§3.4). The application inserts and deletes `saved_recipes` rows and never touches the counter. It is indexed together with `is_published` and `visibility` so the trending feed is an index scan.
 
-**2. `orders.total_cents`.** Derivable as `SUM(unit_price_cents) FROM order_items`. Stored because an order total is a fact about a transaction that happened: if a line item were ever corrected or refunded independently, the original total should still be visible. It is written once at checkout and never updated. The integration tests will assert it equals the sum of its items.
+**2. `orders.total_cents`.** Derivable as `SUM(unit_price_cents) FROM order_items`. Stored because an order total is a fact about a transaction that happened: if a line item were ever corrected or refunded independently, the original total should still be visible. It is written once at checkout and never updated. The integration tests assert it equals the sum of its items (`OrderHistoryEndpointTests`).
 
 **3. `order_items.product_title`, `unit_price_cents`, `creator_id`.** These duplicate columns on `products`. They are **snapshots**: a creator can rename or reprice a product tomorrow, and order history must show what the buyer actually paid for, at the price they paid. `creator_id` is copied so that a creator-earnings report can group order items by creator without joining through `products` — and so it still works if a product is ever reassigned. This is the standard e-commerce pattern; the normalized alternative (a `product_versions` table) was more machinery than the project needs.
 

@@ -163,43 +163,44 @@ Nested Loop
 
 ---
 
-## 1b. Recipe detail
+## 1b. Recipe detail — *planned, not built*
+
+**Not built yet:** roadmap item 3 in `docs/BuildLog.md`. This section is the design, not captured SQL;
+it gets the same treatment as §1–§4 when it is built: logged SQL, plan, and the indexes it uses.
 
 **Endpoint:** `GET /api/recipes/{id}`
 
 ```csharp
 db.Recipes.AsNoTracking()
+  .AsSplitQuery()        // steps and ingredient lines are sibling collections; joined, they would multiply
   .Where(r => r.Id == recipeId && r.IsPublished
            && (r.Visibility == RecipeVisibility.Public
                || r.OrderItemRecipes.Any(oir => oir.OrderItem.Order.UserId == viewerId
                                               && oir.OrderItem.Order.Status == OrderStatus.Paid)))
-  .Select(r => new RecipeDetailDto(..., 
+  .Select(r => new RecipeDetailDto(...,
       r.Ingredients.OrderBy(i => i.SortOrder).Select(i => new RecipeIngredientDto(...)).ToList(),
       r.Steps.OrderBy(s => s.StepNumber).Select(s => new RecipeStepDto(...)).ToList()))
   .SingleOrDefaultAsync()
 ```
 
-EF Core translates the two nested collections into one statement with `LEFT JOIN`s and an `ORDER BY` that lets it split the row set back into parent/children:
+**Expected shape: three statements, not one.** Joining the ingredient lines and the steps to the recipe in
+one statement would return every ingredient once per step: 10 × 5 rows for a ten-ingredient, five-step
+recipe. §2 found the same problem with the storefront's two lists. With `AsSplitQuery()` EF Core sends:
+1. the recipe, with its creator, and the access check;
+2. its ingredient lines in `sort_order`;
+3. its steps in `step_number`.
 
-```sql
-SELECT r.id, r.title, ..., c.handle, u.display_name, r.save_count,
-       ri.ingredient_id, i.name, ri.quantity, un.abbreviation, ri.display_text, ri.preparation, ri.is_optional, ri.sort_order,
-       st.step_number, st.instruction, st.video_timestamp_seconds
-FROM recipes r
-JOIN creator_profiles c ON r.creator_id = c.user_id
-JOIN users u ON c.user_id = u.id
-LEFT JOIN (recipe_ingredients ri JOIN ingredients i ON ... JOIN units un ON ...) ON ri.recipe_id = r.id
-LEFT JOIN recipe_steps st ON st.recipe_id = r.id
-WHERE r.id = @id AND r.is_published
-  AND (r.visibility = 'Public' OR EXISTS (
-        SELECT 1 FROM order_item_recipes oir
-        JOIN order_items oi ON oir.order_item_id = oi.id
-        JOIN orders o ON oi.order_id = o.id
-        WHERE oir.recipe_id = r.id AND o.user_id = @viewerId AND o.status = 'Paid'))
-ORDER BY r.id, ri.sort_order, ri.id, st.step_number
-```
+The access check is the Q14 rule and the same predicate the shopping list now uses (§3): published, and
+Public or in the snapshot of one of the viewer's Paid orders.
 
-**Indexes:** PK `recipes(id)`; `ix_recipe_ingredients_recipe_id_sort_order (recipe_id, sort_order)` returns the ingredient rows already in display order; unique `ix_recipe_steps_recipe_id_step_number (recipe_id, step_number)` does the same for steps. The access `EXISTS` (DesignDocument.md §3.3, `queries.sql` Q14) probes `ix_order_item_recipes_recipe_id` then the PKs of `order_items` and `orders`; it is evaluated only for `ProductOnly` recipes because the `OR` short-circuits on the `visibility` column already in hand.
+**Indexes:**
+- PK `recipes(id)`.
+- `ix_recipe_ingredients_recipe_id_sort_order (recipe_id, sort_order)` returns the ingredient rows already
+  in display order.
+- Unique `ix_recipe_steps_recipe_id_step_number (recipe_id, step_number)` does the same for the steps.
+- The access `EXISTS` (DesignDocument.md §3.3, `queries.sql` Q14) probes `ix_order_item_recipes_recipe_id`,
+  then the PKs of `order_items` and `orders`. It is evaluated only for `ProductOnly` recipes, because the
+  `OR` short-circuits on the `visibility` column already in hand.
 
 ---
 
@@ -704,16 +705,41 @@ Incremental Sort (actual rows=4 loops=1)
 
 ## Write paths worth noting
 
-Not "queries" in the assignment's sense, but the two writes that keep the denormalized columns correct:
+Not "queries" in the assignment's sense, but the writes that keep the denormalized columns correct. **None
+of these is built yet**; they are roadmap items 7, 9 and 10 in `docs/BuildLog.md`. Like every route with the
+caller's own data, they live under `/api/me/…` and take no user id (DesignDocument.md §9).
 
-**Save a recipe** (`POST /api/users/{u}/saves/{r}`): requires the `HomeCook` role and, for a `ProductOnly` recipe, the same access check as the detail endpoint. The service does one thing: add a `saved_recipes` row (`INSERT INTO saved_recipes`). The `saved_recipes_save_count` trigger runs
+**Save a recipe** (`PUT /api/me/saves/{recipeId}`; unsave is `DELETE` on the same route; both idempotent):
+- *Access:* requires the `HomeCook` role and, for a `ProductOnly` recipe, the same access check as the
+  detail endpoint.
+- *The write:* the service does one thing, add a `saved_recipes` row (`INSERT INTO saved_recipes`). The
+  `saved_recipes_save_count` trigger runs
 
-```sql
-UPDATE recipes SET save_count = save_count + 1 WHERE id = @r
-```
+  ```sql
+  UPDATE recipes SET save_count = save_count + 1 WHERE id = @r
+  ```
 
-inside the same statement — a single atomic increment, so two users saving simultaneously cannot both read 41 and write 42, and the application never touches the counter. Unsave is the mirror `DELETE`; the trigger decrements. A cascaded delete from a hard-deleted account is decremented the same way (DesignDocument.md §3.4). `queries.sql` Q16 is the consistency check the integration tests will run after each of these.
+  inside the same statement. It is a single atomic increment, so two users saving at once cannot both read
+  41 and write 42, and the application never touches the counter.
+- *Unsave and account deletion:* unsave is the mirror `DELETE`, and the trigger decrements. A cascaded
+  delete from a hard-deleted account is decremented the same way (DesignDocument.md §3.4).
+- *Check:* `queries.sql` Q16 is the consistency check the integration tests run after each of these.
 
-**Add to cart** (`POST /api/users/{u}/cart/{p}`): requires `HomeCook`; `CartService` refuses it if `product.CreatorId == u` ("you cannot buy your own product") and the controller returns `400`, and the `cart_items_refuse_self_purchase` trigger refuses the row if anything else tries.
+**Add to cart** (`PUT /api/me/cart/{productId}`):
+- requires `HomeCook`;
+- `CartService` refuses it if the product's creator is the caller ("you cannot buy your own product"), and
+  the controller returns `400`;
+- if anything else tries, the `cart_items_refuse_self_purchase` trigger refuses the row.
 
-**Checkout** (`POST /api/users/{u}/checkout`): requires `HomeCook`. `CheckoutService` reads the cart's products and builds the order; `OrderRepository` saves it with a single `SaveChanges`. That inserts an `orders` row with `total_cents = SUM(price_cents)`, one `order_items` row per product carrying `product_title`, `unit_price_cents`, and `creator_id` snapshots, and one `order_item_recipes` row per `product_recipes` row of each product (`recipe_id`, `sort_order`, `day_offset`, `slot` copied as they are that moment), then `DELETE FROM cart_items WHERE user_id = @u` — all in the one transaction EF Core opens for that `SaveChanges`, so a failure anywhere leaves the cart intact and no partial order. The `order_items_refuse_self_purchase` trigger is the last line of defense against a self-purchase reaching an order.
+**Checkout** (`POST /api/me/checkout`): requires `HomeCook`. `CheckoutService` reads the cart's products
+and builds the order, and `OrderRepository` saves it with a single `SaveChanges`. That inserts:
+- an `orders` row with `total_cents = SUM(price_cents)`;
+- one `order_items` row per product, carrying the `product_title`, `unit_price_cents` and `creator_id`
+  snapshots;
+- one `order_item_recipes` row per `product_recipes` row of each product, with `recipe_id`, `sort_order`,
+  `day_offset` and `slot` copied as they are at that moment.
+
+It then runs `DELETE FROM cart_items WHERE user_id = @caller`. All of it happens in the one transaction EF
+Core opens for that `SaveChanges`, so a failure anywhere leaves the cart intact and no partial order. The
+`order_items_refuse_self_purchase` trigger is the last line of defense against a self-purchase reaching an
+order. The response is `201 Created` with the new order.
