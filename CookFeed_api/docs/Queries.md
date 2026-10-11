@@ -6,24 +6,27 @@
 > `Microsoft.EntityFrameworkCore.Database.Command`. Until a section says *verified*, treat its SQL as
 > a prediction of the query shape, not a transcript.
 
-Each core query is one LINQ expression inside a read-side reader in
-`src/Cookfeed.Infrastructure/Persistence/Queries/` (`FeedReader`, `RecipeReader`, `StorefrontReader`,
-`ShoppingListReader`, `OrderReader`), implementing the corresponding port in
-`src/Cookfeed.Application/Abstractions/Persistence/`. Readers return DTOs and never leak `IQueryable`
-past the port. This document shows the LINQ, the SQL EF Core produces for it, and the index that makes
-it cheap (aliases shortened for readability).
+Each core query will be one LINQ expression inside a repository in
+`src/Cookfeed.Infrastructure/Persistence/Repositories/` (`RecipeRepository` for the feed and recipe
+detail, `CreatorRepository`, `ShoppingListRepository`, `OrderRepository`), implementing the matching
+interface in `src/Cookfeed.Application/Abstractions/Persistence/`. A controller calls a service, the
+service calls the repository, and read methods return `Cookfeed.Contracts` DTOs; `IQueryable` never
+leaves the repository (`DesignDocument.md` §1). In the LINQ below, `db` is the repository's
+`CookfeedDbContext`. This document shows the LINQ, the SQL EF Core is expected to produce for it, and
+the index that makes it cheap (aliases shortened for readability).
 
-`appsettings.Development.json` turns on `Microsoft.EntityFrameworkCore.Database.Command` logging at
-`Information` so the exact statement is printed on every request — run `dotnet run`, hit the endpoint,
-and paste what it logs over the block here.
+Once the API exists, `appsettings.Development.json` will turn on
+`Microsoft.EntityFrameworkCore.Database.Command` logging at `Information` so the exact statement is
+printed on every request — run `dotnet run`, hit the endpoint, and paste what it logs over the block here.
 
 To see the planner's choice, prefix any statement with `EXPLAIN (ANALYZE, BUFFERS)` in `psql`.
 
 The shopping-list section below is the one place where the SQL is deliberately only half the algorithm:
-the reader aggregates per (ingredient, unit category) and the pure-C# `ShoppingListAggregator` in
-`Cookfeed.Domain` does the density conversion, preferred-unit presentation, and unmerged-line policy.
-See `DesignDocument.md` §7.5. `docs/sql/queries.sql` Q8 does the whole thing in SQL instead — that is a
-standalone reference query, not what the API runs; after the Assignment 2 feedback revision the two agree line for line.
+the repository aggregates per (ingredient, unit category), and `ShoppingListService` passes the result
+to the pure-C# `ShoppingListAggregator` in `Cookfeed.Domain` for the density conversion, preferred-unit
+presentation, and unmerged-line policy. See `DesignDocument.md` §7.5. `docs/sql/queries.sql` Q8 does the
+whole thing in SQL instead — that is a standalone reference query, not what the API runs, and its output
+is what the aggregator will be tested against line for line.
 
 ---
 
@@ -279,14 +282,14 @@ ORDER BY o.placed_at DESC, o.id, oi.id
 
 Not "queries" in the assignment's sense, but the two writes that keep the denormalized columns correct:
 
-**Save a recipe** (`POST /api/users/{u}/saves/{r}`): requires the `HomeCook` role and, for a `ProductOnly` recipe, the same access check as the detail endpoint. The handler does one thing: `INSERT INTO saved_recipes`. The `saved_recipes_save_count` trigger runs
+**Save a recipe** (`POST /api/users/{u}/saves/{r}`): requires the `HomeCook` role and, for a `ProductOnly` recipe, the same access check as the detail endpoint. The service does one thing: add a `saved_recipes` row (`INSERT INTO saved_recipes`). The `saved_recipes_save_count` trigger runs
 
 ```sql
 UPDATE recipes SET save_count = save_count + 1 WHERE id = @r
 ```
 
-inside the same statement — a single atomic increment, so two users saving simultaneously cannot both read 41 and write 42, and the application never touches the counter. Unsave is the mirror `DELETE`; the trigger decrements. A cascaded delete from a hard-deleted account is decremented the same way (DesignDocument.md §3.4). `queries.sql` Q16 is the consistency check the integration tests run after each of these.
+inside the same statement — a single atomic increment, so two users saving simultaneously cannot both read 41 and write 42, and the application never touches the counter. Unsave is the mirror `DELETE`; the trigger decrements. A cascaded delete from a hard-deleted account is decremented the same way (DesignDocument.md §3.4). `queries.sql` Q16 is the consistency check the integration tests will run after each of these.
 
-**Add to cart** (`POST /api/users/{u}/cart/{p}`): requires `HomeCook`; the handler returns `400` if `product.CreatorId == u` ("you cannot buy your own product"), and the `cart_items_refuse_self_purchase` trigger refuses the row if anything else tries.
+**Add to cart** (`POST /api/users/{u}/cart/{p}`): requires `HomeCook`; `CartService` refuses it if `product.CreatorId == u` ("you cannot buy your own product") and the controller returns `400`, and the `cart_items_refuse_self_purchase` trigger refuses the row if anything else tries.
 
-**Checkout** (`POST /api/users/{u}/checkout`): requires `HomeCook`. Reads the cart's products, inserts an `orders` row with `total_cents = SUM(price_cents)`, one `order_items` row per product carrying `product_title`, `unit_price_cents`, and `creator_id` snapshots, and one `order_item_recipes` row per `product_recipes` row of each product (`recipe_id`, `sort_order`, `day_offset`, `slot` copied as they are that moment), then `DELETE FROM cart_items WHERE user_id = @u` — all in one transaction, so a failure anywhere leaves the cart intact and no partial order. The `order_items_refuse_self_purchase` trigger is the last line of defense against a self-purchase reaching an order.
+**Checkout** (`POST /api/users/{u}/checkout`): requires `HomeCook`. `CheckoutService` reads the cart's products and builds the order; `OrderRepository` saves it with a single `SaveChanges`. That inserts an `orders` row with `total_cents = SUM(price_cents)`, one `order_items` row per product carrying `product_title`, `unit_price_cents`, and `creator_id` snapshots, and one `order_item_recipes` row per `product_recipes` row of each product (`recipe_id`, `sort_order`, `day_offset`, `slot` copied as they are that moment), then `DELETE FROM cart_items WHERE user_id = @u` — all in the one transaction EF Core opens for that `SaveChanges`, so a failure anywhere leaves the cart intact and no partial order. The `order_items_refuse_self_purchase` trigger is the last line of defense against a self-purchase reaching an order.

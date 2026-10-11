@@ -10,15 +10,32 @@
 
 Cookfeed is a short-video recipe marketplace: home cooks discover recipes through video, save them, turn saved and planned recipes into a single shopping list, and buy recipe collections and meal plans from creators. This deliverable is the data layer that everything else in the project stands on:
 
-| Deliverable | Where it lives |
-|---|---|
-| 1. ER diagram and normalized (3NF) schema as EF Core entities and migration | `docs/ERDiagram.mermaid`, `docs/schema.sql`, `src/Cookfeed.Domain/Entities/*.cs`, `src/Cookfeed.Infrastructure/Persistence/CookfeedDbContext.cs`, `Persistence/Configurations/*.cs`, `Persistence/Migrations/` |
-| 2. Seed data | `src/Cookfeed.Infrastructure/Persistence/Seed/DbSeeder.cs` (mirrors `docs/sql/seed.sql`) |
-| 3. Core queries in LINQ, generated SQL reviewed, indexes justified | `src/Cookfeed.Infrastructure/Persistence/Queries/*Reader.cs` behind the ports in `src/Cookfeed.Application/Abstractions/Persistence`, `docs/Queries.md` |
-| 4. Design document | this file |
-| 5. ASP.NET Core API layer with tests | `src/Cookfeed.Api/Endpoints/*.cs` over handlers in `src/Cookfeed.Application`, `tests/Cookfeed.Domain.Tests/*.cs`, `tests/Cookfeed.IntegrationTests/*.cs` |
+| Deliverable | Status | Where it lives |
+|---|---|---|
+| 1. ER diagram and normalized (3NF) schema | Done | `docs/ERDiagram.mermaid` (+ `.svg`, `.png`), `docs/EERDiagram.*`, `docs/ThirdNormalForm.*`, `docs/schema.sql` |
+| 2. Seed data | Done | `docs/sql/seed.sql` |
+| 3. Core queries, with the indexes that serve them | Done in SQL | `docs/sql/queries.sql`, `docs/Queries.md` |
+| 4. Design document | Done | this file |
+| 5. Schema as EF Core entities and migration | Planned | `src/Cookfeed.Domain/Entities/*.cs`, `src/Cookfeed.Infrastructure/Persistence/CookfeedDbContext.cs`, `Persistence/Configurations/*.cs`, `Persistence/Migrations/` |
+| 6. Seed data in C# | Planned | `src/Cookfeed.Infrastructure/Persistence/Seed/DbSeeder.cs` (mirrors `docs/sql/seed.sql`) |
+| 7. Core queries in LINQ, generated SQL reviewed | Planned | `src/Cookfeed.Infrastructure/Persistence/Repositories/*Repository.cs`, `docs/Queries.md` |
+| 8. ASP.NET Core API with tests | Planned | `src/Cookfeed.Api/Controllers/*Controller.cs` over services in `src/Cookfeed.Application/Services`, `tests/Cookfeed.Domain.Tests`, `tests/Cookfeed.IntegrationTests` |
 
-**Stack:** ASP.NET Core 10 (minimal APIs), EF Core 10, Npgsql, PostgreSQL 16, laid out as Clean Architecture (`Domain` → `Application` → `Infrastructure` → `Api`, dependencies pointing inward). Table and column names use `snake_case` via the `EFCore.NamingConventions` package so the SQL reads naturally in `psql`. Angular (Assignment 4) will consume the API.
+Rows 1–4 are in this repository and run today: `schema.sql`, `seed.sql` and `queries.sql` load and execute against PostgreSQL 16 (see `DOCKER.md`). Rows 5–8 are the planned API; every `src/` and `tests/` path in this document names a file that does not exist yet, and every statement about what "the API" or "the tests" do describes how they will be built.
+
+**Stack:** ASP.NET Core 10 Web API with controllers, EF Core 10, Npgsql, PostgreSQL 16, laid out as Clean Architecture. Table and column names use `snake_case` via the `EFCore.NamingConventions` package so the SQL reads naturally in `psql`. Angular (Assignment 4) will consume the API.
+
+**Planned API architecture.** Five projects; each references only the ones listed before it, so the business rules at the centre never depend on EF Core or ASP.NET:
+
+| Project | Holds | References |
+|---|---|---|
+| `Cookfeed.Domain` | Entities (one per table), enums, and pure business logic such as `ShoppingListAggregator` (§7.5) | nothing |
+| `Cookfeed.Contracts` | Request and response DTOs: the API's public shape, which the Angular client mirrors | nothing |
+| `Cookfeed.Application` | Services (`FeedService`, `RecipeService`, `CreatorService`, `CartService`, `CheckoutService`, `OrderService`, `ReviewService`, `ShoppingListService`) and the repository interfaces they depend on | Domain, Contracts |
+| `Cookfeed.Infrastructure` | `CookfeedDbContext`, entity configurations, migrations (with the triggers), `DbSeeder`, and the repository implementations | Application, Domain, Contracts |
+| `Cookfeed.Api` | Controllers, the `X-User-Id` authentication handler (§9), the mapping from database errors to HTTP responses, and dependency-injection wiring | Application, Contracts, Infrastructure (wiring only) |
+
+A request runs controller → service → repository → EF Core. Controllers only translate HTTP: bind the request, call one service method, return the result. Services hold the business rules (§3) and the use-case logic. Repositories are the only classes that touch `CookfeedDbContext`; there is one per area (recipes, creators, products, cart, orders, reviews, saves and meal plans) rather than a generic `Repository<T>`, because the `DbContext` already provides generic add, find and save. Read methods project straight into `Contracts` DTOs, so the SQL in `docs/Queries.md` is what runs; write methods work with entities and save with a single `SaveChanges`, which EF Core wraps in one transaction (§6 relies on that for checkout).
 
 **Why relational.** The two features the product is built around are joins and grouped aggregations. A shopping list is *"every ingredient across every recipe this user saved or planned, grouped by ingredient, summed"*. Order history is *"orders → order items → products → creators"*. Both are one `SELECT` with `JOIN`/`GROUP BY` in SQL and would be multi-round-trip application code over a document store. PostgreSQL also gives me `CHECK` constraints, real foreign keys, `numeric` for quantities, triggers, and `DELETE`-cascade semantics that encode business rules in the database rather than trusting every caller.
 
@@ -140,7 +157,7 @@ A creator chooses the mix per recipe: a public recipe inside a product is a prev
 
 `recipes.save_count` must equal `COUNT(*) FROM saved_recipes WHERE recipe_id = ?` at all times. The submitted design kept it correct for ordinary saves and unsaves by incrementing in the same transaction, which left two gaps the review identified: the seed wrote counts in the hundreds against a handful of save rows, and account deletion cascaded the save rows away without touching the counter.
 
-Both close by moving the rule into the database. A row-level trigger on `saved_recipes` (`saved_recipes_save_count`, §6) increments on `INSERT` and decrements on `DELETE`. Row-level triggers fire for rows removed by `ON DELETE CASCADE`, so a hard-deleted account (one with no orders) decrements every recipe it had saved. The seed no longer writes `save_count` at all; the trigger derives it from the save rows the seed inserts, so the counter cannot be wrong on the first commit. The seed gained four home-cook accounts so that the trigger-derived counts still produce a meaningful "Trending" order. Q16 is the consistency check (zero rows means every counter matches) and is run after seeding and in the integration tests after save, unsave, and delete.
+Both close by moving the rule into the database. A row-level trigger on `saved_recipes` (`saved_recipes_save_count`, §6) increments on `INSERT` and decrements on `DELETE`. Row-level triggers fire for rows removed by `ON DELETE CASCADE`, so a hard-deleted account (one with no orders) decrements every recipe it had saved. The seed no longer writes `save_count` at all; the trigger derives it from the save rows the seed inserts, so the counter cannot be wrong on the first commit. The seed gained four home-cook accounts so that the trigger-derived counts still produce a meaningful "Trending" order. Q16 is the consistency check (zero rows means every counter matches); it passes after seeding today, and the integration tests will run it after save, unsave, and delete.
 
 Soft deletion (an account with orders, §5) keeps the `saved_recipes` rows, so the counts are unaffected: a save is a signal about the recipe, and anonymizing the user does not change that the recipe was saved.
 
@@ -240,7 +257,7 @@ ck_reviews_rating_range                      rating BETWEEN 1 AND 5
 | `order_items_refuse_self_purchase` | `order_items`, before insert/update | a creator cannot buy their own product (§3.1) |
 | `user_roles_admin_only` | `user_roles`, before insert/update | `Admin` is never held with another role (§3.1) |
 
-The refusals raise `check_violation` with a named constraint (`ck_cart_items_no_self_purchase`, `ck_order_items_no_self_purchase`, `ck_user_roles_admin_only`) so the API can map them to a 4xx exactly as it maps a real `CHECK`. EF Core does not model triggers; they ship in the migration as raw SQL (`migrationBuilder.Sql(...)`) and `schema.sql` carries the readable copy.
+The refusals raise `check_violation` with a named constraint (`ck_cart_items_no_self_purchase`, `ck_order_items_no_self_purchase`, `ck_user_roles_admin_only`) so the API can map them to a 4xx exactly as it maps a real `CHECK`. EF Core does not model triggers; they will ship in the migration as raw SQL (`migrationBuilder.Sql(...)`), and `schema.sql` carries the readable copy.
 
 **Types.** Money is integer cents (`price_cents`, `total_cents`, `unit_price_cents`) with a 3-letter `currency` column — never floating point. Quantities are `numeric(10,3)`; conversion factors `numeric(12,6)`; density `numeric(8,4)`. All timestamps are `timestamptz` stored in UTC; calendar dates (`week_start`, `planned_date`) are `date`, because "Monday the 21st" is not an instant. Enums (`unit category`, `meal slot`, `product type`, `order status`, `visibility`) are stored as short `varchar` rather than PostgreSQL enum types so that adding a value is an `INSERT`-compatible change rather than an `ALTER TYPE`, and so the values are readable in `psql`.
 
@@ -252,7 +269,7 @@ Four deliberate departures from 3NF, each with the derivation rule and how it st
 
 **1. `recipes.save_count`.** Derivable as `COUNT(*) FROM saved_recipes WHERE recipe_id = ?`. The feed is the most-read page in the application and the "Trending" sort orders by this number; computing it per row with a correlated subquery, then sorting, defeats any index. The counter is maintained by a row-level trigger on `saved_recipes` — an atomic `UPDATE recipes SET save_count = save_count ± 1` per save row, so concurrent saves cannot lose updates, cascaded deletes are counted, and the seed cannot write a count the save rows do not support (§3.4). The application inserts and deletes `saved_recipes` rows and never touches the counter. It is indexed together with `is_published` and `visibility` so the trending feed is an index scan.
 
-**2. `orders.total_cents`.** Derivable as `SUM(unit_price_cents) FROM order_items`. Stored because an order total is a fact about a transaction that happened: if a line item were ever corrected or refunded independently, the original total should still be visible. It is written once at checkout and never updated. Tests assert it equals the sum of its items.
+**2. `orders.total_cents`.** Derivable as `SUM(unit_price_cents) FROM order_items`. Stored because an order total is a fact about a transaction that happened: if a line item were ever corrected or refunded independently, the original total should still be visible. It is written once at checkout and never updated. The integration tests will assert it equals the sum of its items.
 
 **3. `order_items.product_title`, `unit_price_cents`, `creator_id`.** These duplicate columns on `products`. They are **snapshots**: a creator can rename or reprice a product tomorrow, and order history must show what the buyer actually paid for, at the price they paid. `creator_id` is copied so that a creator-earnings report can group order items by creator without joining through `products` — and so it still works if a product is ever reassigned. This is the standard e-commerce pattern; the normalized alternative (a `product_versions` table) was more machinery than the project needs.
 
@@ -321,7 +338,7 @@ JOIN recipe_ingredients          →     choose main vs unmerged lines
 (ingredient, unit category)      →     round, sort by aisle
 ```
 
-The database does the part that benefits from being close to the data (the join and the sum over potentially hundreds of rows). The application does the part that is a *policy* — when to merge, which way, when to refuse, how to present — because policies change and are far easier to unit-test in C# than in SQL. The C# half lives in `ShoppingListAggregator` (pure, no EF), which is why `tests/Cookfeed.Domain.Tests` can pin the flour example to ±0.5 g and the milk example to millilitres without a database. `docs/sql/queries.sql` Q8 implements the whole algorithm in SQL as a standalone fidelity check; after this revision its output and the aggregator's agree line for line.
+The database does the part that benefits from being close to the data (the join and the sum over potentially hundreds of rows). The application does the part that is a *policy* — when to merge, which way, when to refuse, how to present — because policies change and are far easier to unit-test in C# than in SQL. The C# half will live in `ShoppingListAggregator` in `Cookfeed.Domain` (pure, no EF), so `tests/Cookfeed.Domain.Tests` can pin the flour example to ±0.5 g and the milk example to millilitres without a database. `docs/sql/queries.sql` Q8 already implements the whole algorithm in SQL (41 lines for Alex, flour 1,032.91 g, milk 946.35 ml); it is the reference the aggregator's output will be tested against line for line.
 
 ### 7.6 Scaling
 
