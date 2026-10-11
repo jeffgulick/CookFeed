@@ -11,7 +11,8 @@
 
 var product = null;
 
-/* null means "show the list as each recipe was published". A number means every
+/* null means "show the list as each recipe was published", shown as an empty servings box: the
+   recipes do not all serve the same number, so no one number would be true. A number means every
    meal of the plan is cooked for that many people. */
 var currentPeople = null;
 
@@ -126,8 +127,8 @@ function renderShoppingList() {
     html = html + "<td class='have-col'><input type='checkbox' aria-label='I already have " +
                   escapeHtml(line.name) + "'" + (have ? " checked" : "") + "></td>";
     html = html + "<td class='qty'>" + formatQuantity(line.amount) + " " + escapeHtml(line.unit) + "</td>";
-    html = html + "<td>" + escapeHtml(line.name) + "</td>";
-    html = html + "<td class='aisle'>" + escapeHtml(line.aisle) + "</td>";
+    html = html + "<td>" + escapeHtml(line.name) + "<span class='cell-note'>" + escapeHtml(line.aisle) + "</span></td>";
+    html = html + "<td class='aisle col-wide'>" + escapeHtml(line.aisle) + "</td>";
     html = html + "</tr>";
   }
 
@@ -159,10 +160,21 @@ function renderShoppingList() {
 }
 
 /* Read the box and, if it holds a sensible number, rescale the list. When it
-   does not, explain why under the box and leave the list as it was. */
+   does not, explain why under the box and leave the list as it was. An empty
+   box means "as published". */
 function applyServingsInput() {
   var input = document.getElementById("servingsInput");
   var error = document.getElementById("servingsError");
+
+  if (input.value.trim() === "") {
+    error.textContent = "";
+    input.classList.remove("invalid");
+    currentPeople = null;
+    updateStepperButtons();
+    renderShoppingList();
+    return;
+  }
+
   var problem = servingsProblem(input.value);
 
   error.textContent = problem;
@@ -178,20 +190,25 @@ function applyServingsInput() {
   renderShoppingList();
 }
 
-/* Grey out minus at the bottom of the range and plus at the top. */
+/* Grey out minus at the bottom of the range and plus at the top. From an empty
+   box ("as published") both work. */
 function updateStepperButtons() {
-  var value = Number(document.getElementById("servingsInput").value);
-  document.getElementById("servingsDown").disabled = value <= LIMITS.servingsMin;
-  document.getElementById("servingsUp").disabled = value >= LIMITS.servingsMax;
+  var input = document.getElementById("servingsInput");
+  var value = Number(input.value);
+  var empty = input.value.trim() === "";
+  document.getElementById("servingsDown").disabled = !empty && value <= LIMITS.servingsMin;
+  document.getElementById("servingsUp").disabled = !empty && value >= LIMITS.servingsMax;
+  document.getElementById("servingsReset").hidden = empty;
 }
 
-/* Move the number up or down by one from the minus and plus buttons. */
+/* Move the number up or down by one from the minus and plus buttons. From an
+   empty box, the first press starts at 2 people. */
 function stepServings(change) {
   var input = document.getElementById("servingsInput");
   var value = Number(input.value);
 
   if (isNaN(value) || input.value.trim() === "") {
-    value = 2;
+    value = 2 - change;
   }
 
   value = Math.min(LIMITS.servingsMax, Math.max(LIMITS.servingsMin, Math.round(value) + change));
@@ -202,7 +219,7 @@ function stepServings(change) {
 /* Go back to the quantities exactly as the creator published them. */
 function resetServings() {
   var input = document.getElementById("servingsInput");
-  input.value = 2;
+  input.value = "";
   input.classList.remove("invalid");
   document.getElementById("servingsError").textContent = "";
   currentPeople = null;

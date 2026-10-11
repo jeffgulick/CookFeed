@@ -12,6 +12,40 @@
   --star: #e0a012;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(36, 29, 22, .05), 0 8px 24px rgba(36, 29, 22, .06);
+
+  /* Shades of the colors above, named for what they are used for. */
+  --ink-soft: #4b3f34;          /* body copy that sits a step below headings */
+  --faint: #b7a796;             /* struck-through list lines */
+  --line-strong: #d8c6b2;       /* hovered borders */
+  --line-soft: #f4ece3;         /* rules between table rows and list items */
+  --fill: #f1e8dd;              /* empty bars and tracks */
+  --disabled: #d8cec3;
+  --empty-star: #e3d6c6;
+  --accent-dark: #a5360a;       /* accent on hover */
+  --accent-line: #f6d5c0;       /* borders of accent-soft chips */
+  --accent-tint: #ffe3d1;       /* accent-soft on hover */
+  --good-soft: #e8f6ec;
+  --good-line: #cfe6d5;
+  --good-tint: #f4fbf6;
+  --good-tint-hover: #eaf6ee;
+  --bad: #b42318;
+  --bad-soft: #fdeceb;
+  --bad-line: #e5a29b;
+  --warn-ink: #6b4e00;
+  --warn-soft: #fff8db;
+  --warn-line: #f2c94c;
+  --on-dark: #ffffff;           /* text on the video player, the toast and the preview */
+  --on-dark-soft: #f0e6dc;
+  --on-dark-muted: #d9cabb;
+  --on-dark-accent: #ffd9c2;
+  --player-bar: #1b1611;
+  --player-note: #2b231b;
+  --player-track: rgba(255, 255, 255, .22);
+  --overlay: rgba(36, 29, 22, .88);       /* the recipe card preview */
+  --backdrop: rgba(36, 29, 22, .45);      /* behind the confirmation dialog */
+
+  /* The keyboard focus ring: the accent passes 3:1 against both the paper and the cards. */
+  --focus: var(--accent);
 }
 
 * { box-sizing: border-box; }
@@ -63,6 +97,32 @@ a { color: var(--accent); }
 
 .brand span { color: var(--accent); }
 
+/* The links, then the cart, on wide screens. On phones the links fold into the Menu button (see
+   "small screens"). The cart comes first in the page source so it sits beside the menu there. */
+.nav-links { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; order: 1; }
+.cart-chip { order: 2; }
+.menu-button { display: none; order: 3; }
+
+/* Hidden until a keyboard user tabs to it, then shown above the nav. */
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  z-index: 20;
+  background: var(--card);
+  padding: 8px 14px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  font-weight: 700;
+}
+
+.skip-link:focus { top: 10px; }
+
+main:focus { outline: none; }
+
+/* Pages that open with a pill rather than a hero image get the same space under the nav. */
+.wrap > .pill:first-child { margin-top: 24px; }
+
 .nav a.navlink {
   color: var(--muted);
   text-decoration: none;
@@ -105,7 +165,7 @@ a { color: var(--accent); }
 .cart-chip {
   background: var(--accent-soft);
   color: var(--accent);
-  border: 1px solid #f6d5c0;
+  border: 1px solid var(--accent-line);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 14px;
@@ -164,7 +224,7 @@ h2 {
   font-size: 13px;
 }
 
-.lede { font-size: 18px; color: #4b3f34; margin: 0 0 20px; }
+.lede { font-size: 18px; color: var(--ink-soft); margin: 0 0 20px; }
 
 .card {
   background: var(--card);
@@ -192,7 +252,7 @@ h2 {
 
 .price-note { color: var(--muted); font-size: 14px; }
 
-button {
+button, a.btn-primary, a.btn-secondary {
   font: inherit;
   cursor: pointer;
   border-radius: 10px;
@@ -201,8 +261,10 @@ button {
   font-weight: 700;
 }
 
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { background: #a5360a; }
+a.btn-primary, a.btn-secondary { display: inline-block; text-decoration: none; }
+
+.btn-primary { background: var(--accent); color: var(--on-dark); }
+.btn-primary:hover { background: var(--accent-dark); }
 .btn-primary.done { background: var(--good); }
 
 .btn-secondary {
@@ -211,7 +273,7 @@ button {
   border-color: var(--line);
 }
 
-.btn-secondary:hover { border-color: #d8c6b2; }
+.btn-secondary:hover { border-color: var(--line-strong); }
 
 .btn-small {
   padding: 6px 12px;
@@ -223,7 +285,7 @@ button {
   color: var(--ink);
 }
 
-.btn-small.saved { background: var(--accent-soft); border-color: #f6d5c0; color: var(--accent); }
+.btn-small.saved { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
 
 /* ---------- recipe cards ---------- */
 
@@ -291,7 +353,7 @@ th {
   padding: 8px 6px;
 }
 
-td { padding: 9px 6px; border-bottom: 1px solid #f4ece3; }
+td { padding: 9px 6px; border-bottom: 1px solid var(--line-soft); }
 td.qty { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
 td.aisle { color: var(--muted); font-size: 14px; }
 tr:last-child td { border-bottom: none; }
@@ -336,8 +398,8 @@ tr:last-child td { border-bottom: none; }
   padding: 2px 10px;
 }
 
-.tag-yes { background: #e8f6ec; color: var(--good); }
-.tag-no { background: #fdeceb; color: #b42318; }
+.tag-yes { background: var(--good-soft); color: var(--good); }
+.tag-no { background: var(--bad-soft); color: var(--bad); }
 .review p { margin: 6px 0 0; }
 
 /* ---------- form ---------- */
@@ -357,13 +419,17 @@ input[type="text"], select, textarea {
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
 }
 
 textarea { resize: vertical; min-height: 96px; }
-input:focus, select:focus, textarea:focus { outline: 2px solid #f3bb9b; border-color: #f3bb9b; }
+/* One keyboard focus ring for every link, button and field (see --focus). */
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 1px; border-color: var(--accent); }
 
+fieldset.field { border: none; padding: 0; margin-left: 0; margin-right: 0; }
+fieldset.field legend { font-weight: 700; font-size: 14px; margin-bottom: 5px; padding: 0; }
 .radio-row { display: flex; gap: 20px; }
 .radio-row label { font-weight: 500; display: flex; align-items: center; gap: 7px; }
 input[type="radio"] { accent-color: var(--accent); }
@@ -371,6 +437,7 @@ input[type="radio"] { accent-color: var(--accent); }
 /* ---------- creator page ---------- */
 
 .creator-head { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.creator-head > div { flex: 1 1 280px; min-width: 0; }
 .creator-head img { width: 96px; height: 96px; border-radius: 50%; border: 3px solid var(--card); box-shadow: var(--shadow); }
 .handle { color: var(--muted); font-size: 15px; margin: 2px 0 0; }
 .stat-row { display: flex; gap: 26px; margin-top: 14px; flex-wrap: wrap; }
@@ -385,7 +452,7 @@ input[type="radio"] { accent-color: var(--accent); }
   padding: 20px;
   text-align: center;
   background: var(--accent-soft);
-  border: 1px solid #f6d5c0;
+  border: 1px solid var(--accent-line);
   border-radius: var(--radius);
 }
 
@@ -398,8 +465,38 @@ footer {
 
 /* ---------- small screens ---------- */
 
+/* A table cell's extra detail, shown under the main text only where its own column is hidden. */
+.cell-note { display: none; color: var(--muted); font-size: 13px; }
+
 @media (max-width: 760px) {
   .grid { grid-template-columns: 1fr; }
+
+  /* The nav: the brand, the cart and Menu on one row, and the links open below them. Without
+     JavaScript there is no has-menu class, and the links simply wrap as on a wide screen. */
+  .nav.has-menu .menu-button {
+    display: inline-block;
+    padding: 6px 14px;
+    background: var(--card);
+    border-color: var(--line);
+    border-radius: 999px;
+    color: var(--ink);
+    font-size: 14px;
+  }
+  .nav.has-menu .nav-links {
+    display: none;
+    order: 4;
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 0 4px;
+  }
+  .nav.has-menu.open .nav-links { display: flex; }
+  .nav.has-menu .account { flex-wrap: wrap; }
+
+  /* Shopping tables: the aisle (and in My kitchen, the recipes) move under the ingredient. */
+  .col-wide { display: none; }
+  .cell-note { display: block; }
   h1 { font-size: 27px; }
   .brand { margin-right: 12px; }
   .summary { gap: 18px; }
@@ -437,7 +534,7 @@ footer {
   justify-content: space-between;
   gap: 16px;
   padding: 8px 0;
-  border-bottom: 1px solid #f4ece3;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .total-row.grand {
@@ -450,10 +547,10 @@ footer {
 }
 
 .totals button { margin-top: 14px; width: 100%; }
-button:disabled { background: #d8cec3; cursor: not-allowed; }
+button:disabled { background: var(--disabled); cursor: not-allowed; }
 
 a.cart-chip { text-decoration: none; }
-a.cart-chip:hover { background: #ffe3d1; }
+a.cart-chip:hover { background: var(--accent-tint); }
 
 .receipt {
   background: var(--card);
@@ -470,7 +567,7 @@ a.cart-chip:hover { background: #ffe3d1; }
   line-height: 62px;
   margin: 0 auto;
   border-radius: 50%;
-  background: #e8f6ec;
+  background: var(--good-soft);
   color: var(--good);
   font-size: 31px;
   font-weight: 800;
@@ -491,7 +588,7 @@ a.cart-chip:hover { background: #ffe3d1; }
   margin: 18px 0 6px;
   border-radius: var(--radius);
   overflow: hidden;
-  background: #241d16;
+  background: var(--ink);
   box-shadow: var(--shadow);
 }
 
@@ -502,16 +599,16 @@ a.cart-chip:hover { background: #ffe3d1; }
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #1b1611;
+  background: var(--player-bar);
 }
 
-.play { color: #fff; font-size: 15px; }
+.play { color: var(--on-dark); font-size: 15px; }
 
 .track {
   flex: 1;
   height: 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, .22);
+  background: var(--player-track);
   overflow: hidden;
 }
 
@@ -524,7 +621,7 @@ a.cart-chip:hover { background: #ffe3d1; }
 }
 
 .time {
-  color: #f0e6dc;
+  color: var(--on-dark-soft);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -533,13 +630,13 @@ a.cart-chip:hover { background: #ffe3d1; }
 .player-note {
   margin: 0;
   padding: 9px 14px;
-  background: #2b231b;
-  color: #d9cabb;
+  background: var(--player-note);
+  color: var(--on-dark-muted);
   font-size: 13px;
 }
 
 .ingredients { margin: 0; padding-left: 20px; }
-.ingredients li { padding: 5px 0; border-bottom: 1px solid #f4ece3; }
+.ingredients li { padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
 .ingredients li:last-child { border-bottom: none; }
 
 .steps { margin: 0; padding-left: 22px; }
@@ -588,9 +685,9 @@ a.cart-chip:hover { background: #ffe3d1; }
   color: var(--ink);
 }
 
-.send:hover { border-color: #d8c6b2; background: #fffaf4; }
-.send.ready { border-color: #cfe6d5; background: #f4fbf6; }
-.send.ready:hover { background: #eaf6ee; }
+.send:hover { border-color: var(--line-strong); background: var(--paper); }
+.send.ready { border-color: var(--good-line); background: var(--good-tint); }
+.send.ready:hover { background: var(--good-tint-hover); }
 
 .send-icon { font-size: 16px; line-height: 1; }
 
@@ -599,7 +696,7 @@ a.cart-chip:hover { background: #ffe3d1; }
   font-weight: 800;
   letter-spacing: .4px;
   text-transform: uppercase;
-  background: #f1e8dd;
+  background: var(--fill);
   color: var(--muted);
   border-radius: 999px;
   padding: 2px 8px;
@@ -608,8 +705,10 @@ a.cart-chip:hover { background: #ffe3d1; }
 /* what actually goes on paper when the list is printed */
 @media print {
   .nav, .hero, .send-row, .cta-foot, footer, .buybar, .grid,
-  .pill, .byline, .lede, .price-note { display: none !important; }
-  body { background: #fff; }
+  .pill, .byline, .lede, .price-note, .skip-link { display: none !important; }
+  main:has(.print-area) > :not(.print-area):not(h1) { display: none !important; }
+  .print-area .stepper-row, .print-area .field-error, .print-area .locked-note { display: none !important; }
+  body { background: var(--card); }
   .card { border: none; box-shadow: none; padding: 0; }
   h1 { font-size: 20px; }
   table { font-size: 13px; }
@@ -630,7 +729,7 @@ a.cart-chip:hover { background: #ffe3d1; }
   transform: translate(-50%, 20px);
   max-width: calc(100% - 32px);
   background: var(--ink);
-  color: #fff;
+  color: var(--on-dark);
   padding: 12px 18px;
   border-radius: 12px;
   box-shadow: var(--shadow);
@@ -643,7 +742,7 @@ a.cart-chip:hover { background: #ffe3d1; }
 }
 
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
-.toast.error { background: #b42318; }
+.toast.error { background: var(--bad); }
 
 /* ---------- servings stepper ---------- */
 
@@ -677,7 +776,7 @@ a.cart-chip:hover { background: #ffe3d1; }
 }
 
 .stepper button:hover { background: var(--accent-soft); }
-.stepper button:disabled { background: transparent; color: #d8cec3; }
+.stepper button:disabled { background: transparent; color: var(--disabled); }
 
 .stepper input {
   font: inherit;
@@ -704,12 +803,12 @@ a.cart-chip:hover { background: #ffe3d1; }
   text-decoration: underline;
 }
 
-.link-button:hover { color: #a5360a; }
+.link-button:hover { color: var(--accent-dark); }
 
 /* ---------- inline messages under form fields ---------- */
 
 .field-error {
-  color: #b42318;
+  color: var(--bad);
   font-size: 13px;
   font-weight: 600;
   margin: 6px 0 0;
@@ -717,7 +816,7 @@ a.cart-chip:hover { background: #ffe3d1; }
 }
 
 .field-error:empty { display: none; }
-.invalid { border-color: #e5a29b !important; }
+.invalid { border-color: var(--bad-line) !important; }
 
 .field-hint {
   display: flex;
@@ -738,8 +837,8 @@ a.cart-chip:hover { background: #ffe3d1; }
 .preview {
   position: absolute;
   inset: 0;
-  background: rgba(36, 29, 22, .88);
-  color: #fff;
+  background: var(--overlay);
+  color: var(--on-dark);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -753,8 +852,8 @@ a.cart-chip:hover { background: #ffe3d1; }
 }
 
 .recipe-card.previewing .preview { opacity: 1; }
-.preview b { color: #ffd9c2; }
-.preview .preview-step { color: #f0e6dc; font-style: italic; }
+.preview b { color: var(--on-dark-accent); }
+.preview .preview-step { color: var(--on-dark-soft); font-style: italic; }
 
 .hover-hint { font-size: 13px; color: var(--muted); margin: -4px 0 12px; }
 
@@ -774,7 +873,7 @@ a.cart-chip:hover { background: #ffe3d1; }
   flex: 1;
   min-width: 140px;
   height: 8px;
-  background: #f1e8dd;
+  background: var(--fill);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -788,7 +887,7 @@ a.cart-chip:hover { background: #ffe3d1; }
 
 .have-col { width: 1%; white-space: nowrap; text-align: center; }
 .have-col input { width: 18px; height: 18px; accent-color: var(--good); cursor: pointer; }
-tr.have td:not(.have-col) { text-decoration: line-through; color: #b7a796; }
+tr.have td:not(.have-col) { text-decoration: line-through; color: var(--faint); }
 tr.have td.aisle { text-decoration: none; }
 
 /* ---------- star picker ---------- */
@@ -801,13 +900,13 @@ tr.have td.aisle { text-decoration: none; }
   padding: 2px 3px;
   font-size: 30px;
   line-height: 1;
-  color: #e3d6c6;
+  color: var(--empty-star);
   transition: transform .1s ease, color .1s ease;
 }
 
 .star-picker .star.lit { color: var(--star); }
 .star-picker .star:hover { transform: scale(1.15); }
-.star-picker .star:focus-visible { outline: 2px solid #f3bb9b; border-radius: 6px; }
+.star-picker .star:focus-visible { border-radius: 6px; }
 
 .star-label { margin-left: 10px; font-weight: 700; color: var(--muted); font-size: 15px; }
 .star-label.preview-label { color: var(--accent); }
@@ -835,7 +934,7 @@ tr.have td.aisle { text-decoration: none; }
 .bar-row:hover { background: var(--accent-soft); }
 .bar-row.active { background: var(--accent-soft); color: var(--accent); }
 
-.bar-track { height: 8px; background: #f1e8dd; border-radius: 4px; overflow: hidden; }
+.bar-track { height: 8px; background: var(--fill); border-radius: 4px; overflow: hidden; }
 .bar-fill { height: 100%; background: var(--star); border-radius: 4px; }
 .bar-count { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -873,10 +972,10 @@ tr.have td.aisle { text-decoration: none; }
 .storage-notice {
   margin: 18px 0 0;
   padding: 12px 16px;
-  border: 1px solid #f2c94c;
+  border: 1px solid var(--warn-line);
   border-radius: var(--radius);
-  background: #fff8db;
-  color: #6b4e00;
+  background: var(--warn-soft);
+  color: var(--warn-ink);
   font-size: 14px;
   font-weight: 600;
 }
@@ -923,14 +1022,6 @@ tr.have td.aisle { text-decoration: none; }
 /* The hidden attribute wins over any display rule, so the nav can hide its shop links for the admin. */
 [hidden] { display: none !important; }
 
-a.btn-primary {
-  display: inline-block;
-  padding: 12px 20px;
-  border-radius: 10px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
 .buy-area { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 .owned-label { color: var(--good); font-weight: 700; font-size: 14px; }
@@ -945,7 +1036,7 @@ p.owned-label { margin: 0 0 12px; }
 .notice-card { margin: 16px 0; }
 .notice-card h1 { margin-top: 0; }
 
-.product-grid {
+.tile-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
@@ -965,13 +1056,7 @@ p.owned-label { margin: 0 0 12px; }
 .product-tile > span { margin: 0 16px; }
 .product-tile .pill { align-self: flex-start; }
 .product-tile .price { font-size: 22px; }
-.product-tile:hover { border-color: #d8c6b2; }
-
-.creator-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
+.product-tile:hover { border-color: var(--line-strong); }
 
 .creator-tile {
   display: flex;
@@ -997,7 +1082,7 @@ p.owned-label { margin: 0 0 12px; }
 
 .faq h3 { margin: 18px 0 4px; }
 .faq h3:first-child { margin-top: 0; }
-.faq p { margin: 0; color: #4b3f34; }
+.faq p { margin: 0; color: var(--ink-soft); }
 
 footer a { color: inherit; }
 
@@ -1005,3 +1090,19 @@ footer a { color: inherit; }
   .product-card { flex-wrap: wrap; }
   .product-card img { width: 100%; }
 }
+
+/* ---------- confirmation dialog (common.js confirmDialog) ---------- */
+
+.confirm-dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  background: var(--card);
+  color: var(--ink);
+  padding: 22px;
+  width: min(420px, calc(100% - 32px));
+}
+
+.confirm-dialog::backdrop { background: var(--backdrop); }
+.confirm-dialog p { margin: 0 0 18px; font-size: 17px; }
+.dialog-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }

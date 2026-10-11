@@ -197,6 +197,23 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
   load, and one checks the recipe-access rule against `queries.sql` Q14 for every account. CI runs
   them on every change to `CookFeed_frontend/` (`.github/workflows/prototype-tests.yml`).
 
+## Project Deliverable 2: layout and accessibility
+
+- **One palette.** Every color in `css/styles.css` is a named variable at the top of the file.
+- **Phones.** Below 760px the nav folds into a Menu button (Escape closes it), and the shopping
+  tables move the aisle under each ingredient, so no page is wider than a 375px screen.
+- **Cookfeed's own confirmation dialog.** Removing from the cart, emptying it, placing an order,
+  posting or removing a review, and resetting the data ask in a styled `<dialog>`
+  (`confirmDialog` in `js/common.js`) instead of the browser's `confirm()` box. Escape or Cancel
+  backs out, and focus returns to the button that asked.
+- **Keyboard and screen readers.** A "Skip to content" link on every page; one visible focus ring
+  (3px, at least 3:1 against the page); the review form's Yes/No question is a fieldset with a
+  legend; after checkout, focus moves to "Order confirmed".
+- **Print.** Printing a plan or My kitchen prints only the title and the shopping list.
+- **Servings.** A plan's servings box starts empty, meaning "as published", because its recipes do
+  not all serve the same number; the first minus or plus starts at 2.
+- **Creator header.** The avatar and the name sit side by side on laptop-width screens.
+
 ## Planned for the Angular production build
 
 These came out of a first-time-customer review of the prototype. They are deferred to the Angular
@@ -206,12 +223,9 @@ application (Assignment 4), where they can be built against the real API and dat
   or millilitres, the way the database design already converts units for the shopping list.
 - **Review trust labels.** Mark reviews from buyers as "Verified purchase", and label reviews written
   by other Cookfeed creators, using the orders and creator profile data.
-- **Creator page header layout.** Keep the avatar and name on one row on laptop-width screens; today
-  they wrap onto separate lines.
 - **Send to Instacart and Send to Favor.** Connect the delivery partners that are marked Coming soon.
-- **Custom confirmation pop-ups.** Replace every browser `confirm()` and `alert()` box (removing
-  a review, removing from the cart, emptying the cart, placing an order, posting a review) with
-  Cookfeed's own styled dialog, so confirmations match the site and are clearer to customers.
+- **Semantic, ADA-compliant templates.** Every Angular template meets WCAG 2.1 AA, built on native
+  elements; the full rule is in `CookFeed_api/docs/BuildLog.md` under Frontend.
 
 ## Notes
 

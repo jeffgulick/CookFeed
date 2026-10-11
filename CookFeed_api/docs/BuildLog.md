@@ -66,8 +66,43 @@ Its data is the seeded database, exported to `js/seed-data.js` and checked again
 **Next: the Angular application (Assignment 4)**, built against this API once the endpoints it needs
 exist. It replaces the prototype, and the prototype folder is deleted then. The features deferred to it
 are listed under "Planned for the Angular production build" in the prototype README: real shopping units,
-review trust labels, the creator header layout, the Instacart and Favor handoffs, and custom confirmation
-dialogs. Design doc §3.7 lists what the business rules change on screen, as the prototype now shows them.
+review trust labels, and the Instacart and Favor handoffs. Design doc §3.7 lists what the business rules
+change on screen, as the prototype now shows them.
+
+**Rule for every Angular template: semantic HTML that meets the ADA.** The ADA's web standard is WCAG 2.1
+level AA, so that is the bar for every component, not a pass at the end:
+- **Native elements first:** real `<button>`, `<a href>`, `<nav>`, `<main>`, headings in order, lists, and
+  `<table>` with `<th>` for tabular data. A clickable `<div>` or `<span>` is a bug.
+- **Every control is labelled:** a `<label for>` on each field, `<fieldset>` and `<legend>` around a
+  group of radios or checkboxes, and alt text on every meaningful image (empty `alt` on decoration).
+- **Keyboard first:** everything works with Tab, Enter, Space and Escape, focus is always visible (the
+  3:1 ring from the prototype's `--focus`), and focus moves on purpose after a change: to the result of a
+  checkout, back to the opener when a dialog closes, and to the page when a route changes.
+- **Contrast and announcements:** text at 4.5:1 (3:1 for large text and focus rings), `aria-live` for
+  messages such as the toast, and ARIA only where no native element does the job.
+- **Checked, not assumed:** an automated accessibility check (axe) in the component and end-to-end
+  tests, plus a keyboard-only and screen-reader pass on each new page.
+
+The prototype already follows these (PR 5 added the skip link, the phone menu's states, the review
+form's fieldset, the focus ring and the dialog's focus handling), so the Angular pages start from it.
+
+**Responsive from the first component.** Every page works from a phone up to a laptop, designed for the
+phone first:
+- the phone menu from the prototype (the brand, the cart and a Menu button below 760px);
+- layouts that stack on narrow screens, with no page wider than a 375px screen;
+- tables that fold their less important columns into the row, as the prototype's shopping lists do;
+- touch targets at least 24px (WCAG 2.2's AA minimum), and 44px for the main actions.
+
+**Later: a mobile app alongside the web app.** Not planned yet, but the web app is built so that a mobile
+app can reuse what it needs:
+- every piece of data and every rule comes from the API, so a second client needs nothing the web
+  app does not already get;
+- the rules a screen reads (what `rules.js` answers in the prototype) live in Angular services, not in
+  templates;
+- sign-in uses tokens (roadmap item 12, JWT), which a mobile app can hold as well as a browser can.
+
+Whether the app wraps the Angular code (for example with Capacitor) or is built natively against the same
+API is decided when that work starts.
 
 ---
 
