@@ -6,16 +6,16 @@ namespace Cookfeed.IntegrationTests.Api;
 
 /// <summary>
 /// The <c>X-User-Id</c> header, the caller until login exists (DesignDocument.md §9), means the same on every
-/// route: a whole number of 1 or more, written in plain digits. Optional on the public routes (the feed and
-/// storefronts), required under <c>/api/me</c>; anything else is a 400 everywhere, never silently "anonymous" and
-/// never read in another number format.
+/// route: a whole number of 1 or more, written in plain digits. Optional on the public routes (the feed,
+/// storefronts and recipe detail), required under <c>/api/me</c>; anything else is a 400 everywhere, never silently
+/// "anonymous" and never read in another number format.
 /// </summary>
 public sealed class CallerHeaderTests(DatabaseFixture databases) : IAsyncDisposable
 {
     private CookfeedApiFactory? _api;
 
     public static TheoryData<string> Routes =>
-        ["/api/feed", "/api/creators/maria-cooks", "/api/me/orders", "/api/me/shopping-list"];
+        ["/api/feed", "/api/creators/maria-cooks", "/api/recipes/5", "/api/me/orders", "/api/me/shopping-list"];
 
     public static TheoryData<string, string> BadValues
     {
@@ -72,6 +72,7 @@ public sealed class CallerHeaderTests(DatabaseFixture databases) : IAsyncDisposa
     [Theory]
     [InlineData("/api/feed", HttpStatusCode.OK)]
     [InlineData("/api/creators/maria-cooks", HttpStatusCode.OK)]
+    [InlineData("/api/recipes/5", HttpStatusCode.OK)]
     [InlineData("/api/me/orders", HttpStatusCode.BadRequest)]
     [InlineData("/api/me/shopping-list", HttpStatusCode.BadRequest)]
     public async Task Without_the_header_public_routes_serve_an_anonymous_viewer_and_me_routes_refuse(

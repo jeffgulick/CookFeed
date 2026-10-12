@@ -45,6 +45,7 @@ in the [README](../README.md#deliverable-2).
 | CI: `.github/workflows/api-tests.yml` runs a locked restore, the build and all tests against a `postgres:16.15` service on every PR and push to `main` that touches `CookFeed_api/` | `.github/workflows/` |
 | Roadmap item 1, CORS: the `Angular` policy allows the origins in `Cors:AllowedOrigins` (the Angular dev server in Development, none by default), the caller and token headers, and `GET`/`POST`/`PUT`/`DELETE`; error responses carry it too. 5 tests | `Program.cs`, `appsettings*.json`, `tests/*/Api/CorsTests.cs` |
 | Roadmap item 2, OpenAPI: `/openapi/v1.json` describes every endpoint where `OpenApi:Enabled` is set (Development); `CallerHeaderTransformer` marks `X-User-Id` required under `/api/me` and optional elsewhere. 9 tests (203 in all) | `Program.cs`, `Api/OpenApi/`, `tests/*/Api/OpenApiTests.cs` |
+| Roadmap item 3, recipe detail: `RecipesController` → `RecipeDetailService` (applies `Domain/Access/RecipeAccess.CanOpen`) → `RecipeRepository.GetAccessFactsAsync` and `GetDetailAsync` (split query). A recipe the viewer may not open is a 404. 12 Domain, 4 service and 19 HTTP tests, against Q4 and Q14, and the route joins the caller-header and OpenAPI tests (251 in all) | `src/*/Recipes/`, `Domain/Access/`, `docs/Queries.md` §1b |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
 with reviewed SQL and justified indexes, the design document, and the API with tests.
@@ -219,8 +220,10 @@ Tick items off here as they merge.
 
 **B. Reads still missing**
 
-3. **Recipe detail**, `GET /api/recipes/{id}`: the recipe, its steps and its ingredient lines (Q4). The
-   planned LINQ is in `docs/Queries.md` §1b.
+3. ✅ **Recipe detail**, `GET /api/recipes/{id}`: the recipe, its steps and its ingredient lines (Q4). The
+   SQL is verified in `docs/Queries.md` §1b.
+   - *Built:* the rule is one Domain function, `RecipeAccess.CanOpen`, applied by `RecipeDetailService`
+     before the recipe's contents are read. Saving (item 7) and the plan page (item 4) reuse it.
    - *DTO fields beyond the feed card:*
      - `prepMinutes` and `cookMinutes` separately, not only the total;
      - `savedByViewer`;
@@ -516,10 +519,10 @@ them off here as they land. The status codes are proposals, to confirm when each
 | Checkout refuses a self-purchase the same way (the `order_items_refuse_self_purchase` trigger stays as the last line of defence). | §3.1 | Checkout | 400 |
 | A database refusal (`check_violation` with a `ck_…` constraint name, or a unique violation) that slips past a service becomes a 4xx with a readable message, never a 500. | §5 | First write feature (saves or cart) | 400 / 409 |
 | The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront ✅ (`StorefrontEndpointTests`) | — |
-| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14 — or for the recipe's own creator. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail | 404 (do not reveal it exists) |
+| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14 — or for the recipe's own creator. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail ✅ (`RecipeAccess`, `RecipeDetailEndpointTests`) | 404 (do not reveal it exists) |
 | Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
 | Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |
-| Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Storefront ✅ (owned = a Paid order item), shopping list ✅, recipe detail, My kitchen / purchases | — |
+| Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Storefront ✅ (owned = a Paid order item), shopping list ✅, recipe detail ✅, My kitchen / purchases | — |
 | A review requires a `Paid` order item for that product by the same user; one review per user per product. | §3.5 | Reviews | 403 / 409 |
 
 ## Open items

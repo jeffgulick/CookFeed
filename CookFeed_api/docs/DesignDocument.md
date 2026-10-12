@@ -35,6 +35,8 @@ Everything in this table is in the repository and runs today:
   | Order history | `GET /api/me/orders` |
   | Shopping list | `GET /api/me/shopping-list` |
 
+  Since then: recipe detail, `GET /api/recipes/{id}`, which applies the §3.3 access rule (a ProductOnly recipe opens only for its buyers and its creator); CORS; and an OpenAPI description. `docs/BuildLog.md` tracks the roadmap.
+
 - **Not yet built.** The write features (saves, cart, checkout, reviews) and the API-side business rules of §3 come with Assignment 4, together with login. Where this document says what "the API" does about them, it describes how they will be built; `docs/BuildLog.md` tracks them.
 
 **Stack:** ASP.NET Core 10 Web API with controllers, EF Core 10, Npgsql, PostgreSQL 16, laid out as Clean Architecture. Table and column names use `snake_case` via the `EFCore.NamingConventions` package so the SQL reads naturally in `psql`. Angular (Assignment 4) will consume the API.
