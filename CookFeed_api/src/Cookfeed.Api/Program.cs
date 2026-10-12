@@ -14,6 +14,15 @@ builder.Services.AddControllers();
 // so are unknown routes and unexpected failures, which otherwise come back as an empty body.
 builder.Services.AddProblemDetails();
 
+// The web origins a browser may call the API from: the Angular dev server in Development (appsettings.Development.json),
+// whatever a deployment configures, and none otherwise. The caller header, the login token's header and PUT/DELETE make
+// the browser send a preflight OPTIONS request first, so the policy names them. No cookies, so no AllowCredentials.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddPolicy(CorsPolicy, policy => policy
+    .WithOrigins(allowedOrigins)
+    .WithHeaders("Content-Type", "X-User-Id", "Authorization")
+    .WithMethods("GET", "POST", "PUT", "DELETE")));
+
 var app = builder.Build();
 
 // An unexpected exception becomes a 500 ProblemDetails without its message or stack trace; an empty error response
@@ -36,10 +45,15 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
     app.UseHttpsRedirection();
 }
+// After the error handlers, so error responses carry the CORS header too and the app can read their ProblemDetails.
+app.UseCors(CorsPolicy);
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
 
 // Lets the integration tests start the API in memory with WebApplicationFactory<Program>.
-public partial class Program;
+public partial class Program
+{
+    private const string CorsPolicy = "Angular";
+}
