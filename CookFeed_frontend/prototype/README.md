@@ -100,7 +100,7 @@ prototype/
 ```
 
 The export that writes `js/seed-data.js` lives next to this folder, in `CookFeed_frontend/tools/`, and
-the tests for `db.js` and `rules.js` in `CookFeed_frontend/tests/`.
+the unit and smoke tests in `CookFeed_frontend/tests/` (see Testing).
 
 ## Homework 3 additions
 
@@ -192,10 +192,8 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
   and seller, and a snapshot of the plan's recipes with their days and slots.
 - **Counts follow the database.** Save counts are counted from the save rows, and a meal plan that
   repeats a recipe reads "5 recipes, 6 meals", with the repeated recipe bought for twice.
-- **Tests.** `node --test "CookFeed_frontend/tests/*.test.js"` runs the tests for `db.js` and
-  `rules.js` with Node's built-in runner (nothing to install). They load the same scripts the pages
-  load, and one checks the recipe-access rule against `queries.sql` Q14 for every account. CI runs
-  them on every change to `CookFeed_frontend/` (`.github/workflows/prototype-tests.yml`).
+- **Tests.** Unit tests for `db.js` and `rules.js`, and browser smoke tests for every page: see
+  "Testing" below.
 
 ## Project Deliverable 2: layout and accessibility
 
@@ -213,6 +211,36 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
 - **Servings.** A plan's servings box starts empty, meaning "as published", because its recipes do
   not all serve the same number; the first minus or plus starts at 2.
 - **Creator header.** The avatar and the name sit side by side on laptop-width screens.
+- **Contrast.** An axe scan of every page (WCAG 2.1 AA) found three places where small text fell
+  below 4.5:1: the "Coming soon" tags, the faded cancelled order, and the green "Paid" tag. The tags now
+  use darker text, a cancelled order is marked by a dashed border instead of fading, and `--good` is one
+  shade darker. A repeat scan found nothing. The committed axe suite starts with the Angular app.
+
+## Testing
+
+Both suites run from `CookFeed_frontend/` and in CI on every change to it
+(`.github/workflows/prototype-tests.yml`).
+
+```bash
+cd CookFeed_frontend
+npm ci                                 # the exact versions in package-lock.json
+npx playwright install chromium        # once, if Playwright's browser is not installed yet
+npm run test:unit                      # db.js and rules.js, with Node's built-in runner
+npm run test:smoke                     # every page in Chromium, opened from the file system
+```
+
+- **Unit tests** (`tests/*.test.js`) load the same scripts the pages load. One checks the
+  recipe-access rule against `queries.sql` Q14 for every account and every ProductOnly recipe.
+- **Smoke tests** (`tests/smoke/`) start each test from the database's seed, signed in as a seeded
+  account, and fail on any page or console error:
+
+  | Spec | What it checks |
+  |---|---|
+  | `pages.spec.js` | every page address as a guest, Alex, Kenji, the admin and Sam: no errors, no broken images; addresses that name nothing say so |
+  | `rules.spec.js` | the section 3 rules on screen, account by account |
+  | `purchase.spec.js` | Sam buys a plan, opens what it unlocks, reviews it, and Reset prototype data restores the seed |
+  | `layout.spec.js` | every page fits a 375px phone, the phone nav, the servings default, and print |
+  | `keyboard.spec.js` | the phone menu, the skip link, the focus ring's size and contrast, the dialog's focus handling, the review form's fieldset |
 
 ## Planned for the Angular production build
 

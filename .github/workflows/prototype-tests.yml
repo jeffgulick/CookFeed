@@ -1,5 +1,6 @@
 # Runs the prototype's tests (CookFeed_frontend/tests) on each pull request and each push to main that touches
-# the front end. They use Node's built-in test runner, so there is nothing to install.
+# the front end: the unit tests for its data and rules (Node's built-in runner), and the browser smoke tests
+# (Playwright, Chromium), which open every page from the file system as each seeded account.
 name: Prototype tests
 
 on:
@@ -21,8 +22,12 @@ concurrency:
   group: prototype-tests-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: CookFeed_frontend
+
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -32,4 +37,33 @@ jobs:
           node-version: 22
 
       - name: Test
-        run: node --test "CookFeed_frontend/tests/*.test.js"
+        run: npm run test:unit
+
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: CookFeed_frontend/package-lock.json
+
+      # The exact versions in package-lock.json, then the Chromium build that this Playwright version expects.
+      - name: Install
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Test
+        run: npm run test:smoke
+
+      # The HTML report, with a trace of each failed test, is kept only when something failed.
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: CookFeed_frontend/playwright-report/
+          retention-days: 14

@@ -8,7 +8,7 @@
   --line: #ecdfd0;
   --accent: #c2410c;
   --accent-soft: #fff0e6;
-  --good: #15803d;
+  --good: #166534;              /* 4.5:1 or better on --good-soft, --card and --paper */
   --star: #e0a012;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(36, 29, 22, .05), 0 8px 24px rgba(36, 29, 22, .06);
@@ -697,7 +697,7 @@ a.cart-chip:hover { background: var(--accent-tint); }
   letter-spacing: .4px;
   text-transform: uppercase;
   background: var(--fill);
-  color: var(--muted);
+  color: var(--ink-soft);       /* --muted on --fill is only 4.3:1; small text needs 4.5:1 */
   border-radius: 999px;
   padding: 2px 8px;
 }
@@ -1073,7 +1073,9 @@ p.owned-label { margin: 0 0 12px; }
 .product-card h3 { margin: 8px 0 4px; }
 
 .order-card { margin-bottom: 14px; }
-.order-card.cancelled { opacity: .75; }
+/* A cancelled order is marked by its dashed border and tag, not by fading it: faded text falls below
+   4.5:1 contrast. */
+.order-card.cancelled { border-style: dashed; background: var(--paper); box-shadow: none; }
 .order-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .order-items { list-style: none; padding: 0; margin: 12px 0; }
 .order-items li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); }

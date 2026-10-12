@@ -60,7 +60,9 @@ Homework 3 and Project Deliverable 2). Ten pages run straight from the file syst
 Its data is the seeded database, exported to `js/seed-data.js` and checked against it by
 `PrototypeDataTests`. Each seeded account starts from its own rows, and changes are kept in the browser's
 `localStorage`. The marketplace rules of design doc §3 are in `js/rules.js`, with Node tests in
-`CookFeed_frontend/tests/` that CI runs (`prototype-tests.yml`). How to run it and what each page does:
+`CookFeed_frontend/tests/`. Playwright smoke tests (`CookFeed_frontend/tests/smoke/`) open every page from
+the file system as each seeded account and check the rules on screen, the purchase flow, phone layout,
+keyboard use and print. CI runs both (`prototype-tests.yml`). How to run it and what each page does:
 `CookFeed_frontend/prototype/README.md`.
 
 **Next: the Angular application (Assignment 4)**, built against this API once the endpoints it needs
@@ -310,12 +312,28 @@ Tick items off here as they merge.
 **D. Cross-cutting**
 
 12. **Login (JWT), registration and roles.** Replaces the `X-User-Id` header (DesignDocument.md §9).
+    - *Decision:* the API issues its own tokens to its own users. Every client (the Angular app, a later
+      mobile app) logs in once, then sends `Authorization: Bearer <token>` on each request.
     - *Endpoints:*
       - `POST /api/auth/register`, which grants `HomeCook`;
-      - `POST /api/auth/login`, which returns a token;
+      - `POST /api/auth/login`: checks the password and returns a short-lived **access token** (a JWT,
+        about 15 minutes: the user id as `sub`, the roles, issuer, audience and expiry) and a long-lived
+        **refresh token**;
+      - `POST /api/auth/refresh`: trades a refresh token for a new access token;
+      - `POST /api/auth/logout`: revokes the refresh token;
       - `GET /api/me`: id, display name, roles, and the creator handle if any.
-    - Controllers read the caller from the token's user-id claim; the routes, services and repositories
-      stay as they are.
+    - *Passwords:* hashed with ASP.NET Core Identity's password hasher (into `users.password_hash`), with
+      lockout after repeated failures and rate limiting on login. Never stored or logged in plain text.
+    - *Refresh tokens:* stored hashed in the database, so logout, a password change or a stolen device
+      can revoke them. An access token cannot be recalled, which is why it is kept short.
+    - *Checking tokens:* `AddAuthentication().AddJwtBearer(...)` validates the signature, issuer, audience
+      and expiry on every request. The signing key lives in a secret store (user secrets locally, a vault
+      or environment secret when deployed), never in the repository.
+    - *The caller:* `CallerIdModelBinder` reads the id from the verified token's `sub` claim instead of
+      `X-User-Id`. A missing or bad token becomes **401** (today a missing header is 400). The routes,
+      services and repositories stay as they are.
+    - *Not covered:* callers with no user behind them (a scheduled job, a partner's server). They would
+      get their own credentials (the OAuth client-credentials flow, or API keys) if they are ever needed.
     - *Rules:* saves, meal plans, cart, checkout and reviews require the `HomeCook` role. Every creator
       holds it and the admin does not, so the admin gets **403** on all of them with no special case.
     - *Client:* the Angular app hides the cart, save and shop controls by reading `roles` from

@@ -42,3 +42,7 @@ typings/
 
 # Prototype write-up material - drafting notes, not part of the code
 prototype/NOTES.md
+
+# Playwright output (the smoke tests)
+playwright-report/
+test-results/
