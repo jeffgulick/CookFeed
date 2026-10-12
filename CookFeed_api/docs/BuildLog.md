@@ -43,6 +43,8 @@ in the [README](../README.md#deliverable-2).
 | Shopping-list tests: 14 Domain tests for the aggregator, 3 service tests, 9 HTTP tests checked against `queries.sql` Q8 (130 tests in all); SQL verified and rewritten after review | `tests/*/ShoppingList*`, `docs/Queries.md` §3 |
 | Review fixes: the shopping list counts only recipes the caller may open (Q14 rule, also in Q8); strict `X-User-Id` parsing on every route; ASCII-only handles; ProblemDetails for every error; HTTPS redirection outside Development only; ISO-only `weekStart`; tests for the `lines`/`unmerged` split and sort (188 tests in all) | `docs/Queries.md` §3, `DesignDocument.md` §9 |
 | CI: `.github/workflows/api-tests.yml` runs a locked restore, the build and all tests against a `postgres:16.15` service on every PR and push to `main` that touches `CookFeed_api/` | `.github/workflows/` |
+| Roadmap item 1, CORS: the `Angular` policy allows the origins in `Cors:AllowedOrigins` (the Angular dev server in Development, none by default), the caller and token headers, and `GET`/`POST`/`PUT`/`DELETE`; error responses carry it too. 5 tests | `Program.cs`, `appsettings*.json`, `tests/*/Api/CorsTests.cs` |
+| Roadmap item 2, OpenAPI: `/openapi/v1.json` describes every endpoint where `OpenApi:Enabled` is set (Development); `CallerHeaderTransformer` marks `X-User-Id` required under `/api/me` and optional elsewhere. 9 tests (203 in all) | `Program.cs`, `Api/OpenApi/`, `tests/*/Api/OpenApiTests.cs` |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
 with reviewed SQL and justified indexes, the design document, and the API with tests.
@@ -147,6 +149,8 @@ one place for data and rules, and nothing the app needs may live only in the Ang
 | Enums | Stored as their names in varchar columns | `CookfeedDbContext.ConfigureConventions`, `DesignDocument.md` §5 |
 | Caller identity | `X-User-Id` header until login (Assignment 4). A user's own data is under `/api/me/…`, where the header is required (400 if missing); no route takes a user id. One strict parser for every route (`Api/Binding/CallerIdModelBinder.cs`): plain digits, 1 or more, otherwise 400. No custom authentication handler: JWT replaces the header then | `DesignDocument.md` §9 |
 | Errors | Every error response is a ProblemDetails body: validation errors, unknown routes (404), and unexpected failures (500, with no exception text) | `Program.cs` |
+| CORS | One named policy. Origins come from configuration (`Cors:AllowedOrigins`), so each deployment names its own front end and the default allows none. No `AllowCredentials`, because the API uses no cookies; revisit only if login keeps the refresh token in a cookie | `Program.cs`, `DOCKER.md` |
+| OpenAPI | Built-in `Microsoft.AspNetCore.OpenApi`, served only where `OpenApi:Enabled` is true (Development): a tool for building the Angular client, not a public map of the API. With login, the caller header gives way to a bearer security scheme | `Program.cs`, `Api/OpenApi/CallerHeaderTransformer.cs` |
 | Tests | xUnit v3 on Microsoft.Testing.Platform (run with `dotnet test --solution`); NSubstitute for fakes; integration tests create and drop throwaway databases and roll back their changes | `DesignDocument.md` §1 "Tests" |
 | CI | GitHub Actions on every PR and push to `main` that touches `CookFeed_api/`: locked restore, build (warnings are errors), all tests against a `postgres:16.15` service. A PR is ready to merge only when its "API tests" check is green | `.github/workflows/api-tests.yml`, `DesignDocument.md` §1 "Continuous integration" |
 
@@ -196,7 +200,7 @@ Tick items off here as they merge.
 
 **A. Needed before Angular can call the API**
 
-1. **CORS.** The Angular dev server (`http://localhost:4200`) is a different origin, so the browser blocks
+1. ✅ **CORS.** The Angular dev server (`http://localhost:4200`) is a different origin, so the browser blocks
    its calls until the API allows it. A named policy in `Program.cs`, with the allowed origins from
    configuration so production can differ. It must allow:
    - the `X-User-Id` header now, and `Authorization` once login lands (item 12);
@@ -206,7 +210,7 @@ Tick items off here as they merge.
    origin-only policy would fail it.
    - *Test:* a preflight from `http://localhost:4200` asking for `PUT` with `X-User-Id` is allowed; the same
      preflight from another origin is not.
-2. **OpenAPI description** (optional but useful). `Microsoft.AspNetCore.OpenApi`, built into .NET 10,
+2. ✅ **OpenAPI description** (optional but useful). `Microsoft.AspNetCore.OpenApi`, built into .NET 10,
    serves `/openapi/v1.json` in Development: every endpoint and DTO, from which the Angular client types
    can be generated.
    - *Test:* the document is served and lists the endpoints.

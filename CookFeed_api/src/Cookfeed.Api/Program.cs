@@ -1,3 +1,4 @@
+using Cookfeed.Api.OpenApi;
 using Cookfeed.Application;
 using Cookfeed.Infrastructure;
 using Cookfeed.Infrastructure.Persistence.Seed;
@@ -22,6 +23,10 @@ builder.Services.AddCors(options => options.AddPolicy(CorsPolicy, policy => poli
     .WithOrigins(allowedOrigins)
     .WithHeaders("Content-Type", "X-User-Id", "Authorization")
     .WithMethods("GET", "POST", "PUT", "DELETE")));
+
+// The OpenAPI description of every endpoint, from which the Angular client's types are generated. Served only where
+// OpenApi:Enabled is set (appsettings.Development.json): it is a tool for building the app, not a public map of the API.
+builder.Services.AddOpenApi(options => options.AddOperationTransformer<CallerHeaderTransformer>());
 
 var app = builder.Build();
 
@@ -49,6 +54,10 @@ if (!app.Environment.IsDevelopment())
 app.UseCors(CorsPolicy);
 app.UseAuthorization();
 app.MapControllers();
+if (app.Configuration.GetValue<bool>("OpenApi:Enabled"))
+{
+    app.MapOpenApi();
+}
 
 app.Run();
 

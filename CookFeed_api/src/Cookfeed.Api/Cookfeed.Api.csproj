@@ -7,6 +7,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Describes every endpoint at /openapi/v1.json, where OpenApi:Enabled is set (Development). -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <!-- Needed only by the `dotnet ef` tool at design time; not shipped with the app. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
   </ItemGroup>

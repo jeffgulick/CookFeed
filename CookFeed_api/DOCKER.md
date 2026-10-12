@@ -121,6 +121,14 @@ dotnet run --project src/Cookfeed.Api
 Starts the API. In Development it first fills an empty database with the `seed.sql` data
 (`DbSeeder`); once the database has accounts it leaves it alone.
 
+While it runs in Development:
+- **`http://localhost:5032/openapi/v1.json`** describes every endpoint, its parameters (including the
+  `X-User-Id` caller header) and its responses. The Angular client's types can be generated from it.
+  Outside Development it is not served (`OpenApi:Enabled` in `appsettings.Development.json`).
+- **CORS** allows the Angular dev server, `http://localhost:4200`. A deployed front end needs its own
+  origin in `Cors:AllowedOrigins` (in `appsettings.json` or an environment variable such as
+  `Cors__AllowedOrigins__0`); with none set, browsers on other origins are refused.
+
 ```bash
 dotnet test --solution Cookfeed.slnx
 ```

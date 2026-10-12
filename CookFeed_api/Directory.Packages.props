@@ -8,6 +8,10 @@
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" />
   </ItemGroup>
+  <ItemGroup Label="Api">
+    <!-- The same version as the ASP.NET Core runtime (10.0.12), which serves the OpenAPI document. -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+  </ItemGroup>
   <ItemGroup Label="Application">
     <!-- The same version EF Core already brings into Infrastructure, so the two layers agree. -->
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.4" />
