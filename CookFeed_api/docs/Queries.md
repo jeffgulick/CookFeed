@@ -163,44 +163,171 @@ Nested Loop
 
 ---
 
-## 1b. Recipe detail — *planned, not built*
+## 1b. Recipe detail — *verified 2026-10-12*
 
-**Not built yet:** roadmap item 3 in `docs/BuildLog.md`. This section is the design, not captured SQL;
-it gets the same treatment as §1–§4 when it is built: logged SQL, plan, and the indexes it uses.
+**Endpoint:** `GET /api/recipes/{id}`, optional header `X-User-Id`.
+- An id that names no recipe is a **404**.
+- So is a recipe the viewer may not open: ProductOnly and not bought, or a draft that is not theirs. Its
+  existence is not revealed.
 
-**Endpoint:** `GET /api/recipes/{id}`
+**Code:** `RecipesController` → `RecipeDetailService` → `RecipeRepository.GetAccessFactsAsync`, then
+`GetDetailAsync`. The rule is `Domain/Access/RecipeAccess.CanOpen`:
+- the recipe's creator can always open it, drafts included;
+- anyone else needs it published, and either Public or held by the snapshot of one of their Paid orders (Q14).
+
+**Changed from the design: two steps, with the rule in C#.**
+- The plan above had the access test inside the detail query.
+- It now lives in one small Domain function: unit-tested case by case (`RecipeAccessTests`), the twin of
+  the prototype's `rules.js` `canOpenRecipe`, and reused by saving and the plan page.
+- The service first reads the few facts the rule needs. Only if the rule allows it does it read the
+  ingredients, steps and placements. A locked recipe costs one indexed lookup and never has its contents
+  read.
 
 ```csharp
+// 1. The facts the rule needs.
 db.Recipes.AsNoTracking()
-  .AsSplitQuery()        // steps and ingredient lines are sibling collections; joined, they would multiply
-  .Where(r => r.Id == recipeId && r.IsPublished
-           && (r.Visibility == RecipeVisibility.Public
-               || r.OrderItemRecipes.Any(oir => oir.OrderItem.Order.UserId == viewerId
-                                              && oir.OrderItem.Order.Status == OrderStatus.Paid)))
-  .Select(r => new RecipeDetailDto(...,
-      r.Ingredients.OrderBy(i => i.SortOrder).Select(i => new RecipeIngredientDto(...)).ToList(),
-      r.Steps.OrderBy(s => s.StepNumber).Select(s => new RecipeStepDto(...)).ToList()))
-  .SingleOrDefaultAsync()
+    .Where(r => r.Id == recipeId)
+    .Select(r => new RecipeAccessFacts(r.CreatorId, r.IsPublished, r.Visibility,
+        viewerId != null && r.OrderItemRecipes.Any(oir =>
+            oir.OrderItem.Order.UserId == viewerId && oir.OrderItem.Order.Status == OrderStatus.Paid)))
+    .SingleOrDefaultAsync(cancellationToken);
+
+// 2. Only if RecipeAccess.CanOpen allows it: the recipe in full.
+db.Recipes.AsNoTracking()
+    .AsSplitQuery()          // ingredients, steps and placements are sibling collections
+    .Where(r => r.Id == recipeId)
+    .Select(r => new RecipeDetailDto(..., r.Creator..., savedByViewer, viewerIsCreator,
+        r.Ingredients.OrderBy(i => i.SortOrder).Select(...).ToList(),
+        r.Steps.OrderBy(s => s.StepNumber).Select(...).ToList(),
+        r.ProductRecipes.Where(pr => pr.Product.IsActive)
+            .OrderBy(pr => pr.ProductId).ThenBy(pr => pr.SortOrder)
+            .Select(pr => new RecipePlacementDto(..., ownedByViewer: a Paid order item for pr.ProductId))
+            .ToList()))
+    .SingleOrDefaultAsync(cancellationToken);
 ```
 
-**Expected shape: three statements, not one.** Joining the ingredient lines and the steps to the recipe in
-one statement would return every ingredient once per step: 10 × 5 rows for a ten-ingredient, five-step
-recipe. §2 found the same problem with the storefront's two lists. With `AsSplitQuery()` EF Core sends:
-1. the recipe, with its creator, and the access check;
-2. its ingredient lines in `sort_order`;
-3. its steps in `step_number`.
+**Generated SQL, as logged.** Recipe 6 (Onigiri, ProductOnly) for Alex is five statements. A guest's request
+for the same recipe stops after the first: a 404.
 
-The access check is the Q14 rule and the same predicate the shopping list now uses (§3): published, and
-Public or in the snapshot of one of the viewer's Paid orders.
+1. **The access facts.** For a guest, EF Core drops the `EXISTS` entirely, as in the feed.
+
+   ```sql
+   SELECT r.creator_id, r.is_published, r.visibility, EXISTS (
+       SELECT 1
+       FROM order_item_recipes AS o
+       INNER JOIN order_items AS o0 ON o.order_item_id = o0.id
+       INNER JOIN orders AS o1 ON o0.order_id = o1.id
+       WHERE r.id = o.recipe_id AND o1.user_id = @viewerId AND o1.status = 'Paid')
+   FROM recipes AS r
+   WHERE r.id = @recipeId
+   LIMIT 2
+   ```
+
+2. **The recipe row, with its creator and the viewer's flags.**
+
+   ```sql
+   SELECT r.id, r.title, r.description, r.video_url, r.thumbnail_url, r.servings, r.prep_minutes, r.cook_minutes,
+          CASE WHEN r.prep_minutes IS NULL AND r.cook_minutes IS NULL THEN NULL
+               ELSE COALESCE(r.prep_minutes, 0) + COALESCE(r.cook_minutes, 0) END,
+          r.save_count, r.is_published, CASE WHEN r.visibility = 'Public' THEN 0 ELSE 1 END, r.published_at,
+          c.handle, u.display_name, c.avatar_url, c.is_verified,
+          EXISTS (SELECT 1 FROM saved_recipes AS s WHERE r.id = s.recipe_id AND s.user_id = @viewerId),
+          r.creator_id = @viewerId, c.user_id, u.id
+   FROM recipes AS r
+   INNER JOIN creator_profiles AS c ON r.creator_id = c.user_id
+   INNER JOIN users AS u ON c.user_id = u.id
+   WHERE r.id = @recipeId
+   ORDER BY r.id, c.user_id, u.id
+   LIMIT 2
+   ```
+
+3. **Ingredient lines**, joined to their unit and ingredient.
+4. **Steps.**
+5. **Placements in active products**, each with an `EXISTS` for the viewer's ownership.
+
+Statements 3–5 each re-select the root row (`recipes` ⋈ `creator_profiles` ⋈ `users`, `LIMIT 1`) as a
+subquery and join their collection to it. That is EF Core's split-query shape; for one recipe it is a
+primary-key lookup. Statement 3:
+
+```sql
+SELECT s1.sort_order, s1.quantity, s1.abbreviation, s1.name, s1.display_text, s1.preparation, s1.is_optional, ...
+FROM (
+    SELECT r.id, c.user_id, u.id AS id0
+    FROM recipes AS r
+    INNER JOIN creator_profiles AS c ON r.creator_id = c.user_id
+    INNER JOIN users AS u ON c.user_id = u.id
+    WHERE r.id = @recipeId
+    ORDER BY r.id, c.user_id, u.id
+    LIMIT 1
+) AS s0
+INNER JOIN (
+    SELECT r1.sort_order, r1.quantity, u1.abbreviation, i0.name, r1.display_text, r1.preparation, r1.is_optional,
+           r1.recipe_id
+    FROM recipe_ingredients AS r1
+    INNER JOIN units AS u1 ON r1.unit_id = u1.id
+    INNER JOIN ingredients AS i0 ON r1.ingredient_id = i0.id
+) AS s1 ON s0.id = s1.recipe_id
+ORDER BY s0.id, s0.user_id, s0.id0, s1.sort_order
+```
+
+**Reviewed.**
+- **Rows are not multiplied:** eight ingredient lines and three steps come back as 8 and 3 rows, not 24.
+- **The ownership check starts from the viewer, not the recipe.** The prediction expected the access
+  `EXISTS` to probe `ix_order_item_recipes_recipe_id`. The planner instead starts from the viewer's orders
+  (`ix_orders_user_id_placed_at`), keeps the Paid ones, then checks each order item's snapshot through
+  `ix_order_item_recipes_order_item_id_recipe_id_day_offset_slot`. That is the better direction: a viewer
+  has a handful of orders, while a popular recipe can sit in thousands of purchase snapshots.
+- **Enums map in the projection:** the visibility and product-type `CASE`s become the API's own enums, so
+  the JSON says `"ProductOnly"` and `"MealPlan"`.
+
+**Plans** (`EXPLAIN ANALYZE`, `enable_seqscan = off`, Alex = user 1):
+
+```
+-- 1. Access facts (recipe 6)
+Limit (actual rows=1 loops=1)
+  ->  Index Scan using pk_recipes on recipes r (actual rows=1 loops=1)
+        Index Cond: (id = 6)
+        SubPlan 1
+          ->  Nested Loop (actual rows=1 loops=1)
+                ->  Nested Loop (actual rows=3 loops=1)
+                      ->  Index Scan using ix_orders_user_id_placed_at on orders o1 (actual rows=2 loops=1)
+                            Index Cond: (user_id = 1)
+                            Filter: ((status)::text = 'Paid'::text)
+                      ->  Index Scan using ix_order_items_order_id_product_id on order_items o0 (actual rows=2 loops=2)
+                            Index Cond: (order_id = o1.id)
+                ->  Index Only Scan using ix_order_item_recipes_order_item_id_recipe_id_day_offset_slot on order_item_recipes o
+                      Index Cond: ((order_item_id = o0.id) AND (recipe_id = r.id))
+
+-- 3. Ingredient lines (the collection side)
+Nested Loop (actual rows=8 loops=1)
+  ->  Nested Loop (actual rows=8 loops=1)
+        ->  Index Scan using ix_recipe_ingredients_recipe_id_sort_order on recipe_ingredients r1 (actual rows=8 loops=1)
+              Index Cond: (recipe_id = 6)
+        ->  Memoize -> Index Scan using pk_units on units u1
+  ->  Index Scan using pk_ingredients on ingredients i0 (actual rows=1 loops=8)
+
+-- 4. Steps
+Index Only Scan using ix_recipe_steps_recipe_id_step_number on recipe_steps r3 (actual rows=3 loops=1)
+  Index Cond: (recipe_id = 6)
+
+-- 5. Placements (recipe 9, the oats: two placements in Family Week)
+Hash Join (actual rows=2 loops=1)
+  ->  Bitmap Index Scan on ix_products_creator_id_is_active  (is_active = true)
+  ->  Bitmap Index Scan on ix_product_recipes_recipe_id      (recipe_id = 9)
+  SubPlan 2 -> Index Scan using ix_orders_user_id_placed_at, Index Only Scan using ix_order_items_order_id_product_id
+```
 
 **Indexes:**
-- PK `recipes(id)`.
-- `ix_recipe_ingredients_recipe_id_sort_order (recipe_id, sort_order)` returns the ingredient rows already
-  in display order.
-- Unique `ix_recipe_steps_recipe_id_step_number (recipe_id, step_number)` does the same for the steps.
-- The access `EXISTS` (DesignDocument.md §3.3, `queries.sql` Q14) probes `ix_order_item_recipes_recipe_id`,
-  then the PKs of `order_items` and `orders`. It is evaluated only for `ProductOnly` recipes, because the
-  `OR` short-circuits on the `visibility` column already in hand.
+- `pk_recipes` for the recipe, and the primary keys of `creator_profiles`, `users`, `units` and
+  `ingredients` for the joins.
+- `ix_recipe_ingredients_recipe_id_sort_order` and `ix_recipe_steps_recipe_id_step_number` return each
+  collection already in display order.
+- `ix_product_recipes_recipe_id` finds the placements.
+- `ix_orders_user_id_placed_at`, `ix_order_items_order_id_product_id` and
+  `ix_order_item_recipes_order_item_id_recipe_id_day_offset_slot` answer the two ownership checks from the
+  viewer's side.
+
+No new index is needed.
 
 ---
 

@@ -45,6 +45,7 @@ in the [README](../README.md#deliverable-2).
 | CI: `.github/workflows/api-tests.yml` runs a locked restore, the build and all tests against a `postgres:16.15` service on every PR and push to `main` that touches `CookFeed_api/` | `.github/workflows/` |
 | Roadmap item 1, CORS: the `Angular` policy allows the origins in `Cors:AllowedOrigins` (the Angular dev server in Development, none by default), the caller and token headers, and `GET`/`POST`/`PUT`/`DELETE`; error responses carry it too. 5 tests | `Program.cs`, `appsettings*.json`, `tests/*/Api/CorsTests.cs` |
 | Roadmap item 2, OpenAPI: `/openapi/v1.json` describes every endpoint where `OpenApi:Enabled` is set (Development); `CallerHeaderTransformer` marks `X-User-Id` required under `/api/me` and optional elsewhere. 9 tests (203 in all) | `Program.cs`, `Api/OpenApi/`, `tests/*/Api/OpenApiTests.cs` |
+| Roadmap item 3, recipe detail: `RecipesController` → `RecipeDetailService` (applies `Domain/Access/RecipeAccess.CanOpen`) → `RecipeRepository.GetAccessFactsAsync` and `GetDetailAsync` (split query). A recipe the viewer may not open is a 404. 12 Domain, 4 service and 19 HTTP tests, against Q4 and Q14, and the route joins the caller-header and OpenAPI tests (251 in all) | `src/*/Recipes/`, `Domain/Access/`, `docs/Queries.md` §1b |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
 with reviewed SQL and justified indexes, the design document, and the API with tests.
@@ -70,7 +71,7 @@ keyboard use and print. CI runs both (`prototype-tests.yml`). How to run it and 
 **Next: the Angular application (Assignment 4)**, built against this API once the endpoints it needs
 exist. It replaces the prototype, and the prototype folder is deleted then. The features deferred to it
 are listed under "Planned for the Angular production build" in the prototype README: real shopping units,
-review trust labels, and the Instacart and Favor handoffs. Design doc §3.7 lists what the business rules
+review trust labels, and the Instacart and Favor handoffs (planned in "Later phases", L2). Design doc §3.7 lists what the business rules
 change on screen, as the prototype now shows them.
 
 **Rule for every Angular template: semantic HTML that meets the ADA.** The ADA's web standard is WCAG 2.1
@@ -184,6 +185,8 @@ Deliverable 2 (due **Oct 17**) is complete and merged. What comes next:
    unchanged.
 2. **Assignment 4:** the Angular app against these endpoints, and the API work it needs, in the order of
    the **API roadmap** below.
+3. **Later phases:** the video pipeline, the delivery hand-off and the AI features, in the order and with
+   the rules in **Later phases** below, after the marketplace core.
 
 ## API roadmap (after Deliverable 2)
 
@@ -217,8 +220,10 @@ Tick items off here as they merge.
 
 **B. Reads still missing**
 
-3. **Recipe detail**, `GET /api/recipes/{id}`: the recipe, its steps and its ingredient lines (Q4). The
-   planned LINQ is in `docs/Queries.md` §1b.
+3. ✅ **Recipe detail**, `GET /api/recipes/{id}`: the recipe, its steps and its ingredient lines (Q4). The
+   SQL is verified in `docs/Queries.md` §1b.
+   - *Built:* the rule is one Domain function, `RecipeAccess.CanOpen`, applied by `RecipeDetailService`
+     before the recipe's contents are read. Saving (item 7) and the plan page (item 4) reuse it.
    - *DTO fields beyond the feed card:*
      - `prepMinutes` and `cookMinutes` separately, not only the total;
      - `savedByViewer`;
@@ -359,6 +364,146 @@ followers table, so the Angular storefront leaves them out. Adding them later is
 Housekeeping alongside: step 1 above (comments on the database layer), and keeping `docs/Queries.md`
 verified for every new query, with its logged SQL, plan and indexes.
 
+## Later phases (after the marketplace core)
+
+Video is the biggest part of Cookfeed, and these phases build it, along with the delivery hand-off and the
+AI features. They come **after** the marketplace core (the API roadmap above, login, and the Angular app),
+because everything else already works with `video_url` as a plain link and the schema already carries what
+video needs (steps with `video_timestamp_seconds`). Each phase is mostly **API work**: new controllers,
+services and background jobs in the same pattern, with the Angular side mostly screens over them. Each
+phase gets its own plan, and its own PRs, when it starts; this section is the record of what was decided so
+far, so nothing is lost.
+
+**Order:**
+1. **The marketplace core:** the API roadmap above, then login (item 12), then the Angular app.
+2. **Video spike:** short and throwaway, done *early*, alongside the core.
+3. **Delivery hand-off:** Instacart first.
+4. **AI ingredient parsing** in the creator's recipe editor.
+5. **AI suggestions:** substitutions, delivery search terms, meal-plan ideas.
+6. **The full video pipeline:** upload, transcoding, captions, and transcript to draft recipe.
+
+**Rules for every phase:**
+- **Every AI and third-party call goes through the API**, never straight from the browser or the phone.
+  The keys for the LLM, Instacart and the video service are secrets that live only on the server (a vault
+  or environment secret, never the repository). The API also applies the rules (only a recipe's creator
+  uploads to it, only buyers get plan-only content) and keeps usage costs in check.
+- **AI at the edges, exact code at the core.** AI understands messy input and suggests. It never does the
+  arithmetic or decides access:
+  - shopping-list merging and unit conversion stay in `ShoppingListAggregator` and the unit model;
+  - prices, totals and checkout stay in code;
+  - the §3 rules (who may open, buy, save or review) stay in code.
+
+  A list that is sometimes wrong by a cup, or a plan-only recipe that sometimes unlocks, is a bug.
+- **AI drafts, people decide.** Every AI result is shown as a suggestion, labeled as AI, for a person to
+  accept or edit. Nothing AI-generated is published or saved without that step.
+- **Costs scale with uploads, not views.** Transcription and drafting run once per upload, in a background
+  job, never per request.
+- **Accessibility:** captions and the review screens meet the WCAG 2.1 AA rule in "Frontend" above.
+
+**L1. Video spike** (one or two days, early, then parked)
+- **Why:** video is the largest and least familiar part, so its risks are found before the design is fixed
+  rather than at the end.
+- **What:** on a throwaway branch, upload one video through a managed video service and play it back on a
+  page.
+- **Answers:**
+  - the upload flow;
+  - whether signed playback URLs work for plan-only videos;
+  - cost per minute stored and streamed;
+  - what the service returns (ids, status, thumbnails, captions).
+- **Output:** a short write-up here that confirms or changes L6. No production code.
+
+**L2. Delivery hand-off: Instacart first**
+- **Instacart:** its developer platform can turn a list of items (name, quantity, unit) into a shoppable
+  Instacart page the user opens, and Instacart maps the lines to store products. Our shopping list
+  already produces clean, merged lines in shoppable units, so it fits. Access needs an application and
+  their terms; confirm both before building.
+- **DoorDash and Favor:** neither is known to offer a public "fill a grocery cart from a list" API.
+  DoorDash's public developer product (Drive) delivers a business's own goods, and Favor (H-E-B, Texas)
+  would need a partnership. They stay planned "if a partnership exists".
+- **API:** `POST /api/me/shopping-list/send` with the provider and servings, returning the URL to open.
+  - Each provider is an adapter behind one interface (`IGroceryProvider`), so adding one later touches
+    nothing else.
+  - The list is built by the existing aggregator, never re-derived by the provider code.
+- **Angular:** a "Send to Instacart" button opens the returned page. The plan page sends the plan's list
+  the same way. Print, share and copy stay as fallbacks that always work.
+- **Tests:** the adapter's request matches the aggregator's lines. The provider is faked in tests, and no
+  live calls are made in CI.
+
+**L3. AI ingredient parsing** (the strongest AI use, and the step L6 reuses)
+- **What:**
+  - a creator types or pastes ingredient lines ("2 cloves garlic, minced");
+  - an LLM returns structured JSON for each line: quantity, unit, ingredient, preparation and optional;
+  - the API then matches each line to the `units` and `ingredients` tables.
+- **Unmatched names are flagged, never guessed:** the shopping list depends on those matches. The creator
+  confirms or edits each line before it is saved.
+- **API:** `POST /api/me/recipes/{id}/ingredients/parse` returns suggestions. Nothing is written until the
+  creator saves.
+- **Angular:** in the recipe editor, each suggested line shows its match and any flag, to accept or edit.
+- **Tests:**
+  - the matching and flagging run against a faked LLM response;
+  - a small set of real lines is checked by hand when the prompt changes.
+
+**L4. AI suggestions** (each labeled as AI, each optional)
+- **Substitutions and dietary swaps:** "no dairy" or "out of mirin" offers alternatives on a recipe or
+  list. Suggestions only; the recipe itself never changes.
+- **Better delivery search terms:** "skin-on boneless chicken thighs" becomes something a store search
+  finds. It feeds L2's adapters.
+- **Meal-plan ideas** from a user's saves, as a draft plan the user edits.
+
+**L5. Mobile app** (stack not chosen; see "Frontend" above). It uses this API, like every phase here.
+
+**L6. The full video pipeline**
+- **Uploads never pass through the API:**
+  1. The creator's app calls `POST /api/me/recipes/{id}/video`. The API checks the caller is the recipe's
+     creator and returns a short-lived signed upload URL (or the video service's upload URL).
+  2. The app uploads straight to storage, in resumable chunks, so a dropped phone connection does not
+     restart the upload.
+  3. Storage, or the app, tells the API the upload finished. The video becomes **Processing**, and a
+     background job is queued.
+  4. The job runs, in this order:
+     - checks the type, size and length;
+     - transcodes to adaptive streaming (HLS) at several qualities;
+     - makes the thumbnail;
+     - **speech-to-text with timestamps**;
+     - **captions** (a WebVTT file; WCAG 1.2.2, level A, requires captions on prerecorded video);
+     - **the draft recipe**: an LLM turns the transcript into ingredient lines (through L3's matching)
+       and numbered steps, each with the second it starts at (`recipe_steps.video_timestamp_seconds`).
+  5. The video becomes **Ready**. The creator reviews the draft and publishes. Viewers stream from a CDN.
+- **Plan-only videos are protected.** A `ProductOnly` recipe's stream uses signed, expiring playback URLs,
+  issued only to viewers who pass the same Q14 check as recipe detail. A shared link stops working.
+- **Build or buy:**
+  - a managed video service (Mux, Cloudflare Stream, or AWS's media services) handles upload,
+    transcoding, streaming, thumbnails and sometimes captions, and the API keeps only its video id and
+    status;
+  - self-hosting (storage, ffmpeg workers, a CDN) gives more control and lower cost at scale, but is far
+    more to run.
+
+  L1 informs the choice.
+- **Speech-to-text options:** Whisper (open source, can run on our servers), or Azure AI Speech, AWS
+  Transcribe, Deepgram or AssemblyAI.
+- **Schema:** a `videos` table, or columns on `recipes`, holding:
+  - the storage or service id;
+  - the status: Uploading, Processing, Ready or Failed;
+  - the duration;
+  - the caption file;
+  - the transcript.
+
+  Publishing requires Ready.
+- **Angular:** upload with a progress bar, a "Processing…" state, a player with captions, and the draft
+  recipe to review.
+- **Tests:**
+  - upload slots are refused for anyone but the creator;
+  - playback URLs are refused for non-buyers of plan-only recipes;
+  - the job's steps run against faked services;
+  - status changes are covered.
+
+**Open decisions** (Jeff's, to settle when each phase is planned):
+- **What the transcript powers:** captions only, captions and the draft recipe, or also search ("recipes
+  that use miso").
+- **Managed video service or self-hosted:** cost, learning value, or what class or work uses.
+- **Semester project or later:** which of these phases land in the semester project, and which come after
+  it.
+
 ## Business rules the API still has to enforce
 
 The Assignment 2 feedback (Abraham) is answered in `DesignDocument.md` §3, and every rule the **database**
@@ -374,10 +519,10 @@ them off here as they land. The status codes are proposals, to confirm when each
 | Checkout refuses a self-purchase the same way (the `order_items_refuse_self_purchase` trigger stays as the last line of defence). | §3.1 | Checkout | 400 |
 | A database refusal (`check_violation` with a `ck_…` constraint name, or a unique violation) that slips past a service becomes a 4xx with a readable message, never a 500. | §5 | First write feature (saves or cart) | 400 / 409 |
 | The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront ✅ (`StorefrontEndpointTests`) | — |
-| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14 — or for the recipe's own creator. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail | 404 (do not reveal it exists) |
+| A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14 — or for the recipe's own creator. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail ✅ (`RecipeAccess`, `RecipeDetailEndpointTests`) | 404 (do not reveal it exists) |
 | Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
 | Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |
-| Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Storefront ✅ (owned = a Paid order item), shopping list ✅, recipe detail, My kitchen / purchases | — |
+| Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Storefront ✅ (owned = a Paid order item), shopping list ✅, recipe detail ✅, My kitchen / purchases | — |
 | A review requires a `Paid` order item for that product by the same user; one review per user per product. | §3.5 | Reviews | 403 / 409 |
 
 ## Open items
