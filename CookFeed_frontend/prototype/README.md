@@ -252,6 +252,8 @@ application (Assignment 4), where they can be built against the real API and dat
 - **Review trust labels.** Mark reviews from buyers as "Verified purchase", and label reviews written
   by other Cookfeed creators, using the orders and creator profile data.
 - **Send to Instacart and Send to Favor.** Connect the delivery partners that are marked Coming soon.
+  Planned in `CookFeed_api/docs/BuildLog.md`, "Later phases" L2: Instacart first; Favor and DoorDash
+  only with a partnership.
 - **Semantic, ADA-compliant templates.** Every Angular template meets WCAG 2.1 AA, built on native
   elements; the full rule is in `CookFeed_api/docs/BuildLog.md` under Frontend.
 
