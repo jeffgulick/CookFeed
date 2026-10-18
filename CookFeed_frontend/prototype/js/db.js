@@ -922,6 +922,27 @@ function productPlacements(orderItem, weekStart) {
     });
 }
 
+/* Move a planned meal to another day and meal, for a number of people (null, or the recipe's own servings,
+   means "as written"). A day in another week moves it onto that week's plan. Returns the entry, or null, and
+   changes nothing, when the meal is not there, the meal type or the people are not allowed, or the same
+   recipe is already on that day and meal (a week never holds a meal twice). */
+function movePlanEntry(entryId, plannedDate, slot, servings) {
+  var entry = db().mealPlanEntries.filter(function (e) { return e.id === entryId; })[0];
+  if (!entry || SLOT_ORDER.indexOf(slot) === -1 || !/^\d{4}-\d{2}-\d{2}$/.test(plannedDate)) { return null; }
+  if (servings !== null && servings !== undefined && !isPeople(servings)) { return null; }
+  var userId = db().mealPlans.filter(function (p) { return p.id === entry.mealPlanId; })[0].userId;
+  var week = weekStartOf(parseIsoDate(plannedDate));
+  var same = entryOn(userId, week, entry.recipeId, plannedDate, slot);
+  if (same !== null && same.id !== entry.id) { return null; }
+  var recipe = rowById("recipes", entry.recipeId);
+  entry.mealPlanId = ensurePlan(userId, week).id;
+  entry.plannedDate = plannedDate;
+  entry.slot = slot;
+  entry.servingsOverride = servings === null || servings === undefined || servings === recipe.servings ? null : servings;
+  commit();
+  return entry;
+}
+
 function removePlanEntry(entryId) {
   var tables = db();
   tables.mealPlanEntries = tables.mealPlanEntries.filter(function (e) { return e.id !== entryId; });

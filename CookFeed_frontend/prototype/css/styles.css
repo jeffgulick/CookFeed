@@ -1170,7 +1170,21 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .week-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .week-head h2 { margin: 0; flex: 1; font-size: 20px; }
 .week-day { margin: 16px 0 6px; font-size: 15px; color: var(--muted); }
-.week-row { display: grid; grid-template-columns: 90px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+.week-row { display: grid; grid-template-columns: 32px 90px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+/* The handle to drag a meal: touch-action none, so a finger drags the meal instead of scrolling the page. */
+.drag-handle { width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  color: var(--ink-soft); font-size: 18px; line-height: 1; cursor: grab; touch-action: none; }
+.drag-handle:hover { border-color: var(--line-strong); }
+.drop-mode .drop-day { margin-bottom: 8px; }
+.drop-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.drop-zone { min-height: 52px; border: 2px dashed var(--line); border-radius: 10px; padding: 6px 8px; font-size: 13px; color: var(--ink-soft); }
+.drop-zone.from { background: var(--paper); }
+.drop-zone.over { border-color: var(--accent); border-style: solid; background: var(--accent-soft); }
+.drop-slot { display: block; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; }
+.drop-meal { display: block; }
+.drag-ghost { position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--on-dark); padding: 6px 10px;
+  border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: var(--shadow); max-width: 240px; }
+.week-actions { display: flex; gap: 14px; justify-content: flex-end; flex-wrap: wrap; }
 .week-slot { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .week-servings input, .pick-servings input, .trip-item input { width: 64px; max-width: 64px; padding: 4px 8px; }
 /* The small people stepper used on the week, a trip and the pickers. */
@@ -1202,8 +1216,15 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .skipped-strip { margin-top: 14px; padding: 10px 14px; border-radius: 10px; background: var(--paper); color: var(--muted); font-size: 14px; }
 .skipped-strip button { margin-left: 6px; }
 @media (max-width: 640px) {
-  .week-row { grid-template-columns: 1fr auto; }
-  .week-row .week-slot { grid-column: 1 / -1; }
+  /* On a phone a meal stacks: the handle and the meal, the recipe, the people, then the buttons. */
+  .week-row { grid-template-columns: 32px 1fr auto; grid-template-areas: "handle slot slot" "title title title" "people people people" "actions actions actions"; }
+  .week-row .drag-handle { grid-area: handle; }
+  .week-row .week-slot { grid-area: slot; }
+  .week-row > a { grid-area: title; }
+  .week-row .week-servings { grid-area: people; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .week-row .week-servings .people-box { flex-wrap: nowrap; }
+  .week-row .week-actions { grid-area: actions; justify-content: flex-start; gap: 20px; }
+  .drop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ---------- 3.9: one shopping list, the week, and past lists ---------- */

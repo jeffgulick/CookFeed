@@ -70,12 +70,15 @@ test("a deleted list's ticks never show on a new list, and its number is not reu
   await page.click("#shopWeek");
   await page.click("#openActiveList");
   await expect(page).toHaveURL(/trip=1$/);
+  await page.click("#startShopping");
   await page.locator(".store-line input[type='checkbox']").first().check();
   await page.click("#deleteTrip");
   await page.click("#confirmOk");
   await page.click("#shopWeek");
   await page.click("#openActiveList");
   await expect(page).toHaveURL(/trip=2$/);
+  await page.click("#startShopping");
+  await expect(page.locator(".store-line input[type='checkbox']")).not.toHaveCount(0);
   await expect(page.locator(".store-line input[type='checkbox']:checked")).toHaveCount(0);
 });
 

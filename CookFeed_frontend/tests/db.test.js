@@ -434,6 +434,29 @@ test("weeks are named for the cook: this week, next week, or a dated week marked
   assert.equal(days[13], "2026-10-31");
 });
 
+test("a planned meal moves to another day and meal, for other people, never onto a copy of itself (3.9)", () => {
+  const p = loadPrototype();
+  const week = "2026-09-21";
+  const teriyaki = p.planEntries(p.planFor(ALEX, week).id).find((e) => e.recipeId === TERIYAKI);
+  const moved = p.movePlanEntry(teriyaki.id, "2026-09-24", "Lunch", 6);
+  assert.equal(moved.plannedDate, "2026-09-24");
+  assert.equal(moved.slot, "Lunch");
+  assert.equal(moved.servingsOverride, 6);
+  assert.equal(p.movePlanEntry(teriyaki.id, "2026-09-24", "Lunch", 2).servingsOverride, null);   // 2 is as written
+  assert.equal(loadPrototype(p.localStorage).planEntries(p.planFor(ALEX, week).id).find((e) => e.id === teriyaki.id).slot, "Lunch");
+  // Not onto the same recipe at the same meal, not for an impossible number of people, not a meal that is not there.
+  const oats = p.planEntries(p.planFor(ALEX, week).id).find((e) => e.recipeId === OATS);
+  p.addPlanEntry(ALEX, week, OATS, "2026-09-24", "Breakfast", null);
+  assert.equal(p.movePlanEntry(oats.id, "2026-09-24", "Breakfast", null), null);
+  assert.equal(p.movePlanEntry(oats.id, "2026-09-25", "Brunch", null), null);
+  assert.equal(p.movePlanEntry(oats.id, "2026-09-25", "Breakfast", 99), null);
+  assert.equal(p.movePlanEntry(9999, "2026-09-25", "Breakfast", null), null);
+  // Onto a day of another week: it joins that week's plan.
+  const later = p.movePlanEntry(oats.id, "2026-09-29", "Breakfast", null);
+  assert.equal(later.mealPlanId, p.planFor(ALEX, "2026-09-28").id);
+  assert.equal(p.planEntries(p.planFor(ALEX, week).id).some((e) => e.id === oats.id), false);
+});
+
 test("only a recipe the cook may open can be planned, and a plan they did not buy cannot be added (3.3)", () => {
   const p = loadPrototype();
   assert.equal(p.addPlanEntry(SAM, "2026-10-19", ONIGIRI, "2026-10-19", "Dinner", null), null);

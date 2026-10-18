@@ -780,12 +780,13 @@ function smallDialog(id, headingId, formHtml) {
   return dialog;
 }
 
-var planPending = null;   // { user, recipe, onDone } while the recipe's dialog is open
+var planPending = null;   // { user, recipe, onDone, entry } while the recipe's dialog is open
 
 /* Plan it: one recipe on a day and meal, for a number of people. days are the dates offered (a week shown in
    the kitchen, or the next two weeks from a recipe page); people starts as given. onDone(entry) runs after it
-   is planned; without it, the toast links to the week in My kitchen. */
-function openPlanDialog(user, recipe, days, people, onDone) {
+   is planned; without it, the toast links to the week in My kitchen. With entry (a meal already on the week),
+   the same dialog moves that meal instead: it opens on the meal's day, meal and people. */
+function openPlanDialog(user, recipe, days, people, onDone, entry) {
   var dialog = smallDialog("planDialog", "planHeading",
     "<form method='dialog' id='planForm' novalidate>" +
     "<h3 id='planHeading'>Add to my week</h3>" +
@@ -805,15 +806,17 @@ function openPlanDialog(user, recipe, days, people, onDone) {
     document.getElementById("planForm").addEventListener("submit", onPlanSubmitted);
   }
 
-  planPending = { user: user, recipe: recipe, onDone: onDone };
+  planPending = { user: user, recipe: recipe, onDone: onDone, entry: entry || null };
   dialog.opener = document.activeElement;
+  document.getElementById("planHeading").textContent = entry ? "Move this meal" : "Add to my week";
+  document.getElementById("planSubmit").textContent = entry ? "Move it" : "Add to my week";
   document.getElementById("planWhat").textContent = recipe.title;
   var today = todayIso();
-  var first = days.filter(function (d) { return d >= today; })[0] || days[0];
+  var first = entry ? entry.plannedDate : days.filter(function (d) { return d >= today; })[0] || days[0];
   document.getElementById("planDay").innerHTML = days.map(function (d) {
     return "<option value='" + d + "'" + (d === first ? " selected" : "") + ">" + dayOptionLabel(d) + "</option>";
   }).join("");
-  document.getElementById("planSlot").value = "Dinner";
+  document.getElementById("planSlot").value = entry ? entry.slot : "Dinner";
   document.getElementById("planPeople").innerHTML = peopleBoxHtml(people, recipe.title);
   document.getElementById("planError").textContent = "";
   dialog.showModal();
@@ -832,8 +835,20 @@ function onPlanSubmitted(event) {
   var slot = document.getElementById("planSlot").value;
   var week = weekStartOf(parseIsoDate(day));
   var people = Number(input.value);
-  if (entryOn(planPending.user.id, week, recipe.id, day, slot) !== null) {
+  var moving = planPending.entry;
+  var there = entryOn(planPending.user.id, week, recipe.id, day, slot);
+  if (there !== null && (moving === null || there.id !== moving.id)) {
     error.textContent = "It is already on that day's " + slot.toLowerCase() + ". Pick another day or meal.";
+    return;
+  }
+  if (moving !== null) {
+    if (movePlanEntry(moving.id, day, slot, people) === null) {
+      error.textContent = "This meal cannot be moved there.";
+      return;
+    }
+    document.getElementById("planDialog").close();
+    if (planPending.onDone) { planPending.onDone(moving); }
+    showToast(recipe.title + " moved to " + DAY_NAMES[(parseIsoDate(day).getDay() + 6) % 7] + " " + slot.toLowerCase() + ".");
     return;
   }
   var entry = addPlanEntry(planPending.user.id, week, recipe.id, day, slot, people === recipe.servings ? null : people);
