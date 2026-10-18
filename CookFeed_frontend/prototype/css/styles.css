@@ -1137,6 +1137,8 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .placement label { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 0; }
 .placement select { width: auto; padding: 6px 10px; }
 .placement-off label { color: var(--muted); font-weight: 400; }
+.placement.meal-row { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+.placement.meal-row .place-recipe { width: 100%; min-width: 0; }
 /* A row a ticked plan brings, or one already on the trip: tinted, ticked, and not counted again. */
 .placement.in-plan, .placement.on-trip, .pick-row.on-trip { background: var(--accent-soft); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
 .placement.on-trip label, .pick-row.on-trip { color: var(--muted); }
@@ -1145,7 +1147,7 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .placement .meta { grid-column: 2 / 4; }
 @media (max-width: 640px) {
   .ingredient-line { grid-template-columns: 1fr 1fr; }
-  .placement { grid-template-columns: 1fr; }
+  .placement, .placement.meal-row { grid-template-columns: 1fr; }
   .placement .meta { grid-column: auto; }
 }
 .row-muted td { color: var(--muted); }
@@ -1161,6 +1163,16 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .week-row { display: grid; grid-template-columns: 90px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
 .week-slot { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .week-servings input, .pick-servings input, .trip-item input { width: 64px; max-width: 64px; padding: 4px 8px; }
+/* The small people stepper used on the week, a trip and the pickers. */
+.people-box { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.stepper-small button { padding: 4px 10px; font-size: 16px; }
+.stepper-small input, .week-servings .stepper-small input, .pick-servings .stepper-small input, .trip-item .stepper-small input {
+  width: 46px; max-width: 46px; padding: 4px 2px; border-radius: 0; -moz-appearance: textfield; }
+.stepper-small input::-webkit-outer-spin-button, .stepper-small input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.people-error { flex-basis: 100%; font-size: 13px; margin: 0; }
+.people-error:empty { display: none; }
+/* Why a studio or console button is off, written out under the buttons. */
+.action-note { display: block; font-size: 13px; color: var(--ink-soft); margin-top: 6px; white-space: normal; max-width: 34ch; }
 .pick-people, .pick-when { display: flex; gap: 6px; align-items: center; }
 .tile-actions { display: block; margin: 8px 16px 14px; }
 .plan-card { cursor: default; }

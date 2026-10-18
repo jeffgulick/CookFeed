@@ -80,8 +80,12 @@ function visibleReviews(all) {
 
 /* Redraw the list of reviews. Text a shopper typed goes through escapeHtml. */
 function renderReviews() {
-  // The admin also sees the reviews it hid, marked, with a button to restore them (3.8).
+  // The admin also sees the reviews it hid, marked, with a button to restore them (3.8). An author always
+  // sees their own review, even one that no longer counts, so they can remove it.
   var all = reviewsFor(product.id, isAdmin(currentUser()));
+  var user = currentUser();
+  var mine = user === null ? null : reviewBy(user.id, product.id);
+  if (mine !== null && !all.some(function (r) { return r.id === mine.id; })) { all.unshift(mine); }
   var shown = visibleReviews(all);
   var html = "";
 
@@ -105,6 +109,7 @@ function renderReviews() {
                   buildStars(review.rating) + "</span>";
     html = html + tag;
     if (hidden) { html = html + "<span class='tag tag-muted'>Hidden by Cookfeed</span>"; }
+    else if (!reviewCounts(review)) { html = html + "<span class='tag tag-muted'>Not counted: order refunded</span>"; }
     html = html + "<span class='review-date'>" + formatDate(review.createdAt) + "</span>";
     html = html + "</div>";
     html = html + "<p>" + escapeHtml(review.body) + "</p>";
@@ -126,8 +131,10 @@ function renderReviews() {
   document.getElementById("reviewList").innerHTML = html;
 
   var filtered = shown.length !== all.length;
+  var notCounted = all.filter(function (r) { return !reviewCounts(r); }).length;
   document.getElementById("showingText").textContent =
-    filtered ? "Showing " + shown.length + " of " + all.length + " reviews" : "Showing all " + all.length + " reviews";
+    (filtered ? "Showing " + shown.length + " of " + all.length + " reviews" : "Showing all " + all.length + " reviews") +
+    (notCounted ? " (" + notCounted + " not counted in the rating)" : "");
   document.getElementById("clearFilters").hidden = !filtered;
 }
 

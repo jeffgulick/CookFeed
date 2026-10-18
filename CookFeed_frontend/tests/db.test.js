@@ -320,12 +320,18 @@ test("a shopping trip is built from any recipes and plans, scaled, shopped, and 
   assert.equal(p.setTripStatus(trip.id, "Shopping").status, "Shopping");
   assert.equal(p.tripEditable(p.tripById(trip.id)), true);
   assert.equal(p.setTripStatus(trip.id, "Sent", "Instacart").sentTo, "Instacart");
+  p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, true);
   assert.notEqual(p.setTripStatus(trip.id, "Done").completedAt, null);
+  // A done trip refuses every change to its items and skips.
+  assert.equal(p.removeTripItem(p.tripItems(trip.id)[0].id), false);
+  assert.equal(p.setTripItemServings(p.tripItems(trip.id)[0].id, 3), null);
+  assert.equal(p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, false), false);
+  assert.deepEqual(plain(p.addTripItems(trip.id, [{ recipeId: TAMAGOYAKI, servings: 2 }])), []);
+  assert.equal(p.tripItems(trip.id).length, 6);
   assert.equal(p.tripEditable(p.tripById(trip.id)), false);
   assert.equal(loadPrototype(p.localStorage).tripById(trip.id).status, "Done");
   assert.equal(p.setTripStatus(trip.id, "Lost"), null);
   // Shopped again: a fresh Building trip with the same recipes and people; the done one stays as history.
-  p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, true);
   const again = p.copyTrip(trip.id);
   assert.equal(again.status, "Building");
   assert.equal(again.name, "Taco night again");
@@ -335,8 +341,7 @@ test("a shopping trip is built from any recipes and plans, scaled, shopped, and 
   assert.equal(p.tripById(trip.id).status, "Done");
   assert.equal(p.tripsFor(ALEX).length, 2);
   p.deleteTrip(again.id);
-  p.removeTripItem(p.tripItems(trip.id)[0].id);
-  assert.equal(p.tripItems(trip.id).length, 5);
+  p.removeTripItem(p.tripItems(again.id)[0] ? p.tripItems(again.id)[0].id : 0);
   p.deleteTrip(trip.id);
   assert.equal(p.tripsFor(ALEX).length, 0);
   assert.equal(p.tripItems(trip.id).length, 0);
@@ -371,4 +376,73 @@ test("a cook owns one entry per plan bought, with the purchase snapshot (3.3)", 
   assert.equal(owned.find((o) => o.product.id === FAMILY_WEEK).mealCount, 6);
   assert.equal(p.ownedProductsFor(p.userById(SAM)).length, 0);
   assert.equal(p.ownedProductsFor(null).length, 0);
+});
+
+test("data safety: a stale copy refuses to write, ids are never reused, and the writes refuse what the rules refuse", () => {
+  // Two tabs read the data; the second saves first. The first tab's write is refused, not saved over it.
+  const first = loadPrototype();
+  first.db();
+  const second = loadPrototype(first.localStorage);
+  second.createTrip(ALEX, "Saved in the second tab", []);
+  assert.equal(first.commit(), false);
+  assert.equal(loadPrototype(first.localStorage).tripsFor(ALEX)[0].name, "Saved in the second tab");
+
+  // A deleted trip's id is not handed out again.
+  const q = loadPrototype();
+  const gone = q.createTrip(ALEX, "Gone", []);
+  q.deleteTrip(gone.id);
+  assert.equal(q.createTrip(ALEX, "Next", []).id, gone.id + 1);
+
+  // People: whole numbers from 1 to 50.
+  assert.equal(q.peopleProblem("25"), "");
+  assert.match(q.peopleProblem("51"), /between 1 and 50/);
+  assert.match(q.peopleProblem("2.5"), /whole number/);
+  assert.match(q.peopleProblem(""), /how many people/);
+  assert.match(q.peopleProblem("1e1"), /whole number/);
+  const trip = q.createTrip(ALEX, "People", [{ recipeId: TAMAGOYAKI, servings: 999 }, { recipeId: TACOS, servings: 3 }]);
+  assert.deepEqual(plain(q.tripItems(trip.id).map((i) => [i.recipeId, i.servings])), [[TACOS, 3]]);
+  assert.equal(q.setTripItemServings(q.tripItems(trip.id)[0].id, 2.5), null);
+
+  // The week takes a recipe once per day and meal, and a whole plan once.
+  const week = "2026-11-02";
+  assert.notEqual(q.addPlanEntry(ALEX, week, TERIYAKI, week, "Dinner", null), null);
+  assert.equal(q.addPlanEntry(ALEX, week, TERIYAKI, week, "Dinner", null), null);
+  assert.equal(q.addProductToPlan(ALEX, week, FAMILY_WEEK).length, 6);
+  assert.equal(q.addProductToPlan(ALEX, week, FAMILY_WEEK).length, 0);
+  assert.equal(q.productOnWeek(ALEX, week, FAMILY_WEEK), true);
+
+  // Cart, saves and reviews: the data layer refuses the admin, an owner, a creator's own plan and a locked recipe.
+  assert.equal(q.addToCart(ADMIN, ROMAN_PASTA), false);
+  assert.equal(q.addToCart(ALEX, FAMILY_WEEK), false);           // already his
+  assert.equal(q.addToCart(DAN, FAMILY_WEEK), false);            // his own plan
+  assert.equal(q.addToCart(SAM, SUMMER_GRILLING), false);        // retired
+  assert.equal(q.addToCart(SAM, FAMILY_WEEK), true);
+  q.setSaved(SAM, ONIGIRI, true);                                // premium, not his
+  assert.equal(q.isSavedBy(SAM, ONIGIRI), false);
+  assert.equal(q.addReview(SAM, FAMILY_WEEK, 5, true, "I never bought this plan at all."), null);
+});
+
+test("access and moderation: sold recipes stay published, the admin's take-downs stay down, and only owners' reviews count (3.3, 3.5, 3.8)", () => {
+  const p = loadPrototype();
+  // In a plan and bought: the creator cannot unpublish it.
+  assert.match(p.setRecipePublished(TERIYAKI, false), /Three Weeknights in Japan/);
+  assert.equal(p.rowById("recipes", TERIYAKI).isPublished, true);
+  // The admin can take it down; the plan stops selling and the creator cannot put it back.
+  assert.equal(p.adminSetRecipePublished(ADMIN, TERIYAKI, false), "");
+  assert.equal(p.isForSale(p.rowById("products", JAPAN)), false);
+  assert.match(p.setRecipePublished(TERIYAKI, true), /Cookfeed took/);
+  assert.equal(p.adminSetRecipePublished(ADMIN, TERIYAKI, true), "");
+  assert.equal(p.isForSale(p.rowById("products", JAPAN)), true);
+  // The admin never publishes a creator's draft.
+  assert.match(p.adminSetRecipePublished(ADMIN, 13, true), /Only its creator/);
+  // A plan with no recipes, or one the admin retired, does not go back on sale from the studio.
+  assert.match(p.adminSetProductActive(ADMIN, SUMMER_GRILLING, true), /no recipes/);
+  assert.equal(p.adminSetProductActive(ADMIN, JAPAN, false), "");
+  assert.match(p.setProductActive(JAPAN, true), /Cookfeed retired/);
+  assert.equal(p.adminSetProductActive(ADMIN, JAPAN, true), "");
+  // A refunded buyer's review stops counting.
+  const counted = p.reviewsFor(JAPAN).length;
+  p.setOrderStatus(ADMIN, 1, "Refunded", "test");
+  assert.equal(p.reviewsFor(JAPAN).length, counted - 1);
+  assert.equal(p.reviewsFor(JAPAN, true).length, counted);
 });

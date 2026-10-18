@@ -1,0 +1,100 @@
+/* Data safety: what a cook or the admin can do that must never leave the data wrong. Two tabs, numbers of
+   people, a week pressed twice, a deleted trip's ticks, a plan that went off sale in a cart, a double tap. */
+
+const { test, expect, signInAs, ALEX, PRIYA, ADMIN } = require("./support");
+
+test("two tabs never overwrite each other: a stale tab reloads instead of saving over newer data", async ({ page, context }) => {
+  await signInAs(page, ALEX);
+  await page.goto("kitchen.html");
+  const other = await context.newPage();
+  await other.goto(page.url());
+
+  // A trip made in the other tab appears here, and a trip made here does not replace it.
+  await other.click("#newTrip");
+  await other.fill("#tripName", "Made in the other tab");
+  await other.locator("#buildRecipes .pick-recipe").first().check();
+  await other.click("#buildSubmit");
+  await expect(other).toHaveURL(/list\.html\?trip=1$/);
+  await expect(page.locator("#tripRows")).toContainText("Made in the other tab");
+  await page.click("#newTrip");
+  await page.fill("#tripName", "Made here");
+  await page.locator("#buildRecipes .pick-recipe").first().check();
+  await page.click("#buildSubmit");
+  await expect(page).toHaveURL(/list\.html\?trip=2$/);
+  await page.goto("kitchen.html");
+  await expect(page.locator("#tripRows tr")).toHaveCount(2);
+
+  // A trip completed here closes on the other tab too; the other tab cannot bring it back.
+  await page.locator("#tripRows tr", { hasText: "Made in the other tab" }).locator(".finish-trip").click();
+  await page.click("#confirmOk");
+  await expect(other.locator("#tripStatus")).toContainText("Done");
+  await expect(other.locator(".remove-item")).toHaveCount(0);
+  await other.close();
+});
+
+test("a number of people is a whole number from 1 to 50; anything else is refused with a reason and never saved", async ({ page }) => {
+  await signInAs(page, ALEX);
+  await page.goto("kitchen.html");
+  const teriyaki = page.locator("#weekEntries .week-row", { hasText: "Chicken Teriyaki" });
+  const box = teriyaki.locator(".people-input");
+  await box.fill("25");
+  await expect(teriyaki.locator(".people-error")).toHaveText("");
+  await box.fill("999");
+  await expect(teriyaki.locator(".people-error")).toContainText("between 1 and 50");
+  await box.fill("2.5");
+  await expect(teriyaki.locator(".people-error")).toContainText("whole number");
+  await box.blur();
+  await expect(box).toHaveValue("25");                                  // the last good number comes back
+  await page.reload();
+  await expect(page.locator("#weekEntries .week-row", { hasText: "Chicken Teriyaki" }).locator(".people-input")).toHaveValue("25");
+  await page.locator("#weekEntries .week-row", { hasText: "Chicken Teriyaki" }).getByRole("button", { name: /One more person/ }).click();
+  await expect(page.locator("#weekEntries .week-row", { hasText: "Chicken Teriyaki" }).locator(".people-input")).toHaveValue("26");
+});
+
+test("a plan put on the week twice, or double-clicked, adds its meals once", async ({ page }) => {
+  await signInAs(page, ALEX);
+  await page.goto("kitchen.html");
+  await page.click("#nextWeek");
+  const card = page.locator("#ownedPlans .plan-card", { hasText: "Family Week" });
+  await card.locator(".plan-product").dblclick();
+  await expect(page.locator("#weekEntries .week-row")).toHaveCount(6);
+  await expect(card).toContainText("On this week");
+  await expect(card.locator(".plan-product")).toHaveCount(0);
+});
+
+test("a deleted trip's ticks never show on a new trip, and its number is not reused", async ({ page }) => {
+  await signInAs(page, ALEX);
+  await page.goto("kitchen.html");
+  await page.click("#tripFromWeek");
+  await expect(page).toHaveURL(/trip=1$/);
+  await page.locator(".store-line input[type='checkbox']").first().check();
+  await page.click("#deleteTrip");
+  await page.click("#confirmOk");
+  await page.click("#tripFromWeek");
+  await expect(page).toHaveURL(/trip=2$/);
+  await expect(page.locator(".store-line input[type='checkbox']:checked")).toHaveCount(0);
+});
+
+test("a plan that went off sale leaves the cart with a note, and is never counted or charged", async ({ page }) => {
+  await signInAs(page, ADMIN);
+  await page.goto("admin.html");
+  await page.locator("tr", { hasText: "maria-cooks" }).locator("[data-action='suspend']").click();
+  await page.click("#confirmOk");
+  await page.evaluate((id) => localStorage.setItem("cookfeed.userId", String(id)), PRIYA);
+  await page.goto("index.html");
+  await expect(page.locator("#cartCount")).toHaveText("0");
+  await page.goto("cart.html");
+  await expect(page.locator(".toast")).toContainText("no longer for sale");
+  await expect(page.locator("#checkoutButton")).toBeDisabled();
+});
+
+test("a double tap on an admin button applies and logs the action once", async ({ page }) => {
+  await signInAs(page, ADMIN);
+  await page.goto("admin.html");
+  const before = await page.evaluate(() => adminActions().length);
+  // Two clicks before the dialog can answer, as a quick double tap delivers them.
+  await page.locator("tr", { hasText: "dan-meal-preps" }).locator("[data-action='verify']").evaluate((button) => { button.click(); button.click(); });
+  await expect(page.locator("#confirmMessage")).toContainText("as verified?");
+  await page.click("#confirmOk");
+  await expect.poll(() => page.evaluate(() => adminActions().length)).toBe(before + 1);
+});

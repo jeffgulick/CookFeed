@@ -151,8 +151,17 @@ function updateCartChip() {
   var chip = document.getElementById("cartCount");
   var user = currentUser();
   if (chip !== null) {
-    chip.textContent = user === null ? 0 : cartFor(user.id).length;
+    chip.textContent = user === null ? 0 : buyableCartItems(user).length;
   }
+}
+
+/* The cart rows the account can still check out: a plan retired, suspended, already owned or the
+   shopper's own is never counted or charged (addToCart and placeOrder refuse the same). */
+function buyableCartItems(user) {
+  return cartFor(user.id).filter(function (item) {
+    var product = rowById("products", item.productId);
+    return product !== null && isForSale(product) && !ownsProduct(user, product.id) && product.creatorId !== user.id;
+  });
 }
 
 /* ---------- products ---------- */
@@ -383,22 +392,9 @@ function wirePreviews(grid) {
 /* ---------- servings ----------
    Used by the servings boxes on the product page and the recipe page. */
 
-/* Check what the shopper typed. Returns an error message, or "" when the
-   value is a whole number of people inside the allowed range. */
+/* Check what the shopper typed: an error message, or "" for a whole number of people (db.js). */
 function servingsProblem(text) {
-  if (text.trim() === "") {
-    return "Enter how many people you are cooking for.";
-  }
-
-  var people = Number(text);
-
-  if (isNaN(people) || Math.floor(people) !== people) {
-    return "Use a whole number of people.";
-  }
-  if (people < LIMITS.servingsMin || people > LIMITS.servingsMax) {
-    return "Choose between " + LIMITS.servingsMin + " and " + LIMITS.servingsMax + " people.";
-  }
-  return "";
+  return peopleProblem(text);
 }
 
 /* ---------- feedback ----------
@@ -461,6 +457,9 @@ function confirmDialog(message, confirmLabel) {
     });
   }
 
+  // A second click while the dialog is open (a quick double tap) must not queue a second answer.
+  if (dialog.open) { return Promise.resolve(false); }
+
   document.getElementById("confirmMessage").textContent = message;
   document.getElementById("confirmOk").textContent = confirmLabel || "OK";
   dialog.returnValue = "cancel";
@@ -475,6 +474,53 @@ function confirmDialog(message, confirmLabel) {
     });
     dialog.showModal();
     document.getElementById("confirmCancel").focus();
+  });
+}
+
+/* ---------- a number of people, everywhere a cook types one ----------
+   The same small stepper on the week, a trip and the pickers: minus, the number, plus. A value is saved
+   only when it is a whole number from 1 to 50 (db.js peopleProblem); anything else shows why under the
+   box and, when the cook leaves the box, the last good number comes back. */
+
+function peopleBoxHtml(value, title) {
+  var name = escapeHtml(title);
+  return "<span class='people-box'><span class='stepper stepper-small'>" +
+    "<button type='button' class='people-step' data-step='-1' aria-label='One fewer person for " + name + "'>&minus;</button>" +
+    "<input type='number' class='people-input' inputmode='numeric' min='" + LIMITS.servingsMin + "' max='" + LIMITS.servingsMax +
+      "' step='1' value='" + value + "' data-saved='" + value + "' aria-label='People for " + name + "'>" +
+    "<button type='button' class='people-step' data-step='1' aria-label='One more person for " + name + "'>+</button>" +
+    "</span> people<span class='field-error people-error' aria-live='polite'></span></span>";
+}
+
+/* onPeople(input, people) is called with each good value; it returns false when the write was refused.
+   keepBad: in a form (the pickers) a bad number stays in the box with its reason, and the form refuses to
+   submit; on a saved row (the week, a trip) leaving the box puts the last saved number back. */
+function wirePeopleBoxes(container, onPeople, keepBad) {
+  function accept(input) {
+    var box = input.closest(".people-box");
+    var problem = peopleProblem(input.value);
+    box.querySelector(".people-error").textContent = problem;
+    input.setAttribute("aria-invalid", problem === "" ? "false" : "true");
+    if (problem !== "") { return; }
+    if (onPeople(input, Number(input.value)) !== false) { input.setAttribute("data-saved", input.value); }
+  }
+  container.addEventListener("click", function (event) {
+    var step = event.target.closest(".people-step");
+    if (step === null) { return; }
+    var input = step.parentNode.querySelector(".people-input");
+    var current = isPeople(input.value) ? Number(input.value) : Number(input.getAttribute("data-saved"));
+    input.value = Math.min(LIMITS.servingsMax, Math.max(LIMITS.servingsMin, current + Number(step.getAttribute("data-step"))));
+    accept(input);
+  });
+  container.addEventListener("input", function (event) {
+    if (event.target.classList.contains("people-input")) { accept(event.target); }
+  });
+  container.addEventListener("change", function (event) {
+    var input = event.target;
+    if (keepBad || !input.classList.contains("people-input") || isPeople(input.value)) { return; }
+    input.value = input.getAttribute("data-saved");
+    input.removeAttribute("aria-invalid");
+    input.closest(".people-box").querySelector(".people-error").textContent = "";
   });
 }
 
@@ -554,6 +600,13 @@ document.addEventListener("DOMContentLoaded", function () {
   if (storageWorks() === false) {
     showStorageNotice();
   }
+  // db.js reloads a page whose copy of the data went out of date because another tab saved first.
+  try {
+    if (window.sessionStorage.getItem(STALE_KEY) === "1") {
+      window.sessionStorage.removeItem(STALE_KEY);
+      showToast("This page was updated from another tab. Please try that again.");
+    }
+  } catch (error) { /* no session storage, nothing to say */ }
 });
 
 /* ---------- the picker: what to cook ----------
@@ -587,52 +640,24 @@ function pickerRecipesHtml(user, options) {
       "<label><input type='checkbox' class='pick-recipe' value='" + recipe.id + "'" +
       (recipe.id === options.preRecipeId || onTrip ? " checked" : "") + (onTrip ? " disabled" : "") + "> " + escapeHtml(recipe.title) +
       "<span class='pick-tag'>" + (onTrip ? "already on this trip" : "") + "</span></label>" +
-      "<span class='pick-people'>for <input type='number' class='pick-servings' min='1' max='20' value='" + recipe.servings +
-        "' aria-label='People for " + escapeHtml(recipe.title) + "'" + (onTrip ? " disabled" : "") + "> people</span>" +
+      (onTrip ? "<span class='pick-people meta'>on the trip</span>" : "<span class='pick-people'>for " + peopleBoxHtml(recipe.servings, recipe.title) + "</span>") +
       (options.withDays ? "<span class='pick-when'><select aria-label='Day for " + escapeHtml(recipe.title) + "' class='pick-day'>" + dayOptions +
         "</select> <select aria-label='Meal for " + escapeHtml(recipe.title) + "' class='pick-slot'>" + slotOptions + "</select></span>" : "") +
       "</div>";
   }).join("") || "<p class='meta'>Save a recipe first, and it appears here.</p>";
 }
 
-/* Ticking a plan ticks and tints the saved recipes it brings, so the cook sees what comes with it; they are
-   not counted again (readPicker leaves a covered row out). Unticking releases them unless another ticked
-   plan also brings them. Wired once per form. */
+/* The picker's people boxes check what is typed, like everywhere else. Wired once per form. */
 function wirePicker(root) {
   if (root.getAttribute("data-picker-wired") === "yes") { return; }
   root.setAttribute("data-picker-wired", "yes");
-  root.addEventListener("change", function (event) {
-    if (!event.target.classList.contains("pick-plan")) { return; }
-    syncPickerPlans(root);
-  });
-}
-
-function syncPickerPlans(root) {
-  var covered = {};
-  var names = {};
-  var plans = root.querySelectorAll(".pick-plan:checked:not(:disabled)");
-  for (var i = 0; i < plans.length; i = i + 1) {
-    var title = plans[i].parentNode.textContent.replace(/\(.*$/, "").trim();
-    plans[i].getAttribute("data-recipe-ids").split(",").forEach(function (id) {
-      if (id !== "" && !covered[id]) { covered[id] = true; names[id] = title; }
-    });
-  }
-  var rows = root.querySelectorAll(".placement");
-  for (var k = 0; k < rows.length; k = k + 1) {
-    if (rows[k].classList.contains("on-trip")) { continue; }
-    var id = rows[k].getAttribute("data-recipe-id");
-    var box = rows[k].querySelector(".pick-recipe");
-    var inPlan = covered[id] === true;
-    var was = rows[k].classList.contains("in-plan");
-    rows[k].classList.toggle("in-plan", inPlan);
-    rows[k].querySelector(".pick-tag").textContent = inPlan ? "with " + names[id] : "";
-    box.disabled = inPlan;
-    if (inPlan) { box.checked = true; } else if (was) { box.checked = false; }
-  }
+  wirePeopleBoxes(root, function () { return true; }, true);
 }
 
 /* What was ticked: the plan ids, and the recipes with people (and day and meal when asked). A disabled box
-   (already on the trip) and a row a ticked plan covers are left out: the plan brings that recipe once. */
+   (already on the trip) is left out. A recipe ticked on its own and also in a ticked plan is added once, for
+   the people the cook chose for it (the caller adds the recipes before the plans, and a trip or a day never
+   takes a recipe twice). problem names the first box whose number of people is not allowed. */
 function readPicker(root) {
   var productIds = [];
   var plans = root.querySelectorAll(".pick-plan:checked:not(:disabled)");
@@ -642,20 +667,18 @@ function readPicker(root) {
   for (var k = 0; k < rows.length; k = k + 1) {
     var box = rows[k].querySelector(".pick-recipe");
     if (!box.checked || box.disabled) { continue; }
-    var people = Number(rows[k].querySelector(".pick-servings").value);
+    var input = rows[k].querySelector(".people-input");
+    if (!isPeople(input.value)) {
+      return { productIds: [], items: [], problem: input.getAttribute("aria-label") + ": " + peopleProblem(input.value) };
+    }
     var day = rows[k].querySelector(".pick-day");
-    items.push({ recipeId: Number(box.value), servings: people > 0 ? people : 0,
+    items.push({ recipeId: Number(box.value), servings: Number(input.value),
       dayOffset: day ? Number(day.value) : null, slot: day ? rows[k].querySelector(".pick-slot").value : null });
   }
-  return { productIds: productIds, items: items };
+  return { productIds: productIds, items: items, problem: "" };
 }
 
 /* ---------- 3.9: finishing a trip, from its page or from the kitchen ---------- */
-
-/* The ticks made in the store are a per-device convenience, keyed by trip. */
-function tripHaveKey(tripId) {
-  return "cookfeed.have.trip." + tripId;
-}
 
 /* Confirm, then mark the trip done and clear its ticks. Resolves true when it was done. */
 function finishTrip(trip) {

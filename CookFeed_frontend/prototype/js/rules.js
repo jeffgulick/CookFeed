@@ -29,10 +29,78 @@ function canManageProduct(user, product) {
   return isCreator(user) && product !== null && product.creatorId === user.id;
 }
 
-/* 3.8: a suspended creator's products are not for sale. Buyers keep what they bought. */
+/* 3.8: a suspended creator's products are not for sale, nor is a product with no recipes or one holding a
+   recipe that was taken down: nobody pays for something they could not open. Buyers keep what they bought. */
 function isForSale(product) {
   var creator = creatorFor(product.creatorId);
-  return product.isActive && creator !== null && creator.suspendedAt === null;
+  if (!product.isActive || creator === null || creator.suspendedAt !== null) { return false; }
+  var placements = rowsWhere("productRecipes", function (pr) { return pr.productId === product.id; });
+  return placements.length > 0 && placements.every(function (pr) { return rowById("recipes", pr.recipeId).isPublished; });
+}
+
+/* ---------- 3.8: what the creator and the admin may change ---------- */
+
+/* True when the admin's latest word on this row took it down (RetireProduct, UnpublishRecipe): the creator
+   cannot put it back, only the admin can. */
+function adminTookDown(targetTable, targetId) {
+  var latest = db().adminActions.filter(function (a) { return a.targetTable === targetTable && a.targetId === targetId; })
+    .sort(function (a, b) { return a.id - b.id; }).pop();
+  return latest !== undefined && (latest.action === "RetireProduct" || latest.action === "UnpublishRecipe");
+}
+
+/* How many cooks hold this recipe through a Paid order's snapshot. */
+function recipeBuyers(recipeId) {
+  var paid = db().orders.filter(function (o) { return o.status === "Paid"; }).map(function (o) { return o.id; });
+  var buyers = [];
+  db().orderItems.forEach(function (oi) {
+    if (paid.indexOf(oi.orderId) === -1) { return; }
+    var order = db().orders.filter(function (o) { return o.id === oi.orderId; })[0];
+    var holds = db().orderItemRecipes.some(function (oir) { return oir.orderItemId === oi.id && oir.recipeId === recipeId; });
+    if (holds && buyers.indexOf(order.userId) === -1) { buyers.push(order.userId); }
+  });
+  return buyers.length;
+}
+
+/* The plans (titles) a recipe is placed in. */
+function plansHolding(recipeId) {
+  var titles = [];
+  rowsWhere("productRecipes", function (pr) { return pr.recipeId === recipeId; }).forEach(function (pr) {
+    var title = rowById("products", pr.productId).title;
+    if (titles.indexOf(title) === -1) { titles.push(title); }
+  });
+  return titles;
+}
+
+/* A recipe is published only with something to cook. */
+function publishProblem(recipe) {
+  var details = recipeWithDetails(recipe.id);
+  if (details.ingredients.length === 0) { return "Add at least one ingredient first: press Edit."; }
+  if (details.steps.length === 0) { return "Add at least one step first: press Edit."; }
+  return "";
+}
+
+/* What stops the creator publishing or unpublishing their recipe; "" when nothing does. A recipe a cook has
+   bought stays published (buyers keep what they paid for), and so does one in a plan: take it out of the
+   plan first. What the admin took down only the admin can put back. */
+function creatorPublishProblem(recipe, publishing) {
+  if (publishing) {
+    if (adminTookDown("recipes", recipe.id)) { return "Cookfeed took \"" + recipe.title + "\" down, so it cannot be published again from the studio."; }
+    return publishProblem(recipe);
+  }
+  var plans = plansHolding(recipe.id);
+  if (plans.length) { return "\"" + recipe.title + "\" is in " + plans.join(" and ") + ". Edit the plan and take it out first."; }
+  if (recipeBuyers(recipe.id) > 0) { return "Cooks have bought \"" + recipe.title + "\", so it stays published for them."; }
+  return "";
+}
+
+/* What stops a plan going back on sale; "" when nothing does. */
+function restoreProblem(product, byAdmin) {
+  if (!byAdmin && adminTookDown("products", product.id)) { return "Cookfeed retired \"" + product.title + "\", so it cannot go back on sale from the studio."; }
+  var placements = rowsWhere("productRecipes", function (pr) { return pr.productId === product.id; });
+  if (placements.length === 0) { return "\"" + product.title + "\" has no recipes. Edit it and add at least one first."; }
+  var drafts = placements.map(function (pr) { return rowById("recipes", pr.recipeId); }).filter(function (r) { return !r.isPublished; });
+  if (drafts.length) { return "\"" + drafts[0].title + "\" in this plan is not published. Take it out, or publish it, first."; }
+  return "";
 }
 
 /* 3.3, as the database enforces it: a product sells only ProductOnly recipes (the
@@ -131,7 +199,7 @@ function reviewState(user, productId) {
   if (user === null) { return "signIn"; }
   if (!canShop(user)) { return "noShop"; }
   if (rowById("products", productId).creatorId === user.id) { return "yourOwn"; }
-  if (reviewBy(user.id, productId) !== null) { return "alreadyReviewed"; }
+  if (db().reviews.some(function (r) { return r.userId === user.id && r.productId === productId; })) { return "alreadyReviewed"; }
   if (!ownsProduct(user, productId)) { return "mustBuy"; }
   return "canReview";
 }

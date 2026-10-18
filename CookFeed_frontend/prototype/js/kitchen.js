@@ -19,7 +19,9 @@ function renderOwnedPlans() {
       "<span class='pill'>" + productTypeLabel(o.product) + "</span>" +
       "<span class='recipe-title'><a href='" + productUrl(o.product.id) + "'>" + escapeHtml(o.productTitle) + "</a></span>" +
       "<span class='meta'>" + productCounts(o) + " &middot; yours to keep</span>" +
-      "<span class='tile-actions'><button type='button' class='btn-small plan-product'>Add to this week</button></span>" +
+      "<span class='tile-actions'>" + (productOnWeek(kitchenUser.id, currentWeek, o.product.id)
+        ? "<span class='tag tag-yes'>On this week &#10003;</span>"
+        : "<button type='button' class='btn-small plan-product'>Add to this week</button>") + "</span>" +
       "</div>";
   }).join("");
   document.getElementById("noPlans").hidden = owned.length > 0;
@@ -61,8 +63,7 @@ function renderWeek() {
     html = html + "<div class='week-row' data-entry-id='" + entry.id + "'>" +
       "<span class='week-slot'>" + entry.slot + "</span>" +
       "<a href='recipe.html?id=" + entry.recipeId + "'>" + escapeHtml(entry.title) + "</a>" +
-      "<label class='week-servings'>for <input type='number' min='1' max='20' value='" + entry.planned +
-        "' aria-label='People for " + escapeHtml(entry.title) + "'> people</label>" +
+      "<span class='week-servings'>for " + peopleBoxHtml(entry.planned, entry.title) + "</span>" +
       "<button type='button' class='link-button remove-entry'>Remove</button>" +
       "</div>";
   });
@@ -123,6 +124,10 @@ function openDialog(mode, preRecipeId) {
 function onBuildSubmitted(event) {
   event.preventDefault();
   var picked = readPicker(document.getElementById("buildForm"));
+  if (picked.problem) {
+    document.getElementById("buildError").textContent = picked.problem;
+    return;
+  }
   if (picked.productIds.length === 0 && picked.items.length === 0) {
     document.getElementById("buildError").textContent = "Tick at least one plan or recipe.";
     return;
@@ -169,9 +174,10 @@ function onKitchenClicked(event) {
   var planProduct = event.target.closest(".plan-product");
   if (planProduct !== null) {
     var productId = Number(planProduct.closest(".plan-card").getAttribute("data-product-id"));
-    var entries = addProductToPlan(kitchenUser.id, currentWeek, productId);
-    renderWeek();
-    showToast(plural(entries.length, "meal", "meals") + " added to the week of " + formatShortDate(currentWeek) + ".");
+    var entries = addProductToPlan(kitchenUser.id, currentWeek, productId) || [];
+    renderKitchen();
+    showToast(entries.length === 0 ? "Every meal of this plan is already on the week of " + formatShortDate(currentWeek) + "."
+      : plural(entries.length, "meal", "meals") + " added to the week of " + formatShortDate(currentWeek) + ".");
     document.getElementById("weekEntries").scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
@@ -213,15 +219,11 @@ function onKitchenClicked(event) {
   }
 }
 
-function onWeekServingsChanged(event) {
-  var input = event.target;
-  if (input.type !== "number") { return; }
-  var people = Number(input.value);
-  if (!(people >= LIMITS.servingsMin && people <= LIMITS.servingsMax)) { return; }
+function onWeekServingsChanged(input, people) {
   var entryId = Number(input.closest(".week-row").getAttribute("data-entry-id"));
   var entry = db().mealPlanEntries.filter(function (e) { return e.id === entryId; })[0];
   var recipe = rowById("recipes", entry.recipeId);
-  setEntryServings(entryId, people === recipe.servings ? null : people);
+  return setEntryServings(entryId, people === recipe.servings ? null : people) !== null;
 }
 
 function makeTripFromWeek() {
@@ -232,6 +234,7 @@ function makeTripFromWeek() {
 
 function moveWeek(days) {
   currentWeek = addDays(currentWeek, days);
+  renderOwnedPlans();
   renderWeek();
 }
 
@@ -264,7 +267,7 @@ document.addEventListener("DOMContentLoaded", function () {
     window.history.replaceState(null, "", "kitchen.html");
   }
   document.querySelector("main").addEventListener("click", onKitchenClicked);
-  document.getElementById("weekEntries").addEventListener("input", onWeekServingsChanged);
+  wirePeopleBoxes(document.getElementById("weekEntries"), onWeekServingsChanged);
   document.getElementById("prevWeek").addEventListener("click", function () { moveWeek(-7); });
   document.getElementById("nextWeek").addEventListener("click", function () { moveWeek(7); });
   document.getElementById("planWeek").addEventListener("click", function () { openDialog("week", null); });
