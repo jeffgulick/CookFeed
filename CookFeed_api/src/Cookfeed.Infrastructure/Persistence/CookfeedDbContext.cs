@@ -51,6 +51,12 @@ public class CookfeedDbContext(DbContextOptions<CookfeedDbContext> options) : Db
 
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
 
+    public DbSet<ShoppingTrip> ShoppingTrips => Set<ShoppingTrip>();
+
+    public DbSet<ShoppingTripItem> ShoppingTripItems => Set<ShoppingTripItem>();
+
+    public DbSet<ShoppingTripSkip> ShoppingTripSkips => Set<ShoppingTripSkip>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CookfeedDbContext).Assembly);
 
@@ -66,5 +72,6 @@ public class CookfeedDbContext(DbContextOptions<CookfeedDbContext> options) : Db
         configurationBuilder.Properties<ProductType>().HaveConversion<string>().HaveMaxLength(20);
         configurationBuilder.Properties<OrderStatus>().HaveConversion<string>().HaveMaxLength(12);
         configurationBuilder.Properties<RecipeVisibility>().HaveConversion<string>().HaveMaxLength(12);
+        configurationBuilder.Properties<TripStatus>().HaveConversion<string>().HaveMaxLength(12);
     }
 }

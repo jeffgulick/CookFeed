@@ -223,6 +223,7 @@ The prototype (`CookFeed_frontend/prototype`) shows these rules for whichever se
 | Save counts follow the save rows | §3.4 | Every count is counted from the saves, so saving moves it by exactly one. |
 | Only buyers review, once per product | §3.5 | The review form appears only for a buyer who has not reviewed the product yet, and posts under their account name. Anyone else is told why there is no form. |
 | A creator manages only their own recipes and products | §3.8 | My studio (`studio.html`) lists the signed-in creator's rows only, and the two §3.3 rules are explained before they would refuse: a free or draft recipe cannot be picked for a plan, and a recipe in a plan cannot be made free. |
+| Saving builds no list; a trip does | §3.9 | My kitchen (`kitchen.html`) shows owned plans, saved recipes, the week and the trips apart; a trip page (`list.html?trip=`) is the phone-readable list with ticks, Remove and put back, the recipes and their people, I'm shopping this, Send to Instacart or Favor, and Done. |
 | The admin's changes are logged and show everywhere | §3.8 | The Admin console (`admin.html`): a hidden review leaves the store and the rating; a suspended creator's plans read "No longer for sale" and their storefront says so; a refunded order's plan is no longer owned and its recipes lock again; the activity log shows `admin_actions`. |
 
 **What the client does and does not decide.** The original note here said the admin rule would need no client-side role logic. That holds for enforcement: the API refuses every request the rules forbid, and the database refuses the rows that must never exist, whatever a client does. But a client that only reacted to refusals would offer the admin an Add to cart button that always fails. So the client also reads the rules, to decide what to *offer*: the same questions `rules.js` answers, asked of the caller's roles and purchases. The Angular client will get those answers from the API's DTOs (`ownedByViewer`, `viewerIsCreator`, `inCart` and the roles of the signed-in user), not by recomputing them.
@@ -254,6 +255,21 @@ Walking through the prototype as each account showed that the three roles looked
 **Every admin change is logged.** `admin_actions` holds one row per change: the admin, the action (`HideReview`, `SuspendCreator`, `RefundOrder`, ...), the table and id of the row changed, an optional note, and when. The API writes it in the same transaction as the change. The `admin_actions_admin_only` trigger refuses a row whose `admin_user_id` does not hold `Admin`, so the trail cannot be forged by another account, and the admin account cannot be deleted while its actions exist (`ON DELETE RESTRICT`). Q17h demonstrates the refusal.
 
 Where the rules live follows §3.1: the triggers hold what must never exist (a forged audit row, a free recipe in a product), the API checks who may act (only the creator edits their recipe, only the admin hides a review), and the prototype's `rules.js` decides what to offer (`canManageRecipe`, `canManageProduct`, `isAdmin`, `isForSale`, `placementProblem`, `visibilityProblem`).
+
+### 3.9 The week, and shopping trips
+
+Walking through My kitchen raised the next question: saving a recipe put its ingredients on one running shopping list, so a cook with twenty saves had a list for twenty recipes. The rule now is the one a cook would expect. **Saving a recipe or buying a plan puts nothing on a list.** A list exists only when the cook builds one, and it is built for one visit to the store.
+
+**The week** (`meal_plans`, `meal_plan_entries`, unchanged): the cook puts saved recipes and owned plans on days and meals, each for a number of people (`servings_override`). A plan the cook owns goes on from its purchase snapshot (§3.3), each meal on `week_start + day_offset`; a collection's recipes go on consecutive dinners. Only a recipe the cook may open can be planned. Q7 lists the week.
+
+**A shopping trip** (`shopping_trips`, `shopping_trip_items`, `shopping_trip_skips`, new) is one list for one trip to the store:
+
+- **Built from anything, any number.** From any saved recipes, each for the people the cook chooses; from a whole plan they own; or from a planned week in one step, each meal for the people it was planned for. More can be added at any time, and the same recipe may be on a trip twice.
+- **Computed, never stored.** The trip stores the recipes and their people; the lines (one per ingredient, in shopping units, sorted by aisle) are computed from them with Q8's arithmetic (step A scales each item by `servings / recipe.servings`). The "Not denormalized" note in §6 still holds.
+- **Editable until it is done.** A line the cook already has is taken off the list (`shopping_trip_skips`, one row per trip and ingredient) and can be put back; a recipe's people can change; recipes come off and go on. The ticks made in the store are a per-device convenience in the client, not a table.
+- **Its life:** `status` is `Building` (the default), then `Shopping` when the cook says they are in the store, or `Sent` with `sent_to` (Instacart or Favor, roadmap L2) when the list was handed to a partner, then `Done` with `completed_at` when the cook confirms the trip complete or the items received. A done trip leaves the active trips and stays as history. The list stays editable through Shopping and Sent; only Done closes it. `ck_shopping_trips_status` holds the four values.
+
+The API side is roadmap item 16: trips are the caller's own rows under `/api/me/trips`, the list is Q8 run over a trip's items instead of the saves, and `GET /api/me/shopping-list` no longer counts saved recipes by themselves (a decision recorded in `BuildLog.md`, to land with item 16).
 
 ---
 
@@ -360,7 +376,7 @@ Four deliberate departures from 3NF, each with the derivation rule and how it st
 
 **4. `order_item_recipes`.** The same snapshot idea applied to the product's *contents*. Derivable from `product_recipes` only on the day of purchase; after that the live bundle may differ, and the question "what did this buyer get?" has no normalized answer without versioning every product. Written once at checkout in the same transaction as the order, never updated, and the only source the entitlement and access queries read (§3.3).
 
-Not denormalized, on purpose: the shopping list. It is always computed from `saved_recipes` + `meal_plan_entries` + `recipe_ingredients`, never stored, because it changes with every save and every plan edit and is cheap to compute for one user.
+Not denormalized, on purpose: the shopping list. It is always computed from a trip's items (§3.9), or from `meal_plan_entries` + `saved_recipes` in Q8 until roadmap item 16 lands, with `recipe_ingredients`, never stored, because it changes with every save and every plan edit and is cheap to compute for one user.
 
 ---
 

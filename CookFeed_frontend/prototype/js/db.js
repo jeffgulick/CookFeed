@@ -101,6 +101,7 @@ function recipeWithDetails(recipeId) {
     .map(function (ri) {
       var ingredient = rowById("ingredients", ri.ingredientId);
       return {
+        ingredientId: ingredient.id,
         quantity: ri.quantity,
         unit: rowById("units", ri.unitId).abbreviation,
         name: ingredient.name,
@@ -177,7 +178,8 @@ function removeStored(key) {
 
 var DB_KEY = "cookfeed.db";
 var CHANGING_TABLES = ["savedRecipes", "cartItems", "orders", "orderItems", "orderItemRecipes", "reviews",
-  "recipes", "recipeIngredients", "recipeSteps", "products", "productRecipes", "creatorProfiles", "adminActions"];
+  "recipes", "recipeIngredients", "recipeSteps", "products", "productRecipes", "creatorProfiles", "adminActions",
+  "mealPlans", "mealPlanEntries", "shoppingTrips", "shoppingTripItems", "shoppingTripSkips"];
 
 /* Homework 3 kept the cart, saves, reviews and orders under these keys, for no one in particular. */
 var OLD_KEYS = ["cookfeed.cart", "cookfeed.saves", "cookfeed.reviews", "cookfeed.orders"];
@@ -650,4 +652,361 @@ function allOrders() {
   return db().orders.slice().sort(newestFirst("placedAt")).map(function (o) {
     return Object.assign(orderWithItems(o), { buyerName: rowById("users", o.userId).displayName });
   });
+}
+
+/* ---------- the week: meal_plans and meal_plan_entries (design section 3.9) ----------
+   A cook's plan for one week: recipes on dates and meals, each optionally rescaled. A week can be turned
+   into a shopping trip (tripFromWeek below), which is what gets shopped. */
+
+var SLOT_ORDER = ["Breakfast", "Lunch", "Dinner", "Snack"];
+var MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
+
+/* "yyyy-mm-dd" for a local date, and back. Dates are handled as local calendar days, never instants, so a
+   week never shifts with the time zone (meal_plans.week_start and meal_plan_entries.planned_date are DATE). */
+function isoDate(date) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+
+function parseIsoDate(iso) {
+  var parts = iso.split("-");
+  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+}
+
+function addDays(iso, days) {
+  var date = parseIsoDate(iso);
+  date.setDate(date.getDate() + days);
+  return isoDate(date);
+}
+
+/* The Monday that starts the week holding a date. A week runs Monday to Sunday, like a plan's day_offset. */
+function weekStartOf(date) {
+  var monday = new Date(date.getTime());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  return isoDate(monday);
+}
+
+/* "Sept 21", for a week's name and the day headings. */
+function formatShortDate(iso) {
+  var date = parseIsoDate(iso);
+  return MONTH_NAMES[date.getMonth()] + " " + date.getDate();
+}
+
+function plansFor(userId) {
+  return db().mealPlans.filter(function (p) { return p.userId === userId; }).sort(newestFirst("weekStart"));
+}
+
+function planFor(userId, weekStart) {
+  return plansFor(userId).filter(function (p) { return p.weekStart === weekStart; })[0] || null;
+}
+
+/* One plan per user per week (ix_meal_plans_user_id_week_start): made the first time the week is used. */
+function ensurePlan(userId, weekStart) {
+  var plan = planFor(userId, weekStart);
+  if (plan !== null) { return plan; }
+  plan = { id: nextId("mealPlans"), userId: userId, name: "Week of " + formatShortDate(weekStart),
+    weekStart: weekStart, createdAt: nowIso() };
+  db().mealPlans.push(plan);
+  commit();
+  return plan;
+}
+
+/* A plan's entries in calendar order (Q7), each with its recipe's title and servings and the number
+   of servings it is planned for. */
+function planEntries(planId) {
+  return db().mealPlanEntries.filter(function (e) { return e.mealPlanId === planId; })
+    .map(function (e) {
+      var recipe = rowById("recipes", e.recipeId);
+      return Object.assign({}, e, { title: recipe.title, servings: recipe.servings,
+        planned: e.servingsOverride === null ? recipe.servings : e.servingsOverride });
+    })
+    .sort(function (a, b) {
+      return a.plannedDate < b.plannedDate ? -1 : a.plannedDate > b.plannedDate ? 1
+        : SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot) || a.id - b.id;
+    });
+}
+
+/* Put a recipe on a day and meal. Only a recipe the cook may open can be planned (3.3, canPlan); anything
+   else returns null and changes nothing. servingsOverride null keeps the recipe's own servings. */
+function addPlanEntry(userId, weekStart, recipeId, plannedDate, slot, servingsOverride) {
+  if (!canPlan(userById(userId), rowById("recipes", recipeId))) { return null; }
+  var plan = ensurePlan(userId, weekStart);
+  var entry = { id: nextId("mealPlanEntries"), mealPlanId: plan.id, recipeId: recipeId, plannedDate: plannedDate,
+    slot: slot, servingsOverride: servingsOverride === undefined ? null : servingsOverride };
+  db().mealPlanEntries.push(entry);
+  commit();
+  return entry;
+}
+
+/* Put a whole plan the cook bought onto a week: each meal of their purchase snapshot (what they own,
+   3.3) on week_start + day_offset. A collection has no days, so its recipes go on consecutive dinners. */
+function addProductToPlan(userId, weekStart, productId) {
+  var item = paidItemsOf(userById(userId)).filter(function (oi) { return oi.productId === productId; })[0];
+  if (!item) { return null; }
+  var added = [];
+  db().orderItemRecipes.filter(function (oir) { return oir.orderItemId === item.id; }).sort(bySortOrder)
+    .forEach(function (placement, index) {
+      var day = placement.dayOffset === null ? index % 7 : placement.dayOffset;
+      var entry = addPlanEntry(userId, weekStart, placement.recipeId, addDays(weekStart, day), placement.slot || "Dinner", null);
+      if (entry !== null) { added.push(entry); }
+    });
+  return added;
+}
+
+function removePlanEntry(entryId) {
+  var tables = db();
+  tables.mealPlanEntries = tables.mealPlanEntries.filter(function (e) { return e.id !== entryId; });
+  commit();
+}
+
+/* servings null means "as the recipe is written". */
+function setEntryServings(entryId, servings) {
+  var entry = db().mealPlanEntries.filter(function (e) { return e.id === entryId; })[0];
+  if (!entry) { return null; }
+  entry.servingsOverride = servings;
+  commit();
+  return entry;
+}
+
+/* What the week's list is built from (Q8 step A): each entry scaled by its planned servings, counting only
+   recipes the cook may open. A recipe planned twice counts twice. */
+function weekRecipeLines(userId, weekStart) {
+  var plan = planFor(userId, weekStart);
+  if (plan === null) { return []; }
+  var user = userById(userId);
+  return planEntries(plan.id)
+    .filter(function (e) { return canOpenRecipe(user, rowById("recipes", e.recipeId)); })
+    .map(function (e) { return { recipeId: e.recipeId, scale: e.planned / e.servings }; });
+}
+
+/* The plans and collections a cook owns: one per product bought in a Paid order, with the recipes of
+   the purchase snapshot (what they keep, 3.3). */
+function ownedProductsFor(user) {
+  var seen = {};
+  return paidItemsOf(user).filter(function (oi) {
+    if (seen[oi.productId]) { return false; }
+    seen[oi.productId] = true;
+    return true;
+  }).map(function (oi) {
+    var recipes = db().orderItemRecipes.filter(function (oir) { return oir.orderItemId === oi.id; }).sort(bySortOrder);
+    var distinct = {};
+    recipes.forEach(function (r) { distinct[r.recipeId] = true; });
+    return { product: rowById("products", oi.productId), orderItemId: oi.id, productTitle: oi.productTitle,
+      recipes: recipes, recipeCount: Object.keys(distinct).length,
+      mealCount: rowById("products", oi.productId).type === "MealPlan" ? recipes.length : null };
+  });
+}
+
+/* ---------- the shopping list, from recipes (design section 7) ----------
+   Lived in common.js until the week planner; here because it is data logic the tests run without a page. */
+
+/* Each entry is a recipe id, or { recipeId, scale } for a planned meal cooked for more or fewer people
+   than the recipe is written for (Q8 step A). */
+function collectIngredients(entries) {
+  var rows = [];
+
+  for (var i = 0; i < entries.length; i = i + 1) {
+    var entry = typeof entries[i] === "number" ? { recipeId: entries[i], scale: 1 } : entries[i];
+    var recipe = recipeWithDetails(entry.recipeId);
+
+    for (var j = 0; j < recipe.ingredients.length; j = j + 1) {
+      var item = recipe.ingredients[j];
+      rows.push({
+        ingredientId: item.ingredientId,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        aisle: item.aisle,
+        baseServings: recipe.servings,
+        lineScale: entry.scale,
+        recipeTitle: recipe.title
+      });
+    }
+  }
+
+  return rows;
+}
+
+/* Add up the ingredients of the given recipes (ids, or { recipeId, scale } entries). Pass null for
+   people to keep each recipe as published or as planned, or a number to cook every recipe for that
+   many people.
+   Two lines only merge when they share a name AND a unit, which is why the two
+   soy sauce entries become one row but the rice and the ginger never combine.
+   Each line remembers which recipes it came from. The result is sorted by aisle
+   so the list follows a walk through the store. */
+function buildShoppingList(entries, people) {
+  var rows = collectIngredients(entries);
+  var totals = {};
+  var list = [];
+
+  for (var i = 0; i < rows.length; i = i + 1) {
+    var row = rows[i];
+    var scale = row.lineScale;
+
+    if (people !== null) {
+      scale = people / row.baseServings;
+    }
+
+    var key = row.name + "|" + row.unit;
+
+    if (totals[key] === undefined) {
+      totals[key] = { key: key, ingredientId: row.ingredientId, name: row.name, unit: row.unit, aisle: row.aisle, amount: 0, recipes: [] };
+      list.push(totals[key]);
+    }
+    totals[key].amount = totals[key].amount + row.quantity * scale;
+    if (totals[key].recipes.indexOf(row.recipeTitle) === -1) {
+      totals[key].recipes.push(row.recipeTitle);
+    }
+  }
+
+  list.sort(function (a, b) {
+    if (a.aisle !== b.aisle) {
+      return a.aisle < b.aisle ? -1 : 1;
+    }
+    return a.name < b.name ? -1 : 1;
+  });
+
+  return list;
+}
+
+/* ---------- shopping trips (design section 3.9) ----------
+   A trip is a list a cook built for one visit to the store: the recipes they mean to cook, each for a number
+   of people (shopping_trips, shopping_trip_items), and where it is in its life: Building, Shopping (in the
+   store), Sent (to Instacart or Favor), or Done, which clears it and keeps it as history. Saving a recipe or
+   buying a plan puts nothing on a trip; the cook builds one when they want it, from any recipes, a whole plan
+   they own, or a planned week, and edits it until it is done. The lines are computed from the items (Q8's
+   arithmetic), never stored; an ingredient the cook already has is skipped (shopping_trip_skips). */
+
+var TRIP_STATUSES = ["Building", "Shopping", "Sent", "Done"];
+
+function tripsFor(userId) {
+  return db().shoppingTrips.filter(function (t) { return t.userId === userId; }).sort(newestFirst("createdAt"));
+}
+
+function tripById(tripId) {
+  return db().shoppingTrips.filter(function (t) { return t.id === tripId; })[0] || null;
+}
+
+/* A trip's items with their recipe's title and own servings. */
+function tripItems(tripId) {
+  return db().shoppingTripItems.filter(function (i) { return i.tripId === tripId; })
+    .map(function (i) {
+      var recipe = rowById("recipes", i.recipeId);
+      return Object.assign({}, i, { title: recipe.title, recipeServings: recipe.servings });
+    });
+}
+
+/* items: [{ recipeId, servings }]. A recipe the cook may not open is left off (3.3, canPlan). */
+function createTrip(userId, name, items) {
+  var trip = { id: nextId("shoppingTrips"), userId: userId, name: name, createdAt: nowIso(), status: "Building",
+    sentTo: null, completedAt: null };
+  db().shoppingTrips.push(trip);
+  addTripItems(trip.id, items);
+  commit();
+  return trip;
+}
+
+function addTripItems(tripId, items) {
+  var trip = tripById(tripId);
+  var user = userById(trip.userId);
+  var added = [];
+  items.forEach(function (item) {
+    var recipe = rowById("recipes", item.recipeId);
+    if (!canPlan(user, recipe)) { return; }
+    var row = { id: nextId("shoppingTripItems"), tripId: tripId, recipeId: item.recipeId,
+      servings: item.servings > 0 ? item.servings : recipe.servings };
+    db().shoppingTripItems.push(row);
+    added.push(row);
+  });
+  commit();
+  return added;
+}
+
+/* Every recipe of a plan the cook owns (their purchase snapshot, 3.3), each as the recipe is written. */
+function addProductToTrip(tripId, productId) {
+  var trip = tripById(tripId);
+  var item = paidItemsOf(userById(trip.userId)).filter(function (oi) { return oi.productId === productId; })[0];
+  if (!item) { return []; }
+  return addTripItems(tripId, db().orderItemRecipes.filter(function (oir) { return oir.orderItemId === item.id; })
+    .sort(bySortOrder).map(function (oir) { return { recipeId: oir.recipeId, servings: 0 }; }));
+}
+
+/* A planned week as a trip: each meal for the people it was planned for. */
+function tripFromWeek(userId, weekStart) {
+  var plan = planFor(userId, weekStart);
+  if (plan === null) { return null; }
+  return createTrip(userId, plan.name, planEntries(plan.id).map(function (e) {
+    return { recipeId: e.recipeId, servings: e.planned };
+  }));
+}
+
+function removeTripItem(itemId) {
+  var tables = db();
+  tables.shoppingTripItems = tables.shoppingTripItems.filter(function (i) { return i.id !== itemId; });
+  commit();
+}
+
+function setTripItemServings(itemId, servings) {
+  var item = db().shoppingTripItems.filter(function (i) { return i.id === itemId; })[0];
+  if (!item || !(servings > 0)) { return null; }
+  item.servings = servings;
+  commit();
+  return item;
+}
+
+/* Where the trip is: Building, Shopping, Sent (with the partner's name), or Done, which records when. */
+function setTripStatus(tripId, status, sentTo) {
+  var trip = tripById(tripId);
+  if (trip === null || TRIP_STATUSES.indexOf(status) === -1) { return null; }
+  trip.status = status;
+  if (status === "Sent") { trip.sentTo = sentTo || trip.sentTo; }
+  if (status === "Building" || status === "Shopping") { trip.sentTo = null; }
+  trip.completedAt = status === "Done" ? nowIso() : null;
+  commit();
+  return trip;
+}
+
+/* A done trip is history; everything before that can still be edited, in the store included. */
+function tripEditable(trip) {
+  return trip !== null && trip.status !== "Done";
+}
+
+/* The ingredients the cook took off a trip's list because they have them. */
+function tripSkips(tripId) {
+  return db().shoppingTripSkips.filter(function (s) { return s.tripId === tripId; }).map(function (s) { return s.ingredientId; });
+}
+
+function setTripSkip(tripId, ingredientId, skipped) {
+  var tables = db();
+  tables.shoppingTripSkips = tables.shoppingTripSkips.filter(function (s) { return !(s.tripId === tripId && s.ingredientId === ingredientId); });
+  if (skipped) { tables.shoppingTripSkips.push({ tripId: tripId, ingredientId: ingredientId }); }
+  commit();
+}
+
+function deleteTrip(tripId) {
+  var tables = db();
+  tables.shoppingTrips = tables.shoppingTrips.filter(function (t) { return t.id !== tripId; });
+  tables.shoppingTripItems = tables.shoppingTripItems.filter(function (i) { return i.tripId !== tripId; });
+  tables.shoppingTripSkips = tables.shoppingTripSkips.filter(function (s) { return s.tripId !== tripId; });
+  commit();
+}
+
+/* What a trip's list is built from: each item scaled to its people (Q8 step A), counting only recipes the
+   cook may still open. */
+function tripRecipeLines(tripId) {
+  var trip = tripById(tripId);
+  if (trip === null) { return []; }
+  var user = userById(trip.userId);
+  return tripItems(tripId)
+    .filter(function (i) { return canOpenRecipe(user, rowById("recipes", i.recipeId)); })
+    .map(function (i) { return { recipeId: i.recipeId, scale: i.servings / i.recipeServings }; });
+}
+
+/* A trip's list, split into the lines to buy and the ones the cook skipped because they have them. */
+function tripList(tripId) {
+  var skips = tripSkips(tripId);
+  var all = buildShoppingList(tripRecipeLines(tripId), null);
+  return {
+    lines: all.filter(function (l) { return skips.indexOf(l.ingredientId) === -1; }),
+    skipped: all.filter(function (l) { return skips.indexOf(l.ingredientId) !== -1; })
+  };
 }

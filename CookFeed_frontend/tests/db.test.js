@@ -7,7 +7,7 @@ const { loadPrototype, MemoryStorage } = require("./load-prototype");
 
 const ALEX = 1, PRIYA = 2, KENJI = 4, DAN = 5, ADMIN = 6, SAM = 7;
 const ROMAN_PASTA = 1, BREAD_BOX = 2, JAPAN = 3, FAMILY_WEEK = 4, SUMMER_GRILLING = 5;
-const TERIYAKI = 5, ONIGIRI = 6, OATS = 9, TAMAGOYAKI = 16;
+const TERIYAKI = 5, ONIGIRI = 6, OATS = 9, TACOS = 10, TAMAGOYAKI = 16;
 
 // Values made inside the sandbox have the sandbox's Array and Object; compare them as plain JSON.
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -237,4 +237,119 @@ test("a refund takes the plan back: no longer owned, its recipes locked (3.8)", 
   assert.equal(p.setOrderStatus(ADMIN, 2, "Paid"), null);        // no way back
   assert.equal(p.setOrderStatus(ADMIN, 3, "Refunded"), null);    // a cancelled order has no money to refund
   assert.equal(p.allOrders()[0].buyerName !== undefined, true);
+});
+
+test("weeks run Monday to Sunday and are named by their Monday (3.9)", () => {
+  const p = loadPrototype();
+  assert.equal(p.weekStartOf(new Date(2026, 9, 18)), "2026-10-12");   // a Sunday belongs to the week before
+  assert.equal(p.weekStartOf(new Date(2026, 9, 19)), "2026-10-19");   // a Monday starts its own
+  assert.equal(p.addDays("2026-10-19", 6), "2026-10-25");
+  assert.equal(p.formatShortDate("2026-09-21"), "Sept 21");
+});
+
+test("Alex's seeded week holds four meals in calendar order, the teriyaki planned for 4 (Q7)", () => {
+  const p = loadPrototype();
+  const plan = p.planFor(ALEX, "2026-09-21");
+  assert.equal(plan.name, "Week of Sept 21");
+  const entries = p.planEntries(plan.id);
+  assert.deepEqual(plain(entries.map((e) => e.title)), ["Five-Day Overnight Oats", "Chicken Teriyaki, the Real Way",
+    "Weeknight Beef Tacos", "15-Minute Spaghetti Carbonara"]);
+  assert.equal(entries[1].planned, 4);
+  assert.equal(entries[1].servings, 2);
+  assert.equal(p.plansFor(ALEX).length, 1);
+  assert.equal(p.plansFor(SAM).length, 0);
+});
+
+test("the week's list scales each meal by its planned servings (Q8)", () => {
+  const p = loadPrototype();
+  const lines = p.weekRecipeLines(ALEX, "2026-09-21");
+  assert.equal(lines.length, 4);
+  assert.equal(lines.find((l) => l.recipeId === TERIYAKI).scale, 2);
+  const list = p.buildShoppingList(lines, null);
+  assert.equal(list.find((l) => l.name === "boneless chicken thigh").amount, 1000);   // 500 g written for 2, cooked for 4
+  assert.equal(list.find((l) => l.name === "ground beef").amount, 500);              // tacos as written
+  assert.equal(p.buildShoppingList([TERIYAKI], null).find((l) => l.name === "boneless chicken thigh").amount, 500);
+});
+
+test("a cook plans a recipe and a whole plan they bought onto a week, rescales and removes (3.9)", () => {
+  const p = loadPrototype();
+  const week = "2026-10-19";
+  assert.equal(p.planFor(ALEX, week), null);
+  const entry = p.addPlanEntry(ALEX, week, TERIYAKI, "2026-10-20", "Dinner", 6);
+  assert.notEqual(entry, null);
+  assert.equal(p.planFor(ALEX, week).name, "Week of Oct 19");
+  const added = p.addProductToPlan(ALEX, week, FAMILY_WEEK);
+  assert.equal(added.length, 6);                                   // 5 recipes, 6 meals
+  const entries = p.planEntries(p.planFor(ALEX, week).id);
+  assert.equal(entries.length, 7);
+  assert.deepEqual(plain(entries.filter((e) => e.recipeId === OATS).map((e) => e.plannedDate)), ["2026-10-19", "2026-10-22"]);
+  assert.equal(entries[0].slot, "Breakfast");
+  p.setEntryServings(entry.id, null);
+  assert.equal(p.planEntries(p.planFor(ALEX, week).id).find((e) => e.id === entry.id).planned, 2);
+  p.removePlanEntry(entry.id);
+  assert.equal(p.planEntries(p.planFor(ALEX, week).id).length, 6);
+  assert.equal(loadPrototype(p.localStorage).planEntries(p.planFor(ALEX, week).id).length, 6);
+});
+
+test("a shopping trip is built from any recipes and plans, scaled, shopped, and kept across a reload (3.9)", () => {
+  const p = loadPrototype();
+  assert.equal(p.tripsFor(ALEX).length, 0);
+  const trip = p.createTrip(ALEX, "Taco night", [{ recipeId: TACOS, servings: 8 }, { recipeId: ONIGIRI, servings: 0 }]);
+  assert.equal(p.tripItems(trip.id).length, 2);
+  assert.equal(p.tripItems(trip.id)[1].servings, 4);                 // 0 means as written
+  assert.equal(p.addProductToTrip(trip.id, FAMILY_WEEK).length, 6);
+  assert.equal(p.tripItems(trip.id).length, 8);
+  const list = p.buildShoppingList(p.tripRecipeLines(trip.id), null);
+  assert.equal(list.find((l) => l.name === "ground beef").amount, 1500);   // 500 g for 4, cooked for 8, plus Family Week's tacos
+  assert.equal(trip.status, "Building");
+  assert.equal(p.tripEditable(trip), true);
+  // Already have the beef: it leaves the list to buy, and can come back.
+  p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, true);
+  assert.equal(p.tripList(trip.id).lines.some((l) => l.name === "ground beef"), false);
+  assert.equal(p.tripList(trip.id).skipped.length, 1);
+  p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, false);
+  assert.equal(p.tripList(trip.id).skipped.length, 0);
+  assert.equal(p.setTripStatus(trip.id, "Shopping").status, "Shopping");
+  assert.equal(p.tripEditable(p.tripById(trip.id)), true);
+  assert.equal(p.setTripStatus(trip.id, "Sent", "Instacart").sentTo, "Instacart");
+  assert.notEqual(p.setTripStatus(trip.id, "Done").completedAt, null);
+  assert.equal(p.tripEditable(p.tripById(trip.id)), false);
+  assert.equal(loadPrototype(p.localStorage).tripById(trip.id).status, "Done");
+  assert.equal(p.setTripStatus(trip.id, "Lost"), null);
+  p.removeTripItem(p.tripItems(trip.id)[0].id);
+  assert.equal(p.tripItems(trip.id).length, 7);
+  p.deleteTrip(trip.id);
+  assert.equal(p.tripsFor(ALEX).length, 0);
+  assert.equal(p.tripItems(trip.id).length, 0);
+});
+
+test("a planned week becomes a trip for the people each meal was planned for; nothing the cook may not open joins (3.9)", () => {
+  const p = loadPrototype();
+  const trip = p.tripFromWeek(ALEX, "2026-09-21");
+  assert.equal(trip.name, "Week of Sept 21");
+  assert.equal(p.tripItems(trip.id).find((i) => i.recipeId === TERIYAKI).servings, 4);
+  assert.equal(p.buildShoppingList(p.tripRecipeLines(trip.id), null).find((l) => l.name === "boneless chicken thigh").amount, 1000);
+  assert.equal(p.tripFromWeek(SAM, "2026-09-21"), null);
+  const sams = p.createTrip(SAM, "Try", [{ recipeId: ONIGIRI, servings: 2 }, { recipeId: TAMAGOYAKI, servings: 2 }]);
+  assert.equal(p.tripItems(sams.id).length, 1);
+  assert.equal(p.addProductToTrip(sams.id, JAPAN).length, 0);
+});
+
+test("only a recipe the cook may open can be planned, and a plan they did not buy cannot be added (3.3)", () => {
+  const p = loadPrototype();
+  assert.equal(p.addPlanEntry(SAM, "2026-10-19", ONIGIRI, "2026-10-19", "Dinner", null), null);
+  assert.notEqual(p.addPlanEntry(SAM, "2026-10-19", TAMAGOYAKI, "2026-10-19", "Dinner", null), null);
+  assert.equal(p.addProductToPlan(SAM, "2026-10-19", JAPAN), null);
+  assert.equal(p.weekRecipeLines(SAM, "2026-10-19").length, 1);
+});
+
+test("a cook owns one entry per plan bought, with the purchase snapshot (3.3)", () => {
+  const p = loadPrototype();
+  const owned = p.ownedProductsFor(p.userById(ALEX));
+  assert.deepEqual(plain(owned.map((o) => o.product.id).sort()), [1, 3, 4]);
+  const roman = owned.find((o) => o.product.id === ROMAN_PASTA);
+  assert.equal(roman.recipeCount, 4);          // the focaccia Maria later removed is still his
+  assert.equal(owned.find((o) => o.product.id === FAMILY_WEEK).mealCount, 6);
+  assert.equal(p.ownedProductsFor(p.userById(SAM)).length, 0);
+  assert.equal(p.ownedProductsFor(null).length, 0);
 });

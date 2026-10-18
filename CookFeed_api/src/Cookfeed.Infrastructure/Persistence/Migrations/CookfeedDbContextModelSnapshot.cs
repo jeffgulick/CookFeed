@@ -867,6 +867,116 @@ namespace Cookfeed.Infrastructure.Persistence.Migrations
                     b.ToTable("saved_recipes", (string)null);
                 });
 
+            modelBuilder.Entity("Cookfeed.Domain.Entities.ShoppingTrip", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("SentTo")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("sent_to");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasDefaultValue("Building")
+                        .HasColumnName("status");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shopping_trips");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_shopping_trips_user_id_created_at");
+
+                    b.ToTable("shopping_trips", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_shopping_trips_status", "status IN ('Building', 'Shopping', 'Sent', 'Done')");
+                        });
+                });
+
+            modelBuilder.Entity("Cookfeed.Domain.Entities.ShoppingTripItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("RecipeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("recipe_id");
+
+                    b.Property<int>("Servings")
+                        .HasColumnType("integer")
+                        .HasColumnName("servings");
+
+                    b.Property<int>("TripId")
+                        .HasColumnType("integer")
+                        .HasColumnName("trip_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shopping_trip_items");
+
+                    b.HasIndex("RecipeId")
+                        .HasDatabaseName("ix_shopping_trip_items_recipe_id");
+
+                    b.HasIndex("TripId")
+                        .HasDatabaseName("ix_shopping_trip_items_trip_id");
+
+                    b.ToTable("shopping_trip_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_shopping_trip_items_servings_positive", "servings > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Cookfeed.Domain.Entities.ShoppingTripSkip", b =>
+                {
+                    b.Property<int>("TripId")
+                        .HasColumnType("integer")
+                        .HasColumnName("trip_id");
+
+                    b.Property<int>("IngredientId")
+                        .HasColumnType("integer")
+                        .HasColumnName("ingredient_id");
+
+                    b.HasKey("TripId", "IngredientId")
+                        .HasName("pk_shopping_trip_skips");
+
+                    b.HasIndex("IngredientId")
+                        .HasDatabaseName("ix_shopping_trip_skips_ingredient_id");
+
+                    b.ToTable("shopping_trip_skips", (string)null);
+                });
+
             modelBuilder.Entity("Cookfeed.Domain.Entities.Unit", b =>
                 {
                     b.Property<int>("Id")
@@ -1260,6 +1370,60 @@ namespace Cookfeed.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Cookfeed.Domain.Entities.ShoppingTrip", b =>
+                {
+                    b.HasOne("Cookfeed.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shopping_trips_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Cookfeed.Domain.Entities.ShoppingTripItem", b =>
+                {
+                    b.HasOne("Cookfeed.Domain.Entities.Recipe", "Recipe")
+                        .WithMany()
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shopping_trip_items_recipes_recipe_id");
+
+                    b.HasOne("Cookfeed.Domain.Entities.ShoppingTrip", "Trip")
+                        .WithMany("Items")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shopping_trip_items_shopping_trips_trip_id");
+
+                    b.Navigation("Recipe");
+
+                    b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("Cookfeed.Domain.Entities.ShoppingTripSkip", b =>
+                {
+                    b.HasOne("Cookfeed.Domain.Entities.Ingredient", "Ingredient")
+                        .WithMany()
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shopping_trip_skips_ingredients_ingredient_id");
+
+                    b.HasOne("Cookfeed.Domain.Entities.ShoppingTrip", "Trip")
+                        .WithMany("Skips")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shopping_trip_skips_shopping_trips_trip_id");
+
+                    b.Navigation("Ingredient");
+
+                    b.Navigation("Trip");
+                });
+
             modelBuilder.Entity("Cookfeed.Domain.Entities.UserRole", b =>
                 {
                     b.HasOne("Cookfeed.Domain.Entities.Role", "Role")
@@ -1328,6 +1492,13 @@ namespace Cookfeed.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Cookfeed.Domain.Entities.Role", b =>
                 {
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("Cookfeed.Domain.Entities.ShoppingTrip", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("Skips");
                 });
 
             modelBuilder.Entity("Cookfeed.Domain.Entities.User", b =>

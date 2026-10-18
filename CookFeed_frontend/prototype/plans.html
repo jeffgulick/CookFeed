@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plans and collections | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=12">
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <nav class="nav" aria-label="Main">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+      <button type="button" class="menu-button" id="menuButton" aria-expanded="false" aria-controls="navLinks" hidden>Menu</button>
+      <div class="nav-links" id="navLinks">
+        <a class="navlink" href="index.html">Discover</a>
+        <a class="navlink active" href="plans.html" aria-current="page">Plans &amp; collections</a>
+        <a class="navlink" href="recipes.html">Recipes</a>
+        <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+        <a class="navlink" href="orders.html" data-shop>Your orders</a>
+        <a class="navlink" href="help.html">Help</a>
+        <a class="navlink" href="studio.html" data-creator hidden>My studio</a>
+        <a class="navlink" href="admin.html" data-admin hidden>Admin</a>
+        <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap" id="main" tabindex="-1">
+    <span class="pill">Plans</span>
+    <h1>Meal plans and collections</h1>
+    <p class="lede">Buy once and keep it: every recipe, its video, and one shopping list for all of them.</p>
+
+    <div class="toolbar" role="group" aria-label="Filter and sort">
+      <span class="meta">Show:</span>
+      <button type="button" class="btn-small saved" data-type="all">All</button>
+      <button type="button" class="btn-small" data-type="MealPlan">Meal plans</button>
+      <button type="button" class="btn-small" data-type="RecipeCollection">Collections</button>
+      <label for="planSort">Sort by</label>
+      <select id="planSort">
+        <option value="newest">Newest</option>
+        <option value="price">Price, low to high</option>
+        <option value="rating">Best rated</option>
+      </select>
+      <span class="showing" id="planShowing"></span>
+    </div>
+
+    <div class="tile-grid" id="allPlans"></div>
+    <p class="meta" id="noPlans" hidden>Nothing for sale in this group right now.</p>
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+
+  <script src="js/seed-data.js?v=12"></script>
+  <script src="js/db.js?v=12"></script>
+  <script src="js/rules.js?v=12"></script>
+  <script src="js/common.js?v=12"></script>
+  <script src="js/plans.js?v=12"></script>
+</body>
+</html>

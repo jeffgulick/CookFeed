@@ -255,7 +255,7 @@ function renderBuyArea(container, product, onChange) {
      foot       HTML for the card's foot, replacing the save count and Save button */
 
 /* Tooltip on every Save button, so a first-time visitor knows what saving does. */
-var SAVE_HINT = "Saving keeps this recipe in My kitchen and adds its ingredients to your shopping list there";
+var SAVE_HINT = "Saving keeps this recipe in My kitchen, ready to plan into a week and a shopping list";
 
 function recipeHref(recipe, productId) {
   return recipe.pageUrl + (productId ? "&product=" + productId : "");
@@ -346,79 +346,38 @@ function wireSaveButtons(grid, onChange) {
     if (count !== null) {
       count.textContent = savedByText(saveCount(recipe.id));
     }
-    showToast(nowSaved ? recipe.title + " saved to My kitchen, with its ingredients on your shopping list."
+    showToast(nowSaved ? recipe.title + " saved to My kitchen."
                        : recipe.title + " removed from your saved recipes.");
     if (onChange) { onChange(); }
   });
 }
 
-/* ---------- shopping list ----------
-   Shared by the product page (the recipes in a plan) and My kitchen (the saved recipes). */
+/* ---------- product tiles and card previews ----------
+   Shared by Discover, Plans and Recipes. */
 
-/* Every ingredient across the given recipes, each tagged with its own recipe's servings. Recipes do
-   not all serve the same number, so each line has to be scaled against its own recipe. A recipe listed
-   twice (the oats on two mornings of Family Week) is bought for twice. */
-function collectIngredients(recipeIds) {
-  var rows = [];
-
-  for (var i = 0; i < recipeIds.length; i = i + 1) {
-    var recipe = recipeWithDetails(recipeIds[i]);
-
-    for (var j = 0; j < recipe.ingredients.length; j = j + 1) {
-      var item = recipe.ingredients[j];
-      rows.push({
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        aisle: item.aisle,
-        baseServings: recipe.servings,
-        recipeTitle: recipe.title
-      });
-    }
-  }
-
-  return rows;
+/* One tile per plan or collection for sale. A plan the viewer owns says so. */
+function productTileHtml(product) {
+  var creator = creatorFor(product.creatorId);
+  var owned = ownsProduct(currentUser(), product.id);
+  return "<a class='card product-tile" + (owned ? " owned" : "") + "' href='" + productUrl(product.id) + "'>" +
+    "<img src='" + escapeHtml(product.coverImageUrl || "") + "' alt=''>" +
+    "<span class='pill'>" + productTypeLabel(product) + "</span>" +
+    "<span class='recipe-title'>" + escapeHtml(product.title) + "</span>" +
+    "<span class='meta'>by " + escapeHtml(creator.handle) + " &middot; " + productCounts(product) + "</span>" +
+    "<span class='meta'>" + ratingText(product.id) + "</span>" +
+    (owned ? "<span class='owned-label'>&#10003; You own this</span>" : "<span class='price'>" + formatPrice(product.priceCents) + "</span>") +
+    "</a>";
 }
 
-/* Add up the ingredients of the given recipes. Pass null for people to keep each
-   recipe as published, or a number to cook every recipe for that many people.
-   Two lines only merge when they share a name AND a unit, which is why the two
-   soy sauce entries become one row but the rice and the ginger never combine.
-   Each line remembers which recipes it came from. The result is sorted by aisle
-   so the list follows a walk through the store. */
-function buildShoppingList(recipeIds, people) {
-  var rows = collectIngredients(recipeIds);
-  var totals = {};
-  var list = [];
-
-  for (var i = 0; i < rows.length; i = i + 1) {
-    var row = rows[i];
-    var scale = 1;
-
-    if (people !== null) {
-      scale = people / row.baseServings;
-    }
-
-    var key = row.name + "|" + row.unit;
-
-    if (totals[key] === undefined) {
-      totals[key] = { key: key, name: row.name, unit: row.unit, aisle: row.aisle, amount: 0, recipes: [] };
-      list.push(totals[key]);
-    }
-    totals[key].amount = totals[key].amount + row.quantity * scale;
-    if (totals[key].recipes.indexOf(row.recipeTitle) === -1) {
-      totals[key].recipes.push(row.recipeTitle);
-    }
+/* Hovering or focusing a recipe card shows its preview, as on a product page. */
+function wirePreviews(grid) {
+  var cards = grid.querySelectorAll(".recipe-card");
+  for (var i = 0; i < cards.length; i = i + 1) {
+    cards[i].addEventListener("mouseenter", function (event) { event.currentTarget.classList.add("previewing"); });
+    cards[i].addEventListener("mouseleave", function (event) { event.currentTarget.classList.remove("previewing"); });
+    cards[i].addEventListener("focusin", function (event) { event.currentTarget.classList.add("previewing"); });
+    cards[i].addEventListener("focusout", function (event) { event.currentTarget.classList.remove("previewing"); });
   }
-
-  list.sort(function (a, b) {
-    if (a.aisle !== b.aisle) {
-      return a.aisle < b.aisle ? -1 : 1;
-    }
-    return a.name < b.name ? -1 : 1;
-  });
-
-  return list;
 }
 
 /* ---------- servings ----------
@@ -596,3 +555,49 @@ document.addEventListener("DOMContentLoaded", function () {
     showStorageNotice();
   }
 });
+
+/* ---------- the picker: what to cook ----------
+   Used by the Build dialog on My kitchen and the Add recipes dialog on a trip page: the plans the cook owns
+   (each goes on as a whole) and the recipes they saved, each with the people to cook for. With withDays,
+   each recipe also gets a day and meal, for putting it on a week. */
+function pickerPlansHtml(user) {
+  return ownedProductsFor(user).map(function (o) {
+    return "<label class='radio'><input type='checkbox' class='pick-plan' value='" + o.product.id + "'> " +
+      escapeHtml(o.productTitle) + " <span class='meta'>(" + productCounts(o) + ")</span></label>";
+  }).join("") || "<p class='meta'>You have not bought a plan yet.</p>";
+}
+
+function pickerRecipesHtml(user, options) {
+  var dayOptions = DAY_NAMES.map(function (day, i) { return "<option value='" + i + "'>" + day + "</option>"; }).join("");
+  var slotOptions = SLOT_ORDER.map(function (slot) {
+    return "<option value='" + slot + "'" + (slot === "Dinner" ? " selected" : "") + ">" + slot + "</option>";
+  }).join("");
+  return savesFor(user.id).map(function (save) {
+    var recipe = rowById("recipes", save.recipeId);
+    return "<div class='placement'><label><input type='checkbox' class='pick-recipe' value='" + recipe.id + "'" +
+      (recipe.id === options.preRecipeId ? " checked" : "") + "> " + escapeHtml(recipe.title) + "</label>" +
+      "<span class='pick-people'>for <input type='number' class='pick-servings' min='1' max='20' value='" + recipe.servings +
+        "' aria-label='People for " + escapeHtml(recipe.title) + "'> people</span>" +
+      (options.withDays ? "<span class='pick-when'><select aria-label='Day for " + escapeHtml(recipe.title) + "' class='pick-day'>" + dayOptions +
+        "</select> <select aria-label='Meal for " + escapeHtml(recipe.title) + "' class='pick-slot'>" + slotOptions + "</select></span>" : "") +
+      "</div>";
+  }).join("") || "<p class='meta'>Save a recipe first, and it appears here.</p>";
+}
+
+/* What was ticked: the plan ids, and the recipes with people (and day and meal when asked). */
+function readPicker(root) {
+  var productIds = [];
+  var plans = root.querySelectorAll(".pick-plan:checked");
+  for (var i = 0; i < plans.length; i = i + 1) { productIds.push(Number(plans[i].value)); }
+  var items = [];
+  var rows = root.querySelectorAll(".placement");
+  for (var k = 0; k < rows.length; k = k + 1) {
+    var box = rows[k].querySelector(".pick-recipe");
+    if (!box.checked) { continue; }
+    var people = Number(rows[k].querySelector(".pick-servings").value);
+    var day = rows[k].querySelector(".pick-day");
+    items.push({ recipeId: Number(box.value), servings: people > 0 ? people : 0,
+      dayOffset: day ? Number(day.value) : null, slot: day ? rows[k].querySelector(".pick-slot").value : null });
+  }
+  return { productIds: productIds, items: items };
+}

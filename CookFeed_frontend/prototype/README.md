@@ -65,9 +65,12 @@ review pages are templates: the address names what they show.
 | `reviews.html?product=3` | A product's reviews and, for buyers, the review form |
 | `cart.html` | The cart and a simulated checkout |
 | `orders.html` | Your orders, newest first, cancelled ones included |
-| `kitchen.html` | My kitchen: saved recipes and one shopping list for all of them |
+| `kitchen.html` | My kitchen: the plans you bought, the recipes you saved, the week you are cooking, and your shopping trips |
 | `studio.html` | My studio, for creators: their recipes (draft, publish, free or premium), their plans (create, edit, retire), sales and reviews |
 | `admin.html` | The Admin console: hide or restore reviews, verify or suspend creators, retire plans, unpublish recipes, refund or cancel orders, accounts, and the audit log |
+| `plans.html` | Every meal plan and collection for sale, filtered by type and sorted; a plan you own says so |
+| `recipes.html` | Every published recipe, searched and sorted: free ones to save, premium ones naming the plan they are sold in |
+| `list.html?trip=1` | One shopping trip, readable on a phone: lines by aisle with ticks, Remove and put back, the recipes and their people, I'm shopping this, Send to Instacart or Favor, Done |
 | `help.html` | A short FAQ |
 | `signin.html` | Sign in as one of the seeded accounts, browse signed out, or reset the data |
 
@@ -197,7 +200,10 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
     premium recipes, and a recipe in a plan cannot be made free (the database's rules, explained
     before they would refuse);
   - the admin's changes (a hidden review, a suspended creator, a retired plan, an unpublished recipe,
-    a refunded order) show on every page at once, and each is logged to `admin_actions`.
+    a refunded order) show on every page at once, and each is logged to `admin_actions`;
+  - saving a recipe or buying a plan puts nothing on a shopping list: a cook builds a trip when they
+    want one, from any recipes and plans or from a planned week, edits it until it is done, and only a
+    recipe they may open can be planned or put on a trip.
 - **Checkout writes what the API will write:** a Paid order, one line per plan with the title, price
   and seller, and a snapshot of the plan's recipes with their days and slots.
 - **Counts follow the database.** Save counts are counted from the save rows, and a meal plan that
