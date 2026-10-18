@@ -445,7 +445,7 @@ internal static class SeedData
 
     public static CartItem[] CartItems =>
     [
-        new() { UserId = 1, ProductId = 2, AddedAt = Utc(2026, 9, 6, 12, 0) },
+        new() { UserId = 2, ProductId = 2, AddedAt = Utc(2026, 9, 6, 12, 0) },
     ];
 
     public static Order[] Orders =>

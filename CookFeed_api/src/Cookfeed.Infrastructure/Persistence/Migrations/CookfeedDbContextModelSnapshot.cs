@@ -22,6 +22,59 @@ namespace Cookfeed.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Cookfeed.Domain.Entities.AdminAction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("action");
+
+                    b.Property<int>("AdminUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("admin_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<int>("TargetId")
+                        .HasColumnType("integer")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetTable")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("target_table");
+
+                    b.HasKey("Id")
+                        .HasName("pk_admin_actions");
+
+                    b.HasIndex("AdminUserId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_admin_actions_admin_user_id_created_at");
+
+                    b.HasIndex("TargetTable", "TargetId")
+                        .HasDatabaseName("ix_admin_actions_target_table_target_id");
+
+                    b.ToTable("admin_actions", (string)null);
+                });
+
             modelBuilder.Entity("Cookfeed.Domain.Entities.CartItem", b =>
                 {
                     b.Property<int>("UserId")
@@ -72,6 +125,10 @@ namespace Cookfeed.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean")
                         .HasColumnName("is_verified");
+
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("suspended_at");
 
                     b.HasKey("UserId")
                         .HasName("pk_creator_profiles");
@@ -720,6 +777,10 @@ namespace Cookfeed.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<DateTimeOffset?>("HiddenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hidden_at");
+
                     b.Property<int>("ProductId")
                         .HasColumnType("integer")
                         .HasColumnName("product_id");
@@ -925,6 +986,18 @@ namespace Cookfeed.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_user_roles_role_id");
 
                     b.ToTable("user_roles", (string)null);
+                });
+
+            modelBuilder.Entity("Cookfeed.Domain.Entities.AdminAction", b =>
+                {
+                    b.HasOne("Cookfeed.Domain.Entities.User", "AdminUser")
+                        .WithMany()
+                        .HasForeignKey("AdminUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_admin_actions_users_admin_user_id");
+
+                    b.Navigation("AdminUser");
                 });
 
             modelBuilder.Entity("Cookfeed.Domain.Entities.CartItem", b =>

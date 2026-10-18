@@ -1,7 +1,7 @@
 /* Keyboard and screen-reader basics: the phone menu, the skip link, a focus ring that can be seen, the
    confirmation dialog's focus handling, and the review form's labelled Yes/No group. */
 
-const { test, expect, signInAs, contrast, ALEX } = require("./support");
+const { test, expect, signInAs, contrast, ALEX, PRIYA } = require("./support");
 
 test.beforeEach(async ({ page }) => { await signInAs(page, ALEX); });
 
@@ -50,6 +50,7 @@ test("the focus ring is at least 3px and 3:1 against the page and a card", async
 });
 
 test("the confirmation dialog focuses Cancel, backs out on Escape, and returns focus", async ({ page }) => {
+  await signInAs(page, PRIYA);   // the seeded cart with something in it
   await page.goto("cart.html");
   await page.click(".remove-item");
   await expect(page.locator("#confirmDialog")).toBeVisible();

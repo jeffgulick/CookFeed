@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Help | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=10">
+  <link rel="stylesheet" href="css/styles.css?v=11">
 </head>
 <body>
 
@@ -20,6 +20,8 @@
         <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
         <a class="navlink" href="orders.html" data-shop>Your orders</a>
         <a class="navlink active" href="help.html" aria-current="page">Help</a>
+        <a class="navlink" href="studio.html" data-creator hidden>My studio</a>
+        <a class="navlink" href="admin.html" data-admin hidden>Admin</a>
         <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
       </div>
     </div>
@@ -53,8 +55,18 @@
       <h3>Can I buy more than one copy?</h3>
       <p>No. A plan is yours once you own it, so the cart holds one copy of each.</p>
 
+      <h3>I am a creator. Where do I add a recipe or a plan?</h3>
+      <p>In <strong>My studio</strong>, in the navigation when you are signed in as a creator. A recipe starts as
+        a draft only you can open; publish it when it is ready, free for anyone to save or premium for buyers of
+        a plan. A plan or collection is for sale as soon as you create it from your published premium recipes.
+        Retiring a plan takes it off the store; everyone who bought it keeps it. The studio also shows your
+        sales and the reviews of your plans.</p>
+
       <h3>Why does the admin account see no cart or Save buttons?</h3>
-      <p>The admin account runs the site and holds no other role, so it does not shop, save or review.</p>
+      <p>The admin account runs the site and holds no other role, so it does not shop, save or review. Its
+        <strong>Admin console</strong> hides or restores reviews, verifies or suspends creators, retires plans,
+        unpublishes recipes, refunds or cancels orders, and looks up accounts. Every change it makes is written
+        to an audit log.</p>
 
       <h3>Is this the real store?</h3>
       <p>It is a prototype. The accounts, plans, recipes and reviews are the project database's rows, and
@@ -66,9 +78,9 @@
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=10"></script>
-  <script src="js/db.js?v=10"></script>
-  <script src="js/rules.js?v=10"></script>
-  <script src="js/common.js?v=10"></script>
+  <script src="js/seed-data.js?v=11"></script>
+  <script src="js/db.js?v=11"></script>
+  <script src="js/rules.js?v=11"></script>
+  <script src="js/common.js?v=11"></script>
 </body>
 </html>

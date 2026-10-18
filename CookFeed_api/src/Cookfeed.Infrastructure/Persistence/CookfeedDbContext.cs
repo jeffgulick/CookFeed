@@ -49,6 +49,8 @@ public class CookfeedDbContext(DbContextOptions<CookfeedDbContext> options) : Db
 
     public DbSet<Review> Reviews => Set<Review>();
 
+    public DbSet<AdminAction> AdminActions => Set<AdminAction>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CookfeedDbContext).Assembly);
 

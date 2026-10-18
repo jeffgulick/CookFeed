@@ -12,8 +12,9 @@ function publicRecipes() {
   }).map(function (r) { return recipeWithDetails(r.id); });
 }
 
+/* For sale: active, and the creator is not suspended (3.8). */
 function activeProducts() {
-  return rowsWhere("products", function (p) { return p.creatorId === creator.userId && p.isActive; })
+  return rowsWhere("products", function (p) { return p.creatorId === creator.userId && isForSale(p); })
     .map(function (p) { return productWithRecipes(p.id); });
 }
 
@@ -53,6 +54,7 @@ function renderHeader() {
 
   var user = currentUser();
   document.getElementById("ownStorefront").hidden = user === null || user.id !== creator.userId;
+  document.getElementById("suspendedNote").hidden = creator.suspendedAt === null;
 }
 
 /* One card per product for sale, each with its own buy area. */

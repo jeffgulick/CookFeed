@@ -36,7 +36,7 @@ function renderOrders() {
       "<span class='tag " + (paid ? "tag-yes" : "tag-no") + "'>" + order.status + "</span></div>" +
       "<ul class='order-items'>" + items + "</ul>" +
       "<div class='total-row grand'><span>Total</span><span>" + formatPrice(order.totalCents) + "</span></div>" +
-      (paid ? "" : "<p class='meta'>This order was cancelled, so nothing in it is yours.</p>") +
+      (paid ? "" : "<p class='meta'>This order was " + order.status.toLowerCase() + ", so nothing in it is yours.</p>") +
       "</div>";
   }).join("");
 

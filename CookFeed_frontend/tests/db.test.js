@@ -5,9 +5,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { loadPrototype, MemoryStorage } = require("./load-prototype");
 
-const ALEX = 1, PRIYA = 2, KENJI = 4, SAM = 7;
+const ALEX = 1, PRIYA = 2, KENJI = 4, DAN = 5, ADMIN = 6, SAM = 7;
 const ROMAN_PASTA = 1, BREAD_BOX = 2, JAPAN = 3, FAMILY_WEEK = 4, SUMMER_GRILLING = 5;
-const TERIYAKI = 5, ONIGIRI = 6, OATS = 9;
+const TERIYAKI = 5, ONIGIRI = 6, OATS = 9, TAMAGOYAKI = 16;
 
 // Values made inside the sandbox have the sandbox's Array and Object; compare them as plain JSON.
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -78,8 +78,9 @@ test("an account's saves come newest first", () => {
 
 test("the cart holds one copy of each plan, starting from the seed", () => {
   const p = loadPrototype();
-  assert.deepEqual(plain(p.cartFor(ALEX).map((c) => c.productId)), [BREAD_BOX]);
-  assert.equal(p.addToCart(ALEX, BREAD_BOX), false);
+  assert.deepEqual(plain(p.cartFor(PRIYA).map((c) => c.productId)), [BREAD_BOX]);
+  assert.equal(p.addToCart(PRIYA, BREAD_BOX), false);
+  assert.equal(p.cartFor(ALEX).length, 0);
   assert.equal(p.addToCart(SAM, JAPAN), true);
   assert.equal(p.addToCart(SAM, JAPAN), false);
   assert.equal(p.cartFor(SAM).length, 1);
@@ -180,4 +181,60 @@ test("the Homework 3 storage keys are cleared, since nothing reads them any more
 test("an inactive product cannot be added to a cart", () => {
   const p = loadPrototype();
   assert.equal(p.addToCart(SAM, SUMMER_GRILLING), false);
+});
+
+test("a creator drafts a recipe, publishes it as premium, and sells it in a new plan (3.3, 3.8)", () => {
+  const p = loadPrototype();
+  const user = p.userById(KENJI);
+  const recipe = p.createRecipe(KENJI, {
+    title: "Yakitori", servings: 2, prepMinutes: 10, cookMinutes: 10, visibility: "ProductOnly",
+    ingredients: [{ ingredientId: 19, unitId: 7, quantity: 400, preparation: "cubed" }], steps: ["Skewer.", "Grill."]
+  });
+  assert.equal(recipe.isPublished, false);
+  assert.equal(p.canOpenRecipe(user, recipe), true);
+  assert.equal(p.canOpenRecipe(p.userById(SAM), recipe), false);
+  assert.equal(p.recipeWithDetails(recipe.id).ingredients.length, 1);
+  assert.equal(p.recipeWithDetails(recipe.id).steps.length, 2);
+
+  const plan = { type: "MealPlan", title: "Grill night", priceCents: 500, placements: [{ recipeId: recipe.id, dayOffset: 0, slot: "Dinner" }] };
+  assert.notEqual(p.createProduct(KENJI, plan).problem, undefined);   // a draft cannot be sold
+  p.setRecipePublished(recipe.id, true);
+  const created = p.createProduct(KENJI, plan);
+  assert.equal(created.problem, undefined);
+  assert.equal(p.productWithRecipes(created.product.id).mealCount, 1);
+  assert.equal(p.buyState(p.userById(SAM), created.product), "buy");
+  assert.notEqual(p.setRecipeVisibility(recipe.id, "Public"), "");    // now in a plan
+  assert.notEqual(p.createProduct(KENJI, { type: "RecipeCollection", title: "Free stuff", priceCents: 100,
+    placements: [{ recipeId: TAMAGOYAKI }] }).problem, undefined);     // a free recipe cannot be sold
+  p.setProductActive(created.product.id, false);
+  assert.equal(p.buyState(p.userById(SAM), p.rowById("products", created.product.id)), "notForSale");
+  // The browser copy keeps all of it across a reload.
+  assert.equal(loadPrototype(p.localStorage).rowById("recipes", recipe.id).title, "Yakitori");
+});
+
+test("the admin hides a review, which leaves the count and rating, and nobody else can (3.8)", () => {
+  const p = loadPrototype();
+  assert.equal(p.reviewsFor(JAPAN).length, 3);
+  assert.notEqual(p.setReviewHidden(ADMIN, 2, true), null);
+  assert.equal(p.reviewsFor(JAPAN).length, 2);
+  assert.equal(p.reviewsFor(JAPAN, true).length, 3);
+  assert.equal(p.adminActions()[0].action, "HideReview");
+  assert.equal(p.adminActions()[0].adminName, "Cookfeed Admin");
+  assert.equal(p.setReviewHidden(SAM, 1, true), null);
+  assert.equal(p.setCreatorSuspended(KENJI, DAN, true), null);
+  assert.equal(p.reviewsFor(JAPAN).length, 2);
+  p.setReviewHidden(ADMIN, 2, false);
+  assert.equal(p.reviewsFor(JAPAN).length, 3);
+});
+
+test("a refund takes the plan back: no longer owned, its recipes locked (3.8)", () => {
+  const p = loadPrototype();
+  const alex = p.userById(ALEX);
+  assert.equal(p.ownsProduct(alex, FAMILY_WEEK), true);
+  assert.notEqual(p.setOrderStatus(ADMIN, 2, "Refunded", "Asked for a refund"), null);
+  assert.equal(p.ownsProduct(alex, FAMILY_WEEK), false);
+  assert.equal(p.canOpenRecipe(alex, p.rowById("recipes", OATS)), false);
+  assert.equal(p.setOrderStatus(ADMIN, 2, "Paid"), null);        // no way back
+  assert.equal(p.setOrderStatus(ADMIN, 3, "Refunded"), null);    // a cancelled order has no money to refund
+  assert.equal(p.allOrders()[0].buyerName !== undefined, true);
 });

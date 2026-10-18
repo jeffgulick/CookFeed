@@ -21,7 +21,7 @@ var product = null;
 
 /* Why the form is not shown, for every reviewState except canReview. */
 var REVIEW_GATES = {
-  noShop: "Admin accounts do not write reviews.",
+  noShop: "Admin accounts do not write reviews. You can hide a review below, or restore one you hid; hidden reviews show only to admins.",
   yourOwn: "This is your own %noun%. Creators cannot review their own.",
   alreadyReviewed: "You have reviewed this %noun%. Thank you! You can remove your review above and write a new one.",
   mustBuy: "Only cooks who bought this %noun% can review it, so every review comes from someone who cooked it."
@@ -80,7 +80,8 @@ function visibleReviews(all) {
 
 /* Redraw the list of reviews. Text a shopper typed goes through escapeHtml. */
 function renderReviews() {
-  var all = reviewsFor(product.id);
+  // The admin also sees the reviews it hid, marked, with a button to restore them (3.8).
+  var all = reviewsFor(product.id, isAdmin(currentUser()));
   var shown = visibleReviews(all);
   var html = "";
 
@@ -94,7 +95,8 @@ function renderReviews() {
       tag = "<span class='tag tag-no'>Does not recommend</span>";
     }
 
-    var extraClass = review.id === freshReviewId ? " fresh" : "";
+    var hidden = review.hiddenAt !== null;
+    var extraClass = (review.id === freshReviewId ? " fresh" : "") + (hidden ? " hidden-review" : "");
 
     html = html + "<div class='review" + extraClass + "'>";
     html = html + "<div class='review-head'>";
@@ -102,12 +104,17 @@ function renderReviews() {
     html = html + "<span class='stars' aria-label='" + review.rating + " out of 5 stars'>" +
                   buildStars(review.rating) + "</span>";
     html = html + tag;
+    if (hidden) { html = html + "<span class='tag tag-muted'>Hidden by Cookfeed</span>"; }
     html = html + "<span class='review-date'>" + formatDate(review.createdAt) + "</span>";
     html = html + "</div>";
     html = html + "<p>" + escapeHtml(review.body) + "</p>";
     if (isMine(review)) {
       html = html + "<button type='button' class='link-button remove-review' data-id='" +
                     review.id + "'>Remove my review</button>";
+    }
+    if (isAdmin(currentUser())) {
+      html = html + "<button type='button' class='link-button moderate-review' data-id='" + review.id +
+                    "' data-hide='" + (hidden ? "false" : "true") + "'>" + (hidden ? "Restore review" : "Hide review") + "</button>";
     }
     html = html + "</div>";
   }
@@ -187,8 +194,27 @@ function clearFilters() {
   refreshPage();
 }
 
+/* The admin hides a review from everyone but admins, or restores one (3.8). */
+function onModerateClicked(button) {
+  var id = Number(button.getAttribute("data-id"));
+  var hide = button.getAttribute("data-hide") === "true";
+  confirmDialog(hide ? "Hide this review from every cook? Only admins will see it, and you can restore it."
+                     : "Show this review to every cook again?", hide ? "Hide review" : "Restore review").then(function (ok) {
+    if (!ok) { return; }
+    setReviewHidden(currentUser().id, id, hide);
+    refreshPage();
+    showToast(hide ? "The review is hidden. The rating and count no longer include it." : "The review is shown again.");
+    document.getElementById("main").focus({ preventScroll: true });
+  });
+}
+
 /* Remove a review this shopper posted, after checking that is what they meant. */
 function onReviewListClicked(event) {
+  var moderate = event.target.closest(".moderate-review");
+  if (moderate !== null) {
+    onModerateClicked(moderate);
+    return;
+  }
   var button = event.target.closest(".remove-review");
   if (button === null) {
     return;

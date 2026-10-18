@@ -264,3 +264,5 @@ ROLLBACK;
 INSERT INTO product_recipes (product_id, recipe_id, sort_order) VALUES (1, 14, 9);
 --      g) making a recipe that is in a product (No-Knead Focaccia, in The Bread Box) free to save
 UPDATE recipes SET visibility = 'Public' WHERE id = 3;
+--      h) a home cook (Alex) writing the admin's audit trail; only an Admin account may (3.8)
+INSERT INTO admin_actions (admin_user_id, action, target_table, target_id) VALUES (1, 'HideReview', 'reviews', 2);

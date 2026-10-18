@@ -47,6 +47,7 @@ in the [README](../README.md#deliverable-2).
 | Roadmap item 2, OpenAPI: `/openapi/v1.json` describes every endpoint where `OpenApi:Enabled` is set (Development); `CallerHeaderTransformer` marks `X-User-Id` required under `/api/me` and optional elsewhere. 9 tests (203 in all) | `Program.cs`, `Api/OpenApi/`, `tests/*/Api/OpenApiTests.cs` |
 | Roadmap item 3, recipe detail: `RecipesController` → `RecipeDetailService` (applies `Domain/Access/RecipeAccess.CanOpen`) → `RecipeRepository.GetAccessFactsAsync` and `GetDetailAsync` (split query). A recipe the viewer may not open is a 404. 12 Domain, 4 service and 19 HTTP tests, against Q4 and Q14, and the route joins the caller-header and OpenAPI tests (251 in all) | `src/*/Recipes/`, `Domain/Access/`, `docs/Queries.md` §1b |
 | Premium-only products: a product sells only `ProductOnly` recipes, so nothing a buyer pays for is free to save. Two triggers in the `ProductOnlyRecipesInProducts` migration and `schema.sql` (Q17f, g). The seed's 12 in-product recipes became `ProductOnly`; each creator gained two free recipes; The Bread Box gained Rosemary Ciabatta; saves of `ProductOnly` recipes are only by their buyers. 4 trigger tests and 2 seed and recipe-detail tests (257 in all) | `docs/schema.sql`, `Persistence/Migrations/`, `docs/sql/seed.sql`, `DesignDocument.md` §3.3 |
+| Creator studio and Admin console (§3.8), in the prototype first: `reviews.hidden_at`, `creator_profiles.suspended_at` and the `admin_actions` audit table with its admin-only trigger (the `AdminModeration` migration, Q17h); `studio.html` (a creator's recipes, plans, sales and reviews) and `admin.html` (moderation, creators, catalog, orders, accounts, the log); the role rules in `rules.js`. 258 API tests, 33 unit and 222 smoke tests | `docs/DesignDocument.md` §3.8, `CookFeed_frontend/prototype/js/{db,rules,studio,admin}.js` |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
 with reviewed SQL and justified indexes, the design document, and the API with tests.
@@ -56,8 +57,9 @@ with reviewed SQL and justified indexes, the design document, and the API with t
 ## Frontend
 
 **Today: an HTML/JavaScript prototype** in `CookFeed_frontend/prototype/` (Homework 1, extended in
-Homework 3 and Project Deliverable 2). Ten pages run straight from the file system with no server:
+Homework 3 and Project Deliverable 2). Twelve pages run straight from the file system with no server:
 - Discover, Your orders, My kitchen, Help, the cart, and sign-in;
+- My studio for creators and the Admin console for the admin (design doc §3.8);
 - templates for every product, recipe, creator and review list (`product.html?id=`, `recipe.html?id=`,
   `creator.html?handle=`, `reviews.html?product=`).
 
@@ -357,6 +359,38 @@ Tick items off here as they merge.
     - *Tests:* the trigger refusals that `TriggerTests` already provoke, sent through the API, come back
       as 4xx.
 
+**E. The creator studio and the Admin console** (DesignDocument.md §3.8; both built in the prototype,
+`studio.html` and `admin.html`, which show what each endpoint returns and changes)
+
+14. **Creator studio**, under `/api/me/studio/…`, every route requiring the `Creator` role and touching the
+    caller's own rows only (404 for anyone else's, as recipe detail does):
+    - `GET /api/me/studio`: the creator's recipes (drafts included), products, sales (Q10) and reviews;
+    - `POST /api/me/studio/recipes`, `PUT /api/me/studio/recipes/{id}` (title, description, servings,
+      times, ingredient lines, steps), `POST …/{id}/publish` and `…/unpublish`, `PUT …/{id}/visibility`;
+    - `POST /api/me/studio/products`, `PUT /api/me/studio/products/{id}` (title, description, price,
+      placements with day and slot), `POST …/{id}/retire` and `…/restore`.
+    - *Rules:* a product takes only published `ProductOnly` recipes, and a recipe in a product cannot be
+      made `Public`. The service explains both before the triggers would refuse them (item 13 maps the
+      refusal if anything slips past). Ingredient lines name `ingredients` and `units` rows by id; the AI
+      parsing of L3 suggests them later.
+    - *Tests:* each write as another creator or a home cook is 403 or 404; the trigger cases return 400
+      with the rule named; the studio's reads match Q2, Q10 and Q12 for the caller.
+15. **Admin console**, under `/api/admin/…`, every route requiring the `Admin` role (403 for anyone else):
+    - `GET /api/admin/reviews`, `POST /api/admin/reviews/{id}/hide` and `…/restore`;
+    - `GET /api/admin/creators`, `POST /api/admin/creators/{userId}/verify`, `…/unverify`, `…/suspend`,
+      `…/restore`;
+    - `POST /api/admin/products/{id}/retire` and `…/restore`; `POST /api/admin/recipes/{id}/unpublish`
+      and `…/publish`;
+    - `GET /api/admin/orders?q=` (buyer name or order number), `POST /api/admin/orders/{id}/refund`
+      (`Paid` only) and `…/cancel` (`Pending` only);
+    - `GET /api/admin/users`, `GET /api/admin/actions` (the log).
+    - *Rules:* every change writes its `admin_actions` row in the same transaction; the
+      `admin_actions_admin_only` trigger is the last line of defence. Public reads (Q12, Q13, the
+      storefront, the feed) filter `hidden_at IS NOT NULL` reviews and `suspended_at IS NOT NULL`
+      creators' products; ownership keeps reading `Paid` orders only, so a refund locks the recipes again.
+    - *Tests:* each route as a home cook or a creator is 403; each change leaves exactly one log row;
+      the public reads change as §3.8 says.
+
 **Not planned:** followers and a Follow button (the prototype's follower count was removed). The database has no
 followers table, so the Angular storefront leaves them out. Adding them later is a new table, a count on
 `StorefrontDto`, and a `PUT`/`DELETE /api/me/follows/{handle}` pair. The storefront's recipe cards gain
@@ -522,7 +556,10 @@ them off here as they land. The status codes are proposals, to confirm when each
 | The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront ✅ (`StorefrontEndpointTests`) | — |
 | A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14 — or for the recipe's own creator. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail ✅ (`RecipeAccess`, `RecipeDetailEndpointTests`) | 404 (do not reveal it exists) |
 | Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
-| A product holds only `ProductOnly` recipes, and a recipe in a product cannot be made `Public` (the database refuses both; the service explains it first). | §3.3 | Creator studio: editing products and recipes | 400 |
+| A product holds only `ProductOnly` recipes, and a recipe in a product cannot be made `Public` (the database refuses both; the service explains it first). | §3.3 | Creator studio (item 14) | 400 |
+| A creator edits only their own recipes and products. | §3.8 | Creator studio (item 14) | 404 |
+| Admin routes require `Admin`; every admin change writes an `admin_actions` row in the same transaction (the trigger refuses any other writer). | §3.8 | Admin console (item 15) | 403 |
+| Hidden reviews and suspended creators' products are left out of every public read; a refunded order grants nothing. | §3.8 | Admin console (item 15): feed ✅ (unaffected), reviews, storefront, plan page | — |
 | Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |
 | Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Storefront ✅ (owned = a Paid order item), shopping list ✅, recipe detail ✅, My kitchen / purchases | — |
 | A review requires a `Paid` order item for that product by the same user; one review per user per product. | §3.5 | Reviews | 403 / 409 |

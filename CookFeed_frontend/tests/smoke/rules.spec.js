@@ -1,7 +1,7 @@
 /* The marketplace rules of DesignDocument section 3, as each seeded account sees them on screen. The rule
    logic itself is unit-tested in tests/rules.test.js; these check that every page shows what it decides. */
 
-const { test, expect, signInAs, textOf, GUEST, ALEX, KENJI, ADMIN } = require("./support");
+const { test, expect, signInAs, textOf, GUEST, ALEX, PRIYA, KENJI, ADMIN } = require("./support");
 
 test.describe("a signed-out visitor", () => {
   test.beforeEach(async ({ page }) => { await signInAs(page, GUEST); });
@@ -51,10 +51,17 @@ test.describe("a signed-out visitor", () => {
 test.describe("Alex, a home cook with seeded orders", () => {
   test.beforeEach(async ({ page }) => { await signInAs(page, ALEX); });
 
-  test("starts with The Bread Box in the cart", async ({ page }) => {
+  test("sees neither the studio nor the Admin link", async ({ page }) => {
+    await page.goto("index.html");
+    await expect(page.locator(".navlink[href='studio.html']")).toBeHidden();
+    await expect(page.locator(".navlink[href='admin.html']")).toBeHidden();
+  });
+
+  test("starts with an empty cart, and may buy again the plan whose order was cancelled", async ({ page }) => {
     await page.goto("cart.html");
-    await expect(page.locator("#cartLines")).toContainText("The Bread Box");
-    await expect(page.locator("#cartCount")).toHaveText("1");
+    await expect(page.locator("#cartCount")).toHaveText("0");
+    await page.goto("product.html?id=2");
+    await expect(page.locator("#buyArea .buy-button")).toHaveCount(1);
   });
 
   test("sees three orders, one of them cancelled", async ({ page }) => {
@@ -81,6 +88,18 @@ test.describe("Alex, a home cook with seeded orders", () => {
   });
 });
 
+test.describe("Priya, a home cook with The Bread Box in her cart", () => {
+  test.beforeEach(async ({ page }) => { await signInAs(page, PRIYA); });
+
+  test("starts with it in the cart, and the plan says so", async ({ page }) => {
+    await page.goto("cart.html");
+    await expect(page.locator("#cartLines")).toContainText("The Bread Box");
+    await expect(page.locator("#cartCount")).toHaveText("1");
+    await page.goto("product.html?id=2");
+    expect(await textOf(page, "#buyArea")).toMatch(/^In your cart/);
+  });
+});
+
 test.describe("Kenji, a creator", () => {
   test.beforeEach(async ({ page }) => { await signInAs(page, KENJI); });
 
@@ -92,6 +111,12 @@ test.describe("Kenji, a creator", () => {
     expect(await textOf(page, "#reviewGate")).toMatch(/^This is your own plan/);
     await page.goto("product.html?id=1");
     await expect(page.locator("#buyArea .buy-button")).toHaveCount(1);
+  });
+
+  test("sees My studio in the nav, and no Admin link", async ({ page }) => {
+    await page.goto("index.html");
+    await expect(page.locator(".navlink[href='studio.html']")).toBeVisible();
+    await expect(page.locator(".navlink[href='admin.html']")).toBeHidden();
   });
 
   test("opens his own ProductOnly recipe and his draft, and sees his own storefront", async ({ page }) => {
@@ -109,6 +134,8 @@ test.describe("the admin", () => {
 
   test("sees no shop links, cart, save, buy or review controls", async ({ page }) => {
     await page.goto("index.html");
+    await expect(page.locator(".navlink[href='admin.html']")).toBeVisible();
+    await expect(page.locator(".navlink[href='studio.html']")).toBeHidden();
     await expect(page.locator(".cart-chip")).toBeHidden();
     await expect(page.locator(".navlink[href='kitchen.html']")).toBeHidden();
     await expect(page.locator(".save-button, .sign-in-to")).toHaveCount(0);
@@ -116,6 +143,7 @@ test.describe("the admin", () => {
     await expect(page.locator("#buyArea")).toHaveText("");
     await page.goto("reviews.html?product=3");
     expect(await textOf(page, "#reviewGate")).toMatch(/^Admin accounts/);
+    await expect(page.locator(".moderate-review")).toHaveCount(3);
     await page.goto("cart.html");
     await expect(page.locator("#cartArea")).toContainText("Admin accounts do not shop");
   });

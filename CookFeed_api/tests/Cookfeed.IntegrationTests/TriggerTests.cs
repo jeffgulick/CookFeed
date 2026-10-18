@@ -180,6 +180,29 @@ public class TriggerTests(DatabaseFixture databases)
     }
 
     [Fact]
+    public async Task Only_an_admin_writes_the_audit_trail()
+    {
+        // DesignDocument.md §3.8: admin_actions records what an admin did; nobody else may write it.
+        await using var db = await OpenSeededAsync();
+        var adminId = await db.ScalarAsync<int>(
+            "SELECT ur.user_id FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE r.name = 'Admin' LIMIT 1");
+        var cookId = await db.ScalarAsync<int>(
+            "SELECT ur.user_id FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE r.name = 'HomeCook' LIMIT 1");
+
+        await db.ExecuteAsync($"""
+            INSERT INTO admin_actions (admin_user_id, action, target_table, target_id, note)
+            VALUES ({adminId}, 'HideReview', 'reviews', 1, 'test')
+            """);
+        var error = await db.RefusedAsync($"""
+            INSERT INTO admin_actions (admin_user_id, action, target_table, target_id)
+            VALUES ({cookId}, 'HideReview', 'reviews', 1)
+            """);
+
+        Assert.Equal(PostgresErrorCodes.CheckViolation, error.SqlState);
+        Assert.Equal("ck_admin_actions_admin_only", error.ConstraintName);
+    }
+
+    [Fact]
     public async Task A_recipe_somebody_bought_cannot_be_deleted()
     {
         // DesignDocument.md §3.3: removing it from every live product is allowed, deleting it is not.

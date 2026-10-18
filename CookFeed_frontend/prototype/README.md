@@ -53,7 +53,8 @@ DevTools (F12), then right-click the reload button and choose **Empty cache and 
 ## Pages
 
 Every page has the same navigation: Discover, My kitchen, Your orders, Help, the signed-in account,
-and the cart. Product, recipe, creator and review pages are templates: the address names what they show.
+and the cart; a creator also sees My studio, and the admin sees Admin. Product, recipe, creator and
+review pages are templates: the address names what they show.
 
 | File | Purpose |
 |---|---|
@@ -65,6 +66,8 @@ and the cart. Product, recipe, creator and review pages are templates: the addre
 | `cart.html` | The cart and a simulated checkout |
 | `orders.html` | Your orders, newest first, cancelled ones included |
 | `kitchen.html` | My kitchen: saved recipes and one shopping list for all of them |
+| `studio.html` | My studio, for creators: their recipes (draft, publish, free or premium), their plans (create, edit, retire), sales and reviews |
+| `admin.html` | The Admin console: hide or restore reviews, verify or suspend creators, retire plans, unpublish recipes, refund or cancel orders, accounts, and the audit log |
 | `help.html` | A short FAQ |
 | `signin.html` | Sign in as one of the seeded accounts, browse signed out, or reset the data |
 
@@ -177,7 +180,7 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
 
 - **Each account starts from the database.** `js/db.js` copies the tables people change (saves,
   carts, orders, order lines, the order's recipe snapshot, reviews) from the seed into one
-  `localStorage` key, `cookfeed.db`. Signing in as Alex shows his cart, saves, orders and review;
+  `localStorage` key, `cookfeed.db`. Signing in as Alex shows his saves, orders and review, and Priya's cart has The Bread Box in it;
   what you do is kept per account on top. Reset prototype data, on the sign-in page, puts the seed
   back, and so does regenerating `seed-data.js`.
 - **The rules are in one file.** `js/rules.js` answers who may shop, buy, open, save and review.
@@ -189,7 +192,12 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
     reads "Yours through" the plan. Before you own any of a plan, its list says what buying adds
     instead of showing an empty table;
   - only buyers review, once per plan, under their account name;
-  - the cart holds one copy of each plan, and a storefront lists only Public recipes.
+  - the cart holds one copy of each plan, and a storefront lists only Public recipes;
+  - a creator manages only their own recipes and plans, in My studio; a plan sells only published
+    premium recipes, and a recipe in a plan cannot be made free (the database's rules, explained
+    before they would refuse);
+  - the admin's changes (a hidden review, a suspended creator, a retired plan, an unpublished recipe,
+    a refunded order) show on every page at once, and each is logged to `admin_actions`.
 - **Checkout writes what the API will write:** a Paid order, one line per plan with the title, price
   and seller, and a snapshot of the plan's recipes with their days and slots.
 - **Counts follow the database.** Save counts are counted from the save rows, and a meal plan that

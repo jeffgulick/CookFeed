@@ -128,6 +128,15 @@ function updateAccountArea() {
 
 /* Links marked data-shop (My kitchen, Your orders, the cart) belong to shoppers. The admin account
    never shops (design section 3.1), so its nav leaves them out. */
+/* The studio link is for creators and the Admin link for the admin (3.8). */
+function updateRoleLinks() {
+  var user = currentUser();
+  var creatorLinks = document.querySelectorAll("[data-creator]");
+  var adminLinks = document.querySelectorAll("[data-admin]");
+  for (var i = 0; i < creatorLinks.length; i = i + 1) { creatorLinks[i].hidden = !isCreator(user); }
+  for (var k = 0; k < adminLinks.length; k = k + 1) { adminLinks[k].hidden = !isAdmin(user); }
+}
+
 function updateShopLinks() {
   var hide = currentUser() !== null && !canShop(currentUser());
   var links = document.querySelectorAll("[data-shop]");
@@ -581,6 +590,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setUpMenu();
   updateAccountArea();
   updateShopLinks();
+  updateRoleLinks();
   updateCartChip();
   if (storageWorks() === false) {
     showStorageNotice();

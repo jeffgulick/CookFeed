@@ -8,7 +8,7 @@ const { loadPrototype } = require("./load-prototype");
 // Seeded accounts and products, by id.
 const ALEX = 1, PRIYA = 2, MARIA = 3, KENJI = 4, DAN = 5, ADMIN = 6, SAM = 7;
 const ROMAN_PASTA = 1, BREAD_BOX = 2, JAPAN = 3, FAMILY_WEEK = 4, SUMMER_GRILLING = 5;
-const CHICKEN_PARM = 4, TERIYAKI = 5, ONIGIRI = 6, MISO_DRAFT = 13, TAMAGOYAKI = 16;
+const CHICKEN_PARM = 4, TERIYAKI = 5, ONIGIRI = 6, OATS = 9, MISO_DRAFT = 13, TAMAGOYAKI = 16;
 
 function setup() {
   const p = loadPrototype();
@@ -99,7 +99,8 @@ test("the buy button's state for each kind of viewer", () => {
     [KENJI, JAPAN, "yourOwn"],               // a creator cannot buy their own plan (3.1)
     [KENJI, ROMAN_PASTA, "buy"],             // but can buy another creator's
     [ALEX, JAPAN, "owned"],
-    [ALEX, BREAD_BOX, "inCart"],             // re-added after the cancelled order
+    [ALEX, BREAD_BOX, "buy"],                // his order for it was cancelled, so he may buy it again
+    [PRIYA, BREAD_BOX, "inCart"],
     [SAM, JAPAN, "buy"],
     [SAM, SUMMER_GRILLING, "notForSale"],    // retired
     [DAN, SUMMER_GRILLING, "yourOwn"],
@@ -144,4 +145,42 @@ test("buying changes the rules: after checkout Sam owns the plan, opens Onigiri 
   assert.equal(p.buyState(user(SAM), p.rowById("products", JAPAN)), "owned");
   assert.equal(p.canOpenRecipe(user(SAM), p.rowById("recipes", ONIGIRI)), true);
   assert.equal(p.reviewState(user(SAM), JAPAN), "canReview");
+});
+
+test("the admin and creators are told apart, and a creator manages only their own rows (3.8)", () => {
+  const { p, user } = setup();
+  assert.equal(p.isAdmin(user(ADMIN)), true);
+  assert.equal(p.isAdmin(user(KENJI)), false);
+  assert.equal(p.isCreator(user(KENJI)), true);
+  assert.equal(p.isCreator(user(SAM)), false);
+  assert.equal(p.isCreator(null), false);
+  assert.equal(p.canManageRecipe(user(KENJI), p.rowById("recipes", ONIGIRI)), true);
+  assert.equal(p.canManageRecipe(user(MARIA), p.rowById("recipes", ONIGIRI)), false);
+  assert.equal(p.canManageRecipe(user(ADMIN), p.rowById("recipes", ONIGIRI)), false);
+  assert.equal(p.canManageProduct(user(DAN), p.rowById("products", FAMILY_WEEK)), true);
+  assert.equal(p.canManageProduct(user(ALEX), p.rowById("products", FAMILY_WEEK)), false);
+});
+
+test("a suspended creator's plans are not for sale, and buyers keep them (3.8)", () => {
+  const { p, user } = setup();
+  const product = (id) => p.rowById("products", id);
+  assert.equal(p.buyState(user(SAM), product(FAMILY_WEEK)), "buy");
+  assert.notEqual(p.setCreatorSuspended(ADMIN, DAN, true), null);
+  assert.equal(p.buyState(user(SAM), product(FAMILY_WEEK)), "notForSale");
+  assert.equal(p.isForSale(product(FAMILY_WEEK)), false);
+  assert.equal(p.buyState(user(ALEX), product(FAMILY_WEEK)), "owned");
+  assert.equal(p.canOpenRecipe(user(ALEX), p.rowById("recipes", OATS)), true);
+  assert.notEqual(p.setCreatorSuspended(ADMIN, DAN, false), null);
+  assert.equal(p.buyState(user(SAM), product(FAMILY_WEEK)), "buy");
+});
+
+test("a free recipe cannot go in a plan, a draft neither, and a plan's recipe cannot be made free (3.3)", () => {
+  const { p } = setup();
+  const recipe = (id) => p.rowById("recipes", id);
+  assert.notEqual(p.placementProblem(recipe(TAMAGOYAKI)), "");
+  assert.notEqual(p.placementProblem(recipe(MISO_DRAFT)), "");
+  assert.equal(p.placementProblem(recipe(ONIGIRI)), "");
+  assert.notEqual(p.visibilityProblem(recipe(TERIYAKI), "Public"), "");
+  assert.equal(p.visibilityProblem(recipe(TERIYAKI), "ProductOnly"), "");
+  assert.equal(p.visibilityProblem(recipe(TAMAGOYAKI), "Public"), "");
 });
