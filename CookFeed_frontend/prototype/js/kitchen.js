@@ -88,16 +88,113 @@ function renderWeek() {
       html = html + "<h4 class='week-day'>" + dayLabel(entry.plannedDate) + "</h4>";
       lastDay = entry.plannedDate;
     }
-    html = html + "<div class='week-row' data-entry-id='" + entry.id + "'>" +
+    html = html + "<div class='week-row' data-entry-id='" + entry.id + "' data-date='" + entry.plannedDate + "'>" +
+      "<button type='button' class='drag-handle' aria-label='Drag " + escapeHtml(entry.title) + " to another day' " +
+        "title='Drag to another day or meal, or press to choose'>&#10303;</button>" +
       "<span class='week-slot'>" + entry.slot + "</span>" +
       "<a href='recipe.html?id=" + entry.recipeId + "'>" + escapeHtml(entry.title) + "</a>" +
       "<span class='week-servings'>for " + peopleBoxHtml(entry.planned, entry.title) + "</span>" +
-      "<button type='button' class='link-button remove-entry' aria-label='Take " + escapeHtml(entry.title) + " off the week'>Take off week</button>" +
+      "<span class='week-actions'><button type='button' class='link-button move-entry' aria-label='Move " + escapeHtml(entry.title) + "'>Move</button> " +
+      "<button type='button' class='link-button remove-entry' aria-label='Take " + escapeHtml(entry.title) + " off the week'>Take off week</button></span>" +
       "</div>";
   });
   document.getElementById("weekEntries").innerHTML = html ||
     "<p class='meta'>Nothing planned for " + escapeHtml(weekPhrase(currentWeek)) + " yet. Press <strong>Plan it</strong> on a saved recipe, " +
     "or add one of your plans.</p>";
+}
+
+/* ---------- dragging a meal to another day and meal ----------
+   Pressing on a meal's handle and moving the pointer opens the week out: all seven days, each with a spot for
+   every meal, empty days included. Dropping on a spot moves the meal there (movePlanEntry, the people come
+   along); letting go anywhere else, or Escape, cancels. Pointer events, so a mouse and a finger work alike. A
+   press without a move is a click, and opens the Move dialog: that is the keyboard's way, and the handle is a
+   button for it. */
+
+var drag = null;          // { entryId, x, y, active, over, ghost } from press to release
+var dragJustEnded = false;
+
+function dropZonesHtml(movingId) {
+  var plan = planFor(kitchenUser.id, currentWeek);
+  var entries = plan === null ? [] : planEntries(plan.id);
+  return "<div class='drop-week' aria-hidden='true'>" + weekDays().map(function (day) {
+    return "<div class='drop-day'><h4 class='week-day'>" + dayLabel(day) + "</h4><div class='drop-grid'>" +
+      SLOT_ORDER.map(function (slot) {
+        var here = entries.filter(function (e) { return e.plannedDate === day && e.slot === slot; });
+        return "<div class='drop-zone" + (here.some(function (e) { return e.id === movingId; }) ? " from" : "") +
+          "' data-date='" + day + "' data-slot='" + slot + "'><span class='drop-slot'>" + slot + "</span>" +
+          here.map(function (e) { return "<span class='drop-meal'>" + escapeHtml(e.title) + "</span>"; }).join("") + "</div>";
+      }).join("") + "</div></div>";
+  }).join("") + "</div>";
+}
+
+function onHandleDown(event) {
+  var handle = event.target.closest(".drag-handle");
+  if (handle === null || event.button !== 0) { return; }
+  drag = { entryId: Number(handle.closest(".week-row").getAttribute("data-entry-id")), x: event.clientX, y: event.clientY,
+    active: false, over: null, ghost: null, title: handle.closest(".week-row").querySelector("a").textContent };
+}
+
+function startDrag() {
+  drag.active = true;
+  var entries = document.getElementById("weekEntries");
+  entries.classList.add("drop-mode");
+  entries.innerHTML = dropZonesHtml(drag.entryId);
+  drag.ghost = document.createElement("div");
+  drag.ghost.className = "drag-ghost";
+  drag.ghost.setAttribute("aria-hidden", "true");
+  drag.ghost.textContent = drag.title;
+  document.body.appendChild(drag.ghost);
+}
+
+function onDragMove(event) {
+  if (drag === null) { return; }
+  if (!drag.active) {
+    if (Math.abs(event.clientX - drag.x) + Math.abs(event.clientY - drag.y) < 6) { return; }
+    startDrag();
+  }
+  event.preventDefault();
+  drag.ghost.style.left = event.clientX + 12 + "px";
+  drag.ghost.style.top = event.clientY + 12 + "px";
+  // Near the top or bottom of the screen, scroll, so a phone can reach every day.
+  if (event.clientY < 60) { window.scrollBy(0, -14); }
+  if (event.clientY > window.innerHeight - 60) { window.scrollBy(0, 14); }
+  var under = document.elementFromPoint(event.clientX, event.clientY);
+  var zone = under === null ? null : under.closest(".drop-zone");
+  if (drag.over !== null && drag.over !== zone) { drag.over.classList.remove("over"); }
+  if (zone !== null) { zone.classList.add("over"); }
+  drag.over = zone;
+}
+
+function endDrag() {
+  if (drag.ghost !== null) { drag.ghost.remove(); }
+  document.getElementById("weekEntries").classList.remove("drop-mode");
+  drag = null;
+  dragJustEnded = true;
+  window.setTimeout(function () { dragJustEnded = false; }, 0);
+  renderWeek();
+}
+
+function onDragEnd() {
+  if (drag === null) { return; }
+  if (!drag.active) { drag = null; return; }      // a press with no move: the click opens Move
+  var zone = drag.over;
+  var entryId = drag.entryId;
+  endDrag();
+  if (zone !== null) { dropMeal(entryId, zone.getAttribute("data-date"), zone.getAttribute("data-slot")); }
+}
+
+function dropMeal(entryId, day, slot) {
+  var entry = db().mealPlanEntries.filter(function (e) { return e.id === entryId; })[0];
+  if (entry.plannedDate === day && entry.slot === slot) { return; }
+  var recipe = rowById("recipes", entry.recipeId);
+  var where = DAY_NAMES[(parseIsoDate(day).getDay() + 6) % 7] + " " + slot.toLowerCase();
+  if (movePlanEntry(entryId, day, slot, entry.servingsOverride) === null) {
+    showToast(recipe.title + " is already on " + where + ". Pick another day or meal.", "error");
+    return;
+  }
+  renderWeek();
+  renderOwnedPlans();
+  showToast(recipe.title + " moved to " + where + ".");
 }
 
 /* ---------- the shopping list, and past lists ---------- */
@@ -178,6 +275,16 @@ function onKitchenClicked(event) {
     showToast(entries.length === 0 ? "Every meal of this plan is already on " + weekPhrase(currentWeek) + "."
       : plural(entries.length, "meal", "meals") + " added to " + weekPhrase(currentWeek) + ".");
     document.getElementById("weekEntries").scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  var move = event.target.closest(".move-entry, .drag-handle");
+  if (move !== null) {
+    if (dragJustEnded) { return; }
+    var entryId = Number(move.closest(".week-row").getAttribute("data-entry-id"));
+    var plan = planFor(kitchenUser.id, currentWeek);
+    var meal = planEntries(plan.id).filter(function (e) { return e.id === entryId; })[0];
+    openPlanDialog(kitchenUser, rowById("recipes", meal.recipeId), weekDays(), meal.planned,
+      function () { renderWeek(); renderOwnedPlans(); }, meal);
     return;
   }
   var remove = event.target.closest(".remove-entry");
@@ -274,6 +381,13 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   document.querySelector("main").addEventListener("click", onKitchenClicked);
   wirePeopleBoxes(document.getElementById("weekEntries"), onWeekServingsChanged);
+  document.getElementById("weekEntries").addEventListener("pointerdown", onHandleDown);
+  window.addEventListener("pointermove", onDragMove);
+  window.addEventListener("pointerup", onDragEnd);
+  window.addEventListener("pointercancel", function () { if (drag !== null && drag.active) { endDrag(); } drag = null; });
+  window.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && drag !== null && drag.active) { endDrag(); }
+  });
   document.getElementById("prevWeek").addEventListener("click", function () { showWeek(addDays(currentWeek, -7)); });
   document.getElementById("nextWeek").addEventListener("click", function () { showWeek(addDays(currentWeek, 7)); });
   document.getElementById("backToThisWeek").addEventListener("click", function () { showWeek(thisWeek()); });

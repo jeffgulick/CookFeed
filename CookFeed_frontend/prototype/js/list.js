@@ -1,8 +1,9 @@
 /* Cookfeed prototype - a shopping list (list.html?trip=), design section 3.9.
 
    One list for one visit to the store, readable on a phone: the lines to buy, sorted by aisle, with big
-   boxes to tick as each thing goes in the basket; the recipes it cooks, each for a number of people, which
-   can be changed, taken off or added to; and the list's life, with only the buttons that fit where it is:
+   boxes to tick as each thing goes in the basket, once the cook starts shopping; the recipes it cooks,
+   each for a number of people, which can be changed, taken off or added to; and the list's life, with
+   only the buttons that fit where it is:
    Building (start shopping, or send it to Instacart or Favor), Shopping (done shopping), Sent (read-only
    until the items arrive), and Done (kept as a record, and shopped again when no other list is going). A
    line the cook already has at home is taken off with Have it (shopping_trip_skips) and can be put back.
@@ -62,6 +63,8 @@ function renderList() {
   var parts = tripList(trip.id);
   var have = haveItems();
   var editable = tripEditable(trip);
+  // The tick boxes mean "in my basket", so they appear once the cook starts shopping, not while building.
+  var ticking = trip.status === "Shopping";
   var html = "";
   var lastAisle = null;
 
@@ -70,11 +73,11 @@ function renderList() {
       html = html + "<h3>" + escapeHtml(line.aisle) + "</h3>";
       lastAisle = line.aisle;
     }
-    var ticked = editable && have[line.key] === true;
+    var ticked = ticking && have[line.key] === true;
     var name = escapeHtml(line.name);
     html = html + "<div class='store-line" + (ticked ? " have" : "") + (editable ? "" : " read-only") + "' data-key='" + escapeHtml(line.key) +
       "' data-ingredient-id='" + line.ingredientId + "'>" +
-      (editable ? "<input type='checkbox' aria-label='In my basket: " + name + "'" + (ticked ? " checked" : "") + ">" : "") +
+      (ticking ? "<input type='checkbox' aria-label='In my basket: " + name + "'" + (ticked ? " checked" : "") + ">" : "") +
       "<span class='store-name'>" + name + "<small>for " + escapeHtml(line.recipes.join(", ")) + "</small></span>" +
       "<span class='store-qty'>" + formatQuantity(line.amount) + " " + escapeHtml(line.unit) +
       (editable ? " <button type='button' class='link-button skip-line' aria-label='Have it: " + name + "'>Have it</button>" : "") +
@@ -91,7 +94,7 @@ function renderList() {
 
   var remaining = parts.lines.filter(function (line) { return have[line.key] !== true; }).length;
   document.getElementById("listHeading").textContent = plural(parts.lines.length, "item", "items") + " to buy";
-  document.getElementById("listProgress").hidden = !editable;
+  document.getElementById("listProgress").hidden = !ticking;
   document.getElementById("listProgressText").textContent = parts.lines.length === 0 ? "0 of 0 items still to buy"
     : remaining === 0 ? "All done. Everything is in your basket." : remaining + " of " + parts.lines.length + " items still to buy";
   document.getElementById("listProgressFill").style.width =

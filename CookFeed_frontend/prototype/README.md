@@ -245,7 +245,11 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
 - **My kitchen** runs in the order a cook uses it: the week (opened on this week, named "This week",
   "Next week" or "Week of Sept 21, 2026 (past)"), the shopping list, your plans, your saved recipes,
   and past lists. Plan it puts one recipe on a day; Add to my week does the same from a recipe page,
-  or puts a whole owned plan on this week or next.
+  or puts a whole owned plan on this week or next. Any meal on the week moves to another day, meal or
+  number of people with Move, or by dragging its handle onto a spot for a day and meal (mouse or touch;
+  Enter on the handle opens Move).
+- **Tick boxes come with shopping.** A list shows its tick boxes and progress only once Start shopping
+  is pressed; while it is built, Have it takes off what is already at home.
 - **A list shows only the buttons that fit:** Start shopping, Send to Instacart or Favor and Print while
   you build it; Done shopping and Print in the store; Items arrived once sent, when it can no longer
   change; Shop again once done, named by date, and only when no other list is going. Have it takes off
