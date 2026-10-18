@@ -551,6 +551,18 @@ function refreshAll() {
 
 /* ---------- start ---------- */
 
+/* Enter in a box or a menu never saves the form: a browser submits a form on Enter, so confirming a choice in
+   a menu or finishing a line of typing put a whole plan on sale and closed the form. Only Save saves; Enter
+   still starts a new line in a text area and presses the button it is on. */
+function keepOpenOnEnter(form) {
+  form.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter") { return; }
+    var tag = event.target.tagName;
+    if (tag === "TEXTAREA" || tag === "BUTTON") { return; }
+    event.preventDefault();
+  });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   var user = currentUser();
   if (!isCreator(user)) {
@@ -564,6 +576,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.getElementById("newRecipe").addEventListener("click", function () { openRecipeForm(null); });
   document.getElementById("recipeForm").addEventListener("submit", onRecipeSubmitted);
+  keepOpenOnEnter(document.getElementById("recipeForm"));
   document.getElementById("cancelRecipe").addEventListener("click", closeRecipeForm);
   document.getElementById("addIngredient").addEventListener("click", function () {
     document.getElementById("ingredientLines").insertAdjacentHTML("beforeend", ingredientLineHtml(null));
@@ -576,6 +589,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.getElementById("newProduct").addEventListener("click", function () { openProductForm(null); });
   document.getElementById("productForm").addEventListener("submit", onProductSubmitted);
+  keepOpenOnEnter(document.getElementById("productForm"));
   document.getElementById("cancelProduct").addEventListener("click", closeProductForm);
   document.getElementById("productTypeField").addEventListener("change", function () {
     renderPlacementList(editingProductId === null ? null : productWithRecipes(editingProductId));
