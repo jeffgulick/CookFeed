@@ -3,6 +3,10 @@
 > **Status: all four sections are verified.** Each SQL block is the statement EF Core logged when the
 > endpoint ran (2026-10-11), not a prediction. Each section also says where that statement differs from the
 > design-time version and why it was changed.
+>
+> The `EXPLAIN ANALYZE` plans were captured on the seed of that time. The 2026-10-18 seed change (every
+> recipe in a product became ProductOnly, and six free recipes and Rosemary Ciabatta were added) changes
+> no SQL, but it changes row counts, and §1 notes where it changes the plan itself.
 
 Each core query is one LINQ query inside a repository in
 `src/Cookfeed.Infrastructure/Persistence/Repositories/`:
@@ -130,7 +134,10 @@ Nested Loop
 - `ix_recipes_is_published_visibility_published_at (is_published, visibility, published_at DESC)` serves
   `Newest`. Both leading columns are equality predicates, so the index returns the matching rows already
   in `published_at DESC` order. PostgreSQL chose it even on 13 seeded rows, with default planner
-  settings.
+  settings. On today's seed (20 recipes, 6 of them Public) it reads the table with a sequential scan and a
+  quicksort instead: with nearly a third of a 20-row table matching, one read of the whole table is
+  cheaper. The index pays off at real sizes, where the Public published rows are a small, ordered slice of a
+  large table.
 - **Sort cost.** The plan has no full Sort, only an *Incremental Sort*, whose `Presorted Key` is
   `published_at`. It sorts by `id` only within a group of equal `published_at`, and `Limit` stops it
   after one page. The `id` tie-break is there so pages never overlap or skip a row when two recipes

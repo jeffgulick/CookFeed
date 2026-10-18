@@ -35,17 +35,41 @@ public class SeedScriptTests(DatabaseFixture databases)
     [Fact]
     public async Task Feed_and_trending_leave_out_product_only_recipes()
     {
-        // DesignDocument.md §3.3: ProductOnly recipes are reachable only through a purchase.
+        // DesignDocument.md §3.3: ProductOnly recipes are reachable only through a purchase. Every recipe in a
+        // product is one, so the feed is the six free recipes, two from each creator.
         var connectionString = await databases.EfWithSeedScriptAsync();
-        string[] productOnly = ["Weeknight Chicken Parm", "Onigiri Three Ways"];
+        var productOnly = (await Sql.QueryAsync(connectionString, "SELECT title FROM recipes WHERE visibility = 'ProductOnly'"))
+            .Select(row => row[0]).ToList();
 
         var feed = await Sql.QueryAsync(connectionString, SqlFiles.Query(1));
         var trending = await Sql.QueryAsync(connectionString, SqlFiles.Query(3));
 
-        Assert.Equal(10, feed.Count);
+        Assert.Equal(13, productOnly.Count);
+        Assert.Equal(6, feed.Count);
         Assert.Equal(5, trending.Count);
         Assert.DoesNotContain(feed, row => productOnly.Contains(row[1]));
         Assert.DoesNotContain(trending, row => productOnly.Contains(row[0]));
+    }
+
+    [Fact]
+    public async Task Nobody_has_saved_a_recipe_they_cannot_open()
+    {
+        // DesignDocument.md §3.3: a ProductOnly recipe is saved only by a cook whose Paid order holds it; nobody
+        // saves their own recipe, and the admin saves nothing.
+        var rows = await Sql.QueryAsync(await databases.EfWithSeedScriptAsync(), """
+            SELECT s.user_id, s.recipe_id
+            FROM saved_recipes s JOIN recipes r ON r.id = s.recipe_id
+            WHERE r.creator_id = s.user_id
+               OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles ro ON ro.id = ur.role_id
+                          WHERE ur.user_id = s.user_id AND ro.name = 'Admin')
+               OR (r.visibility = 'ProductOnly' AND NOT EXISTS (
+                      SELECT 1 FROM orders o
+                      JOIN order_items oi ON oi.order_id = o.id
+                      JOIN order_item_recipes oir ON oir.order_item_id = oi.id
+                      WHERE o.user_id = s.user_id AND o.status = 'Paid' AND oir.recipe_id = s.recipe_id))
+            """);
+
+        Assert.Empty(rows);
     }
 
     [Fact]

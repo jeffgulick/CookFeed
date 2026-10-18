@@ -51,7 +51,7 @@
     </div>
 
     <h2>What is included</h2>
-    <p class="hover-hint">Point at a recipe for a quick look at the time, the ingredients and how it starts.
+    <p class="hover-hint" id="hoverHint">Point at a recipe for a quick look at the time, the ingredients and how it starts.
       Save a recipe to keep it in <a href="kitchen.html">My kitchen</a>, where its ingredients join your shopping list.</p>
     <div class="grid" id="planRecipes"></div>
 
@@ -77,7 +77,9 @@
 
       <p class="meta" id="listNote"></p>
       <p class="meta locked-note" id="lockedNote"></p>
+      <p class="list-preview" id="listPreview" hidden></p>
 
+      <div id="listBody">
       <div class="send-row">
         <button class="send" id="sendInstacart">
           <span class="send-icon">&#128722;</span>
@@ -107,6 +109,7 @@
         </thead>
         <tbody id="shoppingRows"></tbody>
       </table>
+      </div>
     </div>
 
     <div class="cta-foot">

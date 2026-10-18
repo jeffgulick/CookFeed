@@ -7,7 +7,7 @@ session; update **Where we are** and **Next steps** at the end of each step, in 
 
 ## Where we are
 
-*Last updated 2026-10-11.*
+*Last updated 2026-10-18.*
 
 **Deliverable 2 is complete and merged into `main`.** It contains the database layer and all four core
 queries:
@@ -46,6 +46,7 @@ in the [README](../README.md#deliverable-2).
 | Roadmap item 1, CORS: the `Angular` policy allows the origins in `Cors:AllowedOrigins` (the Angular dev server in Development, none by default), the caller and token headers, and `GET`/`POST`/`PUT`/`DELETE`; error responses carry it too. 5 tests | `Program.cs`, `appsettings*.json`, `tests/*/Api/CorsTests.cs` |
 | Roadmap item 2, OpenAPI: `/openapi/v1.json` describes every endpoint where `OpenApi:Enabled` is set (Development); `CallerHeaderTransformer` marks `X-User-Id` required under `/api/me` and optional elsewhere. 9 tests (203 in all) | `Program.cs`, `Api/OpenApi/`, `tests/*/Api/OpenApiTests.cs` |
 | Roadmap item 3, recipe detail: `RecipesController` → `RecipeDetailService` (applies `Domain/Access/RecipeAccess.CanOpen`) → `RecipeRepository.GetAccessFactsAsync` and `GetDetailAsync` (split query). A recipe the viewer may not open is a 404. 12 Domain, 4 service and 19 HTTP tests, against Q4 and Q14, and the route joins the caller-header and OpenAPI tests (251 in all) | `src/*/Recipes/`, `Domain/Access/`, `docs/Queries.md` §1b |
+| Premium-only products: a product sells only `ProductOnly` recipes, so nothing a buyer pays for is free to save. Two triggers in the `ProductOnlyRecipesInProducts` migration and `schema.sql` (Q17f, g). The seed's 12 in-product recipes became `ProductOnly`; each creator gained two free recipes; The Bread Box gained Rosemary Ciabatta; saves of `ProductOnly` recipes are only by their buyers. 4 trigger tests and 2 seed and recipe-detail tests (257 in all) | `docs/schema.sql`, `Persistence/Migrations/`, `docs/sql/seed.sql`, `DesignDocument.md` §3.3 |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
 with reviewed SQL and justified indexes, the design document, and the API with tests.
@@ -521,6 +522,7 @@ them off here as they land. The status codes are proposals, to confirm when each
 | The feed, trending list, storefront and search show only published `Public` recipes. | §3.3 | Feed ✅ (`FeedEndpointTests`), storefront ✅ (`StorefrontEndpointTests`) | — |
 | A `ProductOnly` recipe opens only for a viewer with a `Paid` order whose snapshot (`order_item_recipes`) contains it — the rule in `queries.sql` Q14 — or for the recipe's own creator. | §3.3 | Shopping list ✅ (counts only such recipes, `ShoppingListEndpointTests`), recipe detail ✅ (`RecipeAccess`, `RecipeDetailEndpointTests`) | 404 (do not reveal it exists) |
 | Saving a `ProductOnly` recipe requires the same access as opening it. | §3.3 | Saves | 404 |
+| A product holds only `ProductOnly` recipes, and a recipe in a product cannot be made `Public` (the database refuses both; the service explains it first). | §3.3 | Creator studio: editing products and recipes | 400 |
 | Checkout copies every `product_recipes` row of each product into `order_item_recipes`, writes the title, price and seller snapshots, sets `total_cents` to the sum of the lines, and empties the cart — all in one transaction. | §3.3, §6 | Checkout | — |
 | Ownership and entitlement questions read the snapshot, never the live `product_recipes` (Q11, Q14). | §3.3 | Storefront ✅ (owned = a Paid order item), shopping list ✅, recipe detail ✅, My kitchen / purchases | — |
 | A review requires a `Paid` order item for that product by the same user; one review per user per product. | §3.5 | Reviews | 403 / 409 |

@@ -10,9 +10,10 @@ const ACCOUNTS = { guest: GUEST, alex: ALEX, kenji: KENJI, admin: ADMIN, sam: SA
 
 // Every page address the prototype has, including the not-found cases.
 const PAGES = [
-  "index.html", "product.html?id=1", "product.html?id=3", "product.html?id=4", "product.html?id=5",
+  "index.html", "product.html?id=1", "product.html?id=2", "product.html?id=3", "product.html?id=4", "product.html?id=5",
   "product.html?id=99", "recipe.html?id=5", "recipe.html?id=6", "recipe.html?id=6&product=3",
-  "recipe.html?id=9&product=4", "recipe.html?id=13", "recipe.html?id=99", "creator.html?handle=kenji-kitchen",
+  "recipe.html?id=9&product=4", "recipe.html?id=13", "recipe.html?id=14", "recipe.html?id=20",
+  "recipe.html?id=99", "creator.html?handle=kenji-kitchen",
   "creator.html?handle=maria-cooks", "creator.html?handle=dan-meal-preps", "creator.html?handle=nobody",
   "reviews.html?product=3", "reviews.html?product=4", "cart.html", "orders.html", "kitchen.html",
   "help.html", "signin.html"

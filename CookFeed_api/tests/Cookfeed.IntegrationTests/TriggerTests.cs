@@ -125,6 +125,61 @@ public class TriggerTests(DatabaseFixture databases)
     }
 
     [Fact]
+    public async Task A_public_recipe_cannot_be_put_in_a_product()
+    {
+        // DesignDocument.md §3.3: a product sells only recipes that are not free to save.
+        await using var db = await OpenSeededAsync();
+        var (productId, recipeId) = await AnyProductAndAPublicRecipeOfItsCreatorAsync(db);
+
+        var error = await db.RefusedAsync($"""
+            INSERT INTO product_recipes (product_id, recipe_id, sort_order) VALUES ({productId}, {recipeId}, 99)
+            """);
+
+        Assert.Equal(PostgresErrorCodes.CheckViolation, error.SqlState);
+        Assert.Equal("ck_product_recipes_product_only", error.ConstraintName);
+    }
+
+    [Fact]
+    public async Task A_product_line_cannot_be_moved_to_a_public_recipe()
+    {
+        await using var db = await OpenSeededAsync();
+        var (productId, recipeId) = await AnyProductAndAPublicRecipeOfItsCreatorAsync(db);
+
+        var error = await db.RefusedAsync($"""
+            UPDATE product_recipes SET recipe_id = {recipeId}
+            WHERE id = (SELECT min(id) FROM product_recipes WHERE product_id = {productId})
+            """);
+
+        Assert.Equal(PostgresErrorCodes.CheckViolation, error.SqlState);
+        Assert.Equal("ck_product_recipes_product_only", error.ConstraintName);
+    }
+
+    [Fact]
+    public async Task A_recipe_in_a_product_cannot_be_made_public()
+    {
+        await using var db = await OpenSeededAsync();
+        var recipeId = await db.ScalarAsync<int>("SELECT recipe_id FROM product_recipes ORDER BY id LIMIT 1");
+
+        var error = await db.RefusedAsync($"UPDATE recipes SET visibility = 'Public' WHERE id = {recipeId}");
+
+        Assert.Equal(PostgresErrorCodes.CheckViolation, error.SqlState);
+        Assert.Equal("ck_recipes_in_product_product_only", error.ConstraintName);
+    }
+
+    [Fact]
+    public async Task A_recipe_taken_out_of_every_product_can_be_made_public()
+    {
+        // The creator takes it out of their products first; buyers keep it through their order snapshots.
+        await using var db = await OpenSeededAsync();
+        var recipeId = await db.ScalarAsync<int>("SELECT recipe_id FROM product_recipes ORDER BY id LIMIT 1");
+        await db.ExecuteAsync($"DELETE FROM product_recipes WHERE recipe_id = {recipeId}");
+
+        await db.ExecuteAsync($"UPDATE recipes SET visibility = 'Public' WHERE id = {recipeId}");
+
+        Assert.Equal("Public", await db.ScalarAsync<string>($"SELECT visibility FROM recipes WHERE id = {recipeId}"));
+    }
+
+    [Fact]
     public async Task A_recipe_somebody_bought_cannot_be_deleted()
     {
         // DesignDocument.md §3.3: removing it from every live product is allowed, deleting it is not.
@@ -161,6 +216,15 @@ public class TriggerTests(DatabaseFixture databases)
     private static async Task<(int CreatorId, int ProductId)> AnyCreatorAndTheirProductAsync(RolledBackConnection db)
     {
         var row = (await db.QueryAsync("SELECT creator_id, id FROM products ORDER BY id LIMIT 1"))[0];
+        return (int.Parse(row[0]!), int.Parse(row[1]!));
+    }
+
+    private static async Task<(int ProductId, int RecipeId)> AnyProductAndAPublicRecipeOfItsCreatorAsync(RolledBackConnection db)
+    {
+        var row = (await db.QueryAsync("""
+            SELECT p.id, r.id FROM products p JOIN recipes r ON r.creator_id = p.creator_id
+            WHERE r.visibility = 'Public' AND r.is_published ORDER BY p.id, r.id LIMIT 1
+            """))[0];
         return (int.Parse(row[0]!), int.Parse(row[1]!));
     }
 }

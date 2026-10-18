@@ -14,19 +14,19 @@ namespace Cookfeed.IntegrationTests.Api;
 /// </summary>
 public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyncDisposable
 {
-    private const int Carbonara = 1, Teriyaki = 5, Onigiri = 6, Oats = 9, MisoDraft = 13;
-    private const int Alex = 1, Kenji = 4, Sam = 7;
+    private const int Carbonara = 1, Teriyaki = 5, Onigiri = 6, Oats = 9, MisoDraft = 13, CacioEPepe = 14;
+    private const int Alex = 1, Kenji = 4, Dan = 5, Sam = 7;
     private CookfeedApiFactory? _api;
 
     [Fact]
     public async Task The_ingredient_lines_match_Q4_in_display_order()
     {
-        // Q4 is written for 15-Minute Spaghetti Carbonara.
+        // Q4 is written for 15-Minute Spaghetti Carbonara, which Alex owns through the Roman Pasta Collection.
         var q4 = await Sql.QueryAsync(await ConnectionStringAsync(), SqlFiles.Query(4));
         var expected = q4.Select(row => (int.Parse(row[0]!, CultureInfo.InvariantCulture),
             decimal.Parse(row[1]!, CultureInfo.InvariantCulture), row[2], row[3], row[4])).ToList();
 
-        var recipe = await GetRecipeAsync(Carbonara);
+        var recipe = await GetRecipeAsync(Carbonara, Alex);
 
         Assert.Equal(expected, recipe.Ingredients.Select(i => (i.SortOrder, i.Quantity, (string?)i.Unit,
             (string?)i.Ingredient, i.Preparation)).ToList());
@@ -40,7 +40,7 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
             WHERE recipe_id = {Teriyaki} ORDER BY step_number
             """);
 
-        var recipe = await GetRecipeAsync(Teriyaki);
+        var recipe = await GetRecipeAsync(Teriyaki, Alex);
 
         Assert.Equal(expected, recipe.Steps.Select(s => string.Join(" | ", s.StepNumber, s.Instruction, s.VideoTimestampSeconds)));
     }
@@ -54,7 +54,7 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
             WHERE r.id = {Teriyaki}
             """);
 
-        var r = await GetRecipeAsync(Teriyaki);
+        var r = await GetRecipeAsync(Teriyaki, Alex);
 
         Assert.Equal(expected, [string.Join(" | ", r.Title, r.Servings, r.PrepMinutes, r.CookMinutes, r.SaveCount,
             r.Visibility, r.Creator.Handle, r.Creator.DisplayName)]);
@@ -88,6 +88,16 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
         var response = await SendAsync($"/api/recipes/{Onigiri}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_free_recipe_opens_for_a_signed_out_visitor_and_is_in_no_product()
+    {
+        // DesignDocument.md §3.3: a product sells only ProductOnly recipes, so a Public one is never in a product.
+        var recipe = await GetRecipeAsync(CacioEPepe);
+
+        Assert.Equal(RecipeVisibility.Public, recipe.Visibility);
+        Assert.Empty(recipe.IncludedIn);
     }
 
     [Theory]
@@ -125,8 +135,8 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
     [Fact]
     public async Task Included_in_lists_each_placement_so_a_repeated_recipe_appears_twice()
     {
-        // Family Week on a Budget serves the oats on day 0 and day 3, both at breakfast.
-        var recipe = await GetRecipeAsync(Oats);
+        // Family Week on a Budget serves the oats on day 0 and day 3, both at breakfast. Alex owns it.
+        var recipe = await GetRecipeAsync(Oats, Alex);
 
         Assert.Equal(
             [(4, "Family Week on a Budget", ProductType.MealPlan, 0, MealSlot.Breakfast),
@@ -136,7 +146,7 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
 
     [Theory]
     [InlineData(Alex, true)]    // a Paid order for Family Week
-    [InlineData(Sam, false)]    // no orders
+    [InlineData(Dan, false)]    // its creator, who cannot buy it
     public async Task Included_in_says_whether_the_viewer_owns_each_product(int viewer, bool owns)
     {
         var recipe = await GetRecipeAsync(Oats, viewer);
@@ -152,7 +162,7 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
             WHERE pr.recipe_id = {Carbonara} AND p.is_active ORDER BY p.id, pr.sort_order
             """);
 
-        var recipe = await GetRecipeAsync(Carbonara);
+        var recipe = await GetRecipeAsync(Carbonara, Alex);
 
         Assert.Equal(expected, recipe.IncludedIn.Select(p => p.ProductId.ToString(CultureInfo.InvariantCulture)));
         Assert.All(recipe.IncludedIn, p => Assert.True(p.DayOffset is null && p.Slot is null));

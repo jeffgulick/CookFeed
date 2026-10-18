@@ -29,7 +29,7 @@ test.describe("on a 375px phone", () => {
 });
 
 test("a plan's servings box starts as published, and the first press starts at 2", async ({ page }) => {
-  await signInAs(page, GUEST);
+  await signInAs(page, ALEX);   // the list shows once the plan is bought
   await page.goto("product.html?id=3");
   await expect(page.locator("#servingsInput")).toHaveValue("");
   await expect(page.locator("#servingsReset")).toBeHidden();
@@ -55,7 +55,7 @@ test.describe("printing", () => {
 
   test("a recipe still prints its method", async ({ page }) => {
     await signInAs(page, GUEST);
-    await page.goto("recipe.html?id=5");
+    await page.goto("recipe.html?id=16");
     await page.emulateMedia({ media: "print" });
     await expect(page.locator("#stepList")).toBeVisible();
   });

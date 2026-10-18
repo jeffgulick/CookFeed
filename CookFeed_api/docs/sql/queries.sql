@@ -260,3 +260,7 @@ BEGIN;
 DELETE FROM product_recipes WHERE recipe_id = 3;
 DELETE FROM recipes WHERE id = 3;
 ROLLBACK;
+--      f) putting a free (Public) recipe, Cacio e Pepe, in a product: a product sells only ProductOnly recipes
+INSERT INTO product_recipes (product_id, recipe_id, sort_order) VALUES (1, 14, 9);
+--      g) making a recipe that is in a product (No-Knead Focaccia, in The Bread Box) free to save
+UPDATE recipes SET visibility = 'Public' WHERE id = 3;
