@@ -153,7 +153,7 @@ function saveThisRecipe() {
   var nowSaved = !isSavedBy(user.id, currentRecipe.id);
   setSaved(user.id, currentRecipe.id, nowSaved);
   renderSaveState();
-  showToast(nowSaved ? "Saved to My kitchen, with its ingredients on your shopping list."
+  showToast(nowSaved ? "Saved to My kitchen."
                      : "Removed from your saved recipes.");
 }
 

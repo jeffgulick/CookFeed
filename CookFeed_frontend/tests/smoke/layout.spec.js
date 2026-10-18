@@ -6,7 +6,7 @@ const { test, expect, signInAs, ALEX, GUEST } = require("./support");
 const PHONE_PAGES = ["index.html", "product.html?id=1", "product.html?id=3", "product.html?id=4",
   "recipe.html?id=5", "recipe.html?id=6", "creator.html?handle=dan-meal-preps", "creator.html?handle=kenji-kitchen",
   "reviews.html?product=3", "reviews.html?product=1", "cart.html", "orders.html", "kitchen.html", "help.html",
-  "signin.html"];
+  "signin.html", "plans.html", "recipes.html"];
 
 test.describe("on a 375px phone", () => {
   test.use({ viewport: { width: 375, height: 760 } });

@@ -255,7 +255,7 @@ function renderBuyArea(container, product, onChange) {
      foot       HTML for the card's foot, replacing the save count and Save button */
 
 /* Tooltip on every Save button, so a first-time visitor knows what saving does. */
-var SAVE_HINT = "Saving keeps this recipe in My kitchen and adds its ingredients to your shopping list there";
+var SAVE_HINT = "Saving keeps this recipe in My kitchen, ready to plan into a week and a shopping list";
 
 function recipeHref(recipe, productId) {
   return recipe.pageUrl + (productId ? "&product=" + productId : "");
@@ -346,18 +346,40 @@ function wireSaveButtons(grid, onChange) {
     if (count !== null) {
       count.textContent = savedByText(saveCount(recipe.id));
     }
-    showToast(nowSaved ? recipe.title + " saved to My kitchen, with its ingredients on your shopping list."
+    showToast(nowSaved ? recipe.title + " saved to My kitchen."
                        : recipe.title + " removed from your saved recipes.");
     if (onChange) { onChange(); }
   });
 }
 
-/* ---------- shopping list ----------
-   Shared by the product page (the recipes in a plan) and My kitchen (the saved recipes). */
+/* ---------- product tiles and card previews ----------
+   Shared by Discover, Plans and Recipes. */
 
-/* Every ingredient across the given recipes, each tagged with its own recipe's servings. Recipes do
-   not all serve the same number, so each line has to be scaled against its own recipe. A recipe listed
-   twice (the oats on two mornings of Family Week) is bought for twice. */
+/* One tile per plan or collection for sale. A plan the viewer owns says so. */
+function productTileHtml(product) {
+  var creator = creatorFor(product.creatorId);
+  var owned = ownsProduct(currentUser(), product.id);
+  return "<a class='card product-tile" + (owned ? " owned" : "") + "' href='" + productUrl(product.id) + "'>" +
+    "<img src='" + escapeHtml(product.coverImageUrl || "") + "' alt=''>" +
+    "<span class='pill'>" + productTypeLabel(product) + "</span>" +
+    "<span class='recipe-title'>" + escapeHtml(product.title) + "</span>" +
+    "<span class='meta'>by " + escapeHtml(creator.handle) + " &middot; " + productCounts(product) + "</span>" +
+    "<span class='meta'>" + ratingText(product.id) + "</span>" +
+    (owned ? "<span class='owned-label'>&#10003; You own this</span>" : "<span class='price'>" + formatPrice(product.priceCents) + "</span>") +
+    "</a>";
+}
+
+/* Hovering or focusing a recipe card shows its preview, as on a product page. */
+function wirePreviews(grid) {
+  var cards = grid.querySelectorAll(".recipe-card");
+  for (var i = 0; i < cards.length; i = i + 1) {
+    cards[i].addEventListener("mouseenter", function (event) { event.currentTarget.classList.add("previewing"); });
+    cards[i].addEventListener("mouseleave", function (event) { event.currentTarget.classList.remove("previewing"); });
+    cards[i].addEventListener("focusin", function (event) { event.currentTarget.classList.add("previewing"); });
+    cards[i].addEventListener("focusout", function (event) { event.currentTarget.classList.remove("previewing"); });
+  }
+}
+
 /* ---------- servings ----------
    Used by the servings boxes on the product page and the recipe page. */
 

@@ -8,19 +8,8 @@ var TRENDING_COUNT = 6;
 
 function renderProducts() {
   // For sale: active, and the creator is not suspended (3.8).
-  var products = rowsWhere("products", isForSale)
-    .map(function (p) { return productWithRecipes(p.id); });
-
-  document.getElementById("discoverProducts").innerHTML = products.map(function (product) {
-    var creator = creatorFor(product.creatorId);
-    return "<a class='card product-tile' href='" + productUrl(product.id) + "'>" +
-      "<img src='" + escapeHtml(product.coverImageUrl || "") + "' alt=''>" +
-      "<span class='pill'>" + productTypeLabel(product) + "</span>" +
-      "<span class='recipe-title'>" + escapeHtml(product.title) + "</span>" +
-      "<span class='meta'>by " + escapeHtml(creator.handle) + " &middot; " + productCounts(product) + "</span>" +
-      "<span class='meta'>" + ratingText(product.id) + "</span>" +
-      "<span class='price'>" + formatPrice(product.priceCents) + "</span></a>";
-  }).join("");
+  var products = rowsWhere("products", isForSale).map(function (p) { return productWithRecipes(p.id); });
+  document.getElementById("discoverProducts").innerHTML = products.map(productTileHtml).join("");
 }
 
 function renderTrending() {
@@ -44,17 +33,6 @@ function renderCreators() {
       (creator.isVerified ? " <span class='verified'>&#10003;</span>" : "") + "<br>" +
       "<span class='handle'>@" + escapeHtml(creator.handle) + "</span></span></a>";
   }).join("");
-}
-
-/* Hovering a trending card shows its preview, as on a product page. */
-function wirePreviews(grid) {
-  var cards = grid.querySelectorAll(".recipe-card");
-  for (var i = 0; i < cards.length; i = i + 1) {
-    cards[i].addEventListener("mouseenter", function (event) { event.currentTarget.classList.add("previewing"); });
-    cards[i].addEventListener("mouseleave", function (event) { event.currentTarget.classList.remove("previewing"); });
-    cards[i].addEventListener("focusin", function (event) { event.currentTarget.classList.add("previewing"); });
-    cards[i].addEventListener("focusout", function (event) { event.currentTarget.classList.remove("previewing"); });
-  }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
