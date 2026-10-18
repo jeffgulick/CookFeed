@@ -560,46 +560,113 @@ document.addEventListener("DOMContentLoaded", function () {
    Used by the Build dialog on My kitchen and the Add recipes dialog on a trip page: the plans the cook owns
    (each goes on as a whole) and the recipes they saved, each with the people to cook for. With withDays,
    each recipe also gets a day and meal, for putting it on a week. */
-function pickerPlansHtml(user) {
+/* The picker, used by My kitchen (a new trip, or the week) and by a trip's Add more. tripId is the trip being
+   added to, or null. A plan box carries the distinct recipes it brings (data-recipe-ids). A recipe or plan
+   already on the trip is drawn ticked and disabled, marked so, and readPicker leaves it out. */
+function pickerPlansHtml(user, tripId) {
   return ownedProductsFor(user).map(function (o) {
-    return "<label class='radio'><input type='checkbox' class='pick-plan' value='" + o.product.id + "'> " +
-      escapeHtml(o.productTitle) + " <span class='meta'>(" + productCounts(o) + ")</span></label>";
+    var ids = [];
+    o.recipes.forEach(function (r) { if (ids.indexOf(r.recipeId) === -1) { ids.push(r.recipeId); } });
+    var onTrip = tripId !== null && ids.every(function (id) { return tripHasRecipe(tripId, id); });
+    return "<label class='radio pick-row" + (onTrip ? " on-trip" : "") + "'><input type='checkbox' class='pick-plan' value='" + o.product.id +
+      "' data-recipe-ids='" + ids.join(",") + "'" + (onTrip ? " checked disabled" : "") + "> " +
+      escapeHtml(o.productTitle) + " <span class='meta'>(" + productCounts(o) + (onTrip ? ", already on this trip" : "") + ")</span></label>";
   }).join("") || "<p class='meta'>You have not bought a plan yet.</p>";
 }
 
 function pickerRecipesHtml(user, options) {
+  var tripId = options.tripId === undefined ? null : options.tripId;
   var dayOptions = DAY_NAMES.map(function (day, i) { return "<option value='" + i + "'>" + day + "</option>"; }).join("");
   var slotOptions = SLOT_ORDER.map(function (slot) {
     return "<option value='" + slot + "'" + (slot === "Dinner" ? " selected" : "") + ">" + slot + "</option>";
   }).join("");
   return savesFor(user.id).map(function (save) {
     var recipe = rowById("recipes", save.recipeId);
-    return "<div class='placement'><label><input type='checkbox' class='pick-recipe' value='" + recipe.id + "'" +
-      (recipe.id === options.preRecipeId ? " checked" : "") + "> " + escapeHtml(recipe.title) + "</label>" +
+    var onTrip = tripId !== null && tripHasRecipe(tripId, recipe.id);
+    return "<div class='placement" + (onTrip ? " on-trip" : "") + "' data-recipe-id='" + recipe.id + "'>" +
+      "<label><input type='checkbox' class='pick-recipe' value='" + recipe.id + "'" +
+      (recipe.id === options.preRecipeId || onTrip ? " checked" : "") + (onTrip ? " disabled" : "") + "> " + escapeHtml(recipe.title) +
+      "<span class='pick-tag'>" + (onTrip ? "already on this trip" : "") + "</span></label>" +
       "<span class='pick-people'>for <input type='number' class='pick-servings' min='1' max='20' value='" + recipe.servings +
-        "' aria-label='People for " + escapeHtml(recipe.title) + "'> people</span>" +
+        "' aria-label='People for " + escapeHtml(recipe.title) + "'" + (onTrip ? " disabled" : "") + "> people</span>" +
       (options.withDays ? "<span class='pick-when'><select aria-label='Day for " + escapeHtml(recipe.title) + "' class='pick-day'>" + dayOptions +
         "</select> <select aria-label='Meal for " + escapeHtml(recipe.title) + "' class='pick-slot'>" + slotOptions + "</select></span>" : "") +
       "</div>";
   }).join("") || "<p class='meta'>Save a recipe first, and it appears here.</p>";
 }
 
-/* What was ticked: the plan ids, and the recipes with people (and day and meal when asked). */
+/* Ticking a plan ticks and tints the saved recipes it brings, so the cook sees what comes with it; they are
+   not counted again (readPicker leaves a covered row out). Unticking releases them unless another ticked
+   plan also brings them. Wired once per form. */
+function wirePicker(root) {
+  if (root.getAttribute("data-picker-wired") === "yes") { return; }
+  root.setAttribute("data-picker-wired", "yes");
+  root.addEventListener("change", function (event) {
+    if (!event.target.classList.contains("pick-plan")) { return; }
+    syncPickerPlans(root);
+  });
+}
+
+function syncPickerPlans(root) {
+  var covered = {};
+  var names = {};
+  var plans = root.querySelectorAll(".pick-plan:checked:not(:disabled)");
+  for (var i = 0; i < plans.length; i = i + 1) {
+    var title = plans[i].parentNode.textContent.replace(/\(.*$/, "").trim();
+    plans[i].getAttribute("data-recipe-ids").split(",").forEach(function (id) {
+      if (id !== "" && !covered[id]) { covered[id] = true; names[id] = title; }
+    });
+  }
+  var rows = root.querySelectorAll(".placement");
+  for (var k = 0; k < rows.length; k = k + 1) {
+    if (rows[k].classList.contains("on-trip")) { continue; }
+    var id = rows[k].getAttribute("data-recipe-id");
+    var box = rows[k].querySelector(".pick-recipe");
+    var inPlan = covered[id] === true;
+    var was = rows[k].classList.contains("in-plan");
+    rows[k].classList.toggle("in-plan", inPlan);
+    rows[k].querySelector(".pick-tag").textContent = inPlan ? "with " + names[id] : "";
+    box.disabled = inPlan;
+    if (inPlan) { box.checked = true; } else if (was) { box.checked = false; }
+  }
+}
+
+/* What was ticked: the plan ids, and the recipes with people (and day and meal when asked). A disabled box
+   (already on the trip) and a row a ticked plan covers are left out: the plan brings that recipe once. */
 function readPicker(root) {
   var productIds = [];
-  var plans = root.querySelectorAll(".pick-plan:checked");
+  var plans = root.querySelectorAll(".pick-plan:checked:not(:disabled)");
   for (var i = 0; i < plans.length; i = i + 1) { productIds.push(Number(plans[i].value)); }
   var items = [];
   var rows = root.querySelectorAll(".placement");
   for (var k = 0; k < rows.length; k = k + 1) {
     var box = rows[k].querySelector(".pick-recipe");
-    if (!box.checked) { continue; }
+    if (!box.checked || box.disabled) { continue; }
     var people = Number(rows[k].querySelector(".pick-servings").value);
     var day = rows[k].querySelector(".pick-day");
     items.push({ recipeId: Number(box.value), servings: people > 0 ? people : 0,
       dayOffset: day ? Number(day.value) : null, slot: day ? rows[k].querySelector(".pick-slot").value : null });
   }
   return { productIds: productIds, items: items };
+}
+
+/* ---------- 3.9: finishing a trip, from its page or from the kitchen ---------- */
+
+/* The ticks made in the store are a per-device convenience, keyed by trip. */
+function tripHaveKey(tripId) {
+  return "cookfeed.have.trip." + tripId;
+}
+
+/* Confirm, then mark the trip done and clear its ticks. Resolves true when it was done. */
+function finishTrip(trip) {
+  var message = trip.status === "Sent" ? "Did everything arrive? The trip is marked done and kept in your trips as a record."
+    : "Trip complete? It is marked done and kept in your trips as a record.";
+  return confirmDialog(message, trip.status === "Sent" ? "Items received" : "Trip complete").then(function (ok) {
+    if (!ok) { return false; }
+    setTripStatus(trip.id, "Done");
+    removeStored(tripHaveKey(trip.id));
+    return true;
+  });
 }
 
 /* ---------- 3.9: "Shop this" from a recipe or a plan page ---------- */

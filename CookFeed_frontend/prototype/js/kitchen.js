@@ -88,6 +88,8 @@ function renderTrips() {
       "<td>" + plural(items.length, "recipe", "recipes") + "</td>" +
       "<td>" + statusTag(trip) + "</td>" +
       "<td class='actions'><a class='btn-small' href='list.html?trip=" + trip.id + "'>Open</a> " +
+      (trip.status === "Done" ? "" : "<button type='button' class='btn-small finish-trip'>" + (trip.status === "Sent" ? "Items received" : "Trip complete") + "</button> ") +
+      (trip.status === "Building" || trip.status === "Shopping" ? "" : "<button type='button' class='btn-small reshop-trip'>Shop again</button> ") +
       "<button type='button' class='btn-small delete-trip'>Delete</button></td></tr>";
   }).join("") || "<tr><td colspan='5' class='meta'>No trips yet. Press <strong>New shopping trip</strong>, or make one from the week above.</td></tr>";
 }
@@ -109,8 +111,9 @@ function openDialog(mode, preRecipeId) {
   document.getElementById("buildHint").textContent = forWeek
     ? "A plan goes on its own days. A recipe goes on the day and meal you pick, for the people you choose."
     : "Tick anything you want to cook, as many recipes as you like, each for the people you choose. You can add more and take things off later.";
-  document.getElementById("buildPlans").innerHTML = pickerPlansHtml(kitchenUser);
-  document.getElementById("buildRecipes").innerHTML = pickerRecipesHtml(kitchenUser, { withDays: forWeek, preRecipeId: preRecipeId });
+  document.getElementById("buildPlans").innerHTML = pickerPlansHtml(kitchenUser, null);
+  document.getElementById("buildRecipes").innerHTML = pickerRecipesHtml(kitchenUser, { withDays: forWeek, preRecipeId: preRecipeId, tripId: null });
+  wirePicker(document.getElementById("buildForm"));
   document.getElementById("buildSubmit").textContent = forWeek ? "Add to the week" : "Create the trip";
   document.getElementById("buildError").textContent = "";
   if (!forWeek) { document.getElementById("tripName").value = ""; }
@@ -180,6 +183,23 @@ function onKitchenClicked(event) {
     document.getElementById("main").focus({ preventScroll: true });
     return;
   }
+  var finish = event.target.closest(".finish-trip");
+  if (finish !== null) {
+    var finished = tripById(Number(finish.closest("tr").getAttribute("data-trip-id")));
+    finishTrip(finished).then(function (done) {
+      if (!done) { return; }
+      renderTrips();
+      showToast("\"" + finished.name + "\" is done. It stays in your trips as a record.");
+      document.getElementById("main").focus({ preventScroll: true });
+    });
+    return;
+  }
+  var reshop = event.target.closest(".reshop-trip");
+  if (reshop !== null) {
+    var copy = copyTrip(Number(reshop.closest("tr").getAttribute("data-trip-id")));
+    window.location.href = "list.html?trip=" + copy.id + "&added=" + tripItems(copy.id).length;
+    return;
+  }
   var del = event.target.closest(".delete-trip");
   if (del !== null) {
     var trip = tripById(Number(del.closest("tr").getAttribute("data-trip-id")));
@@ -231,6 +251,18 @@ document.addEventListener("DOMContentLoaded", function () {
   currentWeek = plans.length ? plans[0].weekStart : weekStartOf(new Date());
 
   renderKitchen();
+  // Back from a trip that was sent or finished: say so, and show the trips.
+  var sent = queryNumber("sent");
+  var done = queryNumber("done");
+  if (sent !== null || done !== null) {
+    var backFrom = tripById(sent !== null ? sent : done);
+    if (backFrom !== null) {
+      showToast(sent !== null ? "\"" + backFrom.name + "\" sent to " + backFrom.sentTo + ". Open it to confirm when the items arrive, or shop it again."
+                              : "\"" + backFrom.name + "\" is done. It stays in your trips as a record.");
+      document.getElementById("tripRows").scrollIntoView({ block: "center" });
+    }
+    window.history.replaceState(null, "", "kitchen.html");
+  }
   document.querySelector("main").addEventListener("click", onKitchenClicked);
   document.getElementById("weekEntries").addEventListener("input", onWeekServingsChanged);
   document.getElementById("prevWeek").addEventListener("click", function () { moveWeek(-7); });

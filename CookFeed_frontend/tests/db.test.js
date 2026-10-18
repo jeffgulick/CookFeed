@@ -297,10 +297,18 @@ test("a shopping trip is built from any recipes and plans, scaled, shopped, and 
   const trip = p.createTrip(ALEX, "Taco night", [{ recipeId: TACOS, servings: 8 }, { recipeId: ONIGIRI, servings: 0 }]);
   assert.equal(p.tripItems(trip.id).length, 2);
   assert.equal(p.tripItems(trip.id)[1].servings, 4);                 // 0 means as written
-  assert.equal(p.addProductToTrip(trip.id, FAMILY_WEEK).length, 6);
-  assert.equal(p.tripItems(trip.id).length, 8);
+  // One row per recipe: the plan's tacos are already on the trip, and its oats on two mornings become one
+  // item for both mornings (twice the people it is written for). Adding the plan again adds nothing, and so
+  // does the same recipe again.
+  assert.equal(p.addProductToTrip(trip.id, FAMILY_WEEK).length, 4);
+  assert.equal(p.tripItems(trip.id).length, 6);
+  assert.equal(p.tripItems(trip.id).find((i) => i.recipeId === OATS).servings, 2 * p.recipeWithDetails(OATS).servings);
+  assert.equal(p.addProductToTrip(trip.id, FAMILY_WEEK).length, 0);
+  assert.equal(p.addTripItems(trip.id, [{ recipeId: TACOS, servings: 2 }]).length, 0);
+  assert.equal(p.tripHasRecipe(trip.id, TACOS), true);
+  assert.deepEqual(plain(p.tripMissingFromProduct(trip.id, p.userById(ALEX), FAMILY_WEEK)), []);
   const list = p.buildShoppingList(p.tripRecipeLines(trip.id), null);
-  assert.equal(list.find((l) => l.name === "ground beef").amount, 1500);   // 500 g for 4, cooked for 8, plus Family Week's tacos
+  assert.equal(list.find((l) => l.name === "ground beef").amount, 1000);   // 500 g for 4, cooked for 8
   assert.equal(trip.status, "Building");
   assert.equal(p.tripEditable(trip), true);
   // Already have the beef: it leaves the list to buy, and can come back.
@@ -316,8 +324,19 @@ test("a shopping trip is built from any recipes and plans, scaled, shopped, and 
   assert.equal(p.tripEditable(p.tripById(trip.id)), false);
   assert.equal(loadPrototype(p.localStorage).tripById(trip.id).status, "Done");
   assert.equal(p.setTripStatus(trip.id, "Lost"), null);
+  // Shopped again: a fresh Building trip with the same recipes and people; the done one stays as history.
+  p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, true);
+  const again = p.copyTrip(trip.id);
+  assert.equal(again.status, "Building");
+  assert.equal(again.name, "Taco night again");
+  assert.equal(p.tripItems(again.id).length, 6);
+  assert.equal(p.tripItems(again.id).find((i) => i.recipeId === TACOS).servings, 8);
+  assert.equal(p.tripList(again.id).skipped.length, 1);
+  assert.equal(p.tripById(trip.id).status, "Done");
+  assert.equal(p.tripsFor(ALEX).length, 2);
+  p.deleteTrip(again.id);
   p.removeTripItem(p.tripItems(trip.id)[0].id);
-  assert.equal(p.tripItems(trip.id).length, 7);
+  assert.equal(p.tripItems(trip.id).length, 5);
   p.deleteTrip(trip.id);
   assert.equal(p.tripsFor(ALEX).length, 0);
   assert.equal(p.tripItems(trip.id).length, 0);
