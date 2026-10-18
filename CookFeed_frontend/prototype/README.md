@@ -69,7 +69,7 @@ review pages are templates: the address names what they show.
 | `studio.html` | My studio, for creators: their recipes (draft, publish, free or premium), their plans (create, edit, retire), sales and reviews |
 | `admin.html` | The Admin console: hide or restore reviews, verify or suspend creators, retire plans, unpublish recipes, refund or cancel orders, accounts, and the audit log |
 | `plans.html` | Every meal plan and collection for sale, filtered by type and sorted; a plan you own says so |
-| `recipes.html` | Every published recipe, searched and sorted: free ones to save, premium ones naming the plan they are sold in |
+| `recipes.html` | Every free recipe, searched and sorted. Premium recipes appear only inside the plan that sells them |
 | `list.html?trip=1` | One shopping trip, readable on a phone: lines by aisle with ticks, Remove and put back, the recipes and their people, I'm shopping this, Send to Instacart or Favor, Done |
 | `help.html` | A short FAQ |
 | `signin.html` | Sign in as one of the seeded accounts, browse signed out, or reset the data |
