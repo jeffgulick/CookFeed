@@ -358,69 +358,6 @@ function wireSaveButtons(grid, onChange) {
 /* Every ingredient across the given recipes, each tagged with its own recipe's servings. Recipes do
    not all serve the same number, so each line has to be scaled against its own recipe. A recipe listed
    twice (the oats on two mornings of Family Week) is bought for twice. */
-function collectIngredients(recipeIds) {
-  var rows = [];
-
-  for (var i = 0; i < recipeIds.length; i = i + 1) {
-    var recipe = recipeWithDetails(recipeIds[i]);
-
-    for (var j = 0; j < recipe.ingredients.length; j = j + 1) {
-      var item = recipe.ingredients[j];
-      rows.push({
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        aisle: item.aisle,
-        baseServings: recipe.servings,
-        recipeTitle: recipe.title
-      });
-    }
-  }
-
-  return rows;
-}
-
-/* Add up the ingredients of the given recipes. Pass null for people to keep each
-   recipe as published, or a number to cook every recipe for that many people.
-   Two lines only merge when they share a name AND a unit, which is why the two
-   soy sauce entries become one row but the rice and the ginger never combine.
-   Each line remembers which recipes it came from. The result is sorted by aisle
-   so the list follows a walk through the store. */
-function buildShoppingList(recipeIds, people) {
-  var rows = collectIngredients(recipeIds);
-  var totals = {};
-  var list = [];
-
-  for (var i = 0; i < rows.length; i = i + 1) {
-    var row = rows[i];
-    var scale = 1;
-
-    if (people !== null) {
-      scale = people / row.baseServings;
-    }
-
-    var key = row.name + "|" + row.unit;
-
-    if (totals[key] === undefined) {
-      totals[key] = { key: key, name: row.name, unit: row.unit, aisle: row.aisle, amount: 0, recipes: [] };
-      list.push(totals[key]);
-    }
-    totals[key].amount = totals[key].amount + row.quantity * scale;
-    if (totals[key].recipes.indexOf(row.recipeTitle) === -1) {
-      totals[key].recipes.push(row.recipeTitle);
-    }
-  }
-
-  list.sort(function (a, b) {
-    if (a.aisle !== b.aisle) {
-      return a.aisle < b.aisle ? -1 : 1;
-    }
-    return a.name < b.name ? -1 : 1;
-  });
-
-  return list;
-}
-
 /* ---------- servings ----------
    Used by the servings boxes on the product page and the recipe page. */
 

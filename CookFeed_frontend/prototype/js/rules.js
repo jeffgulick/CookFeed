@@ -102,6 +102,11 @@ function canSave(user, recipe) {
   return canShop(user) && recipe !== null && recipe.isPublished && canOpenRecipe(user, recipe);
 }
 
+/* 3.9: a recipe can be planned for the week only by a cook who could save it: a shopper who may open it. */
+function canPlan(user, recipe) {
+  return canSave(user, recipe);
+}
+
 /* What the buy area of a product shows:
    noShop      the admin: no shop controls at all (3.1)
    yourOwn     the viewer created it; creators cannot buy their own products (3.1)
