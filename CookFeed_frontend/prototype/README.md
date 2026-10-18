@@ -59,18 +59,18 @@ review pages are templates: the address names what they show.
 | File | Purpose |
 |---|---|
 | `index.html` | Discover: the plans and collections for sale, trending recipes, and the creators |
-| `product.html?id=3` | A meal plan or collection: what it includes, its buy button, and one shopping list |
-| `recipe.html?id=5` | A recipe: video steps, scalable ingredients, Save. `&product=3` shows the plan and day |
+| `product.html?id=3` | A meal plan or collection: what it includes, its buy button, and what you'll buy. A plan you own leads with Shop this plan and Add to my week |
+| `recipe.html?id=5` | A recipe: video steps, scalable ingredients, Save, Shop this recipe and Add to my week. `&product=3` shows the plan and day |
 | `creator.html?handle=kenji-kitchen` | A creator's storefront: Public recipes and products for sale |
 | `reviews.html?product=3` | A product's reviews and, for buyers, the review form |
 | `cart.html` | The cart and a simulated checkout |
 | `orders.html` | Your orders, newest first, cancelled ones included |
-| `kitchen.html` | My kitchen: the plans you bought, the recipes you saved, the week you are cooking, and your shopping trips |
+| `kitchen.html` | My kitchen: the week you are cooking (opened on this week), your shopping list, the plans you bought, the recipes you saved, and your past lists |
 | `studio.html` | My studio, for creators: their recipes (draft, publish, free or premium), their plans (create, edit, retire), sales and reviews |
 | `admin.html` | The Admin console: hide or restore reviews, verify or suspend creators, retire plans, unpublish recipes, refund or cancel orders, accounts, and the audit log |
 | `plans.html` | Every meal plan and collection for sale, filtered by type and sorted; a plan you own says so |
 | `recipes.html` | Every free recipe, searched and sorted. Premium recipes appear only inside the plan that sells them |
-| `list.html?trip=1` | One shopping trip, readable on a phone: lines by aisle with ticks, Remove and put back, the recipes and their people (each once), I'm shopping this, Send to Instacart or Favor and Trip complete (both return to My kitchen), Shop it again |
+| `list.html?trip=1` | Your shopping list, readable on a phone: lines by aisle with ticks for your basket, Have it and put back, the recipes and their people (each once), and only the buttons that fit: Start shopping, Send to Instacart or Favor, Print; Done shopping; Items arrived; Shop again |
 | `help.html` | A short FAQ |
 | `signin.html` | Sign in as one of the seeded accounts, browse signed out, or reset the data |
 
@@ -191,19 +191,20 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
   - creators cannot buy or review their own plans, but buy other creators' like anyone else;
   - the admin account sees no cart, Save or review controls;
   - every recipe in a plan is ProductOnly, so nothing you pay for is also free to save; it shows
-    without a link, and stays off the shopping list, until you buy the plan it is in; after that it
-    reads "Yours through" the plan. Before you own any of a plan, its list says what buying adds
-    instead of showing an empty table;
-  - only buyers review, once per plan, under their account name;
+    without a link, and stays out of "What you'll buy", until you buy the plan it is in; after that it
+    reads "Yours through" the plan, even if Cookfeed later takes it out of the store. Before you own any
+    of a plan, "What you'll buy" says what buying adds instead of showing an empty table;
+  - only buyers review, once per plan, under their account name; a review Cookfeed hid cannot be
+    deleted and posted again;
   - the cart holds one copy of each plan, and a storefront lists only Public recipes;
   - a creator manages only their own recipes and plans, in My studio; a plan sells only published
     premium recipes, and a recipe in a plan cannot be made free (the database's rules, explained
     before they would refuse);
   - the admin's changes (a hidden review, a suspended creator, a retired plan, an unpublished recipe,
     a refunded order) show on every page at once, and each is logged to `admin_actions`;
-  - saving a recipe or buying a plan puts nothing on a shopping list: a cook builds a trip when they
-    want one, from any recipes and plans or from a planned week, edits it until it is done, and only a
-    recipe they may open can be planned or put on a trip.
+  - saving a recipe or buying a plan puts nothing on a shopping list: a cook has one list at a time,
+    and Shop this recipe, Shop this plan and Shop this week add straight to it; only a recipe they may
+    open can be planned or shopped.
 - **Checkout writes what the API will write:** a Paid order, one line per plan with the title, price
   and seller, and a snapshot of the plan's recipes with their days and slots.
 - **Counts follow the database.** Save counts are counted from the save rows, and a meal plan that
@@ -223,14 +224,34 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
 - **Keyboard and screen readers.** A "Skip to content" link on every page; one visible focus ring
   (3px, at least 3:1 against the page); the review form's Yes/No question is a fieldset with a
   legend; after checkout, focus moves to "Order confirmed".
-- **Print.** Printing a plan or My kitchen prints only the title and the shopping list.
-- **Servings.** A plan's servings box starts empty, meaning "as published", because its recipes do
-  not all serve the same number; the first minus or plus starts at 2.
+- **Print.** Printing a plan prints only its title and "What you'll buy"; Print on a shopping list
+  prints only the list.
 - **Creator header.** The avatar and the name sit side by side on laptop-width screens.
 - **Contrast.** An axe scan of every page (WCAG 2.1 AA) found three places where small text fell
   below 4.5:1: the "Coming soon" tags, the faded cancelled order, and the green "Paid" tag. The tags now
   use darker text, a cancelled order is marked by a dashed border instead of fading, and `--good` is one
   shade darker. A repeat scan found nothing. The committed axe suite starts with the Angular app.
+- **Wording and accessibility pass.** Headings run in order on every page (the help page's questions
+  are h2s); the rating stars (`--star-text`) and the small muted tags read at 4.5:1; the video's play
+  control is a real button; buttons say what they do (Unsave, Take off week, Take off list, Take out of
+  cart, Delete my review), never just "Remove"; and text shows only to the people it applies to.
+  `tests/smoke/wording.spec.js` checks every page for these as a guest, Alex, Kenji and the admin.
+
+## Project Deliverable 2: one shopping list
+
+- **One list at a time.** Shop this recipe, Shop this plan (what you bought, not the plan as it is
+  now) and Shop this week add straight to your shopping list, and start it if you have none. A message
+  says what was added, with Undo and Open list, and stays until you close it.
+- **My kitchen** runs in the order a cook uses it: the week (opened on this week, named "This week",
+  "Next week" or "Week of Sept 21, 2026 (past)"), the shopping list, your plans, your saved recipes,
+  and past lists. Plan it puts one recipe on a day; Add to my week does the same from a recipe page,
+  or puts a whole owned plan on this week or next.
+- **A list shows only the buttons that fit:** Start shopping, Send to Instacart or Favor and Print while
+  you build it; Done shopping and Print in the store; Items arrived once sent, when it can no longer
+  change; Shop again once done, named by date, and only when no other list is going. Have it takes off
+  what is already at home. On a phone, past lists are stacked cards.
+- **A plan you own** shows no price or sales copy, leads with Shop this plan and Add to my week, and
+  lists what you'll buy, read-only, from what you bought. The receipt leads to the plan and the week.
 
 ## Testing
 
@@ -255,8 +276,13 @@ npm run test:smoke                     # every page in Chromium, opened from the
   | `pages.spec.js` | every page address as a guest, Alex, Kenji, the admin and Sam: no errors, no broken images; addresses that name nothing say so |
   | `rules.spec.js` | the section 3 rules on screen, account by account |
   | `purchase.spec.js` | Sam buys a plan, opens what it unlocks, reviews it, and Reset prototype data restores the seed |
-  | `layout.spec.js` | every page fits a 375px phone, the phone nav, the servings default, and print |
+  | `layout.spec.js` | every page fits a 375px phone, the phone nav, and print |
   | `keyboard.spec.js` | the phone menu, the skip link, the focus ring's size and contrast, the dialog's focus handling, the review form's fieldset |
+  | `kitchen.spec.js`, `shop.spec.js` | the week, the one shopping list, Shop this and Undo, Plan it and Add to my week, a list's buttons in each state (the date is pinned with `page.clock`) |
+  | `plan-page.spec.js` | an owned plan's page, "What you'll buy", who sees the pitch, the receipt, empty cart and orders, Sign in returning to the page |
+  | `moderation.spec.js`, `admin.spec.js`, `studio.spec.js` | what creators and the admin change, and what buyers keep |
+  | `data-safety.spec.js` | two tabs, numbers of people, double presses, a deleted list's ticks |
+  | `wording.spec.js` | headings in order, 4.5:1 text, specific verbs, no promises the site does not keep |
 
 ## Planned for the Angular production build
 
@@ -281,8 +307,8 @@ application (Assignment 4), where they can be built against the real API and dat
 - Send to Instacart and Send to Favor are marked Planned. They explain what the handover
   would do; no partner is connected. Print list is real and uses the browser's print
   dialog, with a print stylesheet that strips everything except the list.
-- The video players on the recipe pages are mocks. There is no video file; clicking a
-  step moves the progress bar and the clock to show how the steps and the video line up.
+- The video players on the recipe pages are mocks. There is no video file; Play, or clicking a
+  step, moves the progress bar and the clock to show how the steps and the video line up.
 - Checkout does not take payment. Placing an order shows the confirmation a real checkout
   would produce, numbered after the seeded orders (CF-00007 is the first one placed here).
 - The content is the semester project's seed data, exported from the database into
