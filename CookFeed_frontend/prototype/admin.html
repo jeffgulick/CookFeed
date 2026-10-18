@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin console | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=11">
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <nav class="nav" aria-label="Main">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+      <button type="button" class="menu-button" id="menuButton" aria-expanded="false" aria-controls="navLinks" hidden>Menu</button>
+      <div class="nav-links" id="navLinks">
+        <a class="navlink" href="index.html">Discover</a>
+        <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+        <a class="navlink" href="orders.html" data-shop>Your orders</a>
+        <a class="navlink" href="help.html">Help</a>
+        <a class="navlink" href="studio.html" data-creator hidden>My studio</a>
+        <a class="navlink active" href="admin.html" data-admin hidden aria-current="page">Admin</a>
+        <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap" id="main" tabindex="-1">
+    <span class="pill">Admin console</span>
+    <h1>Run the store</h1>
+    <div id="adminArea">
+      <p class="lede">Moderate reviews, manage creators and the catalog, and look after orders and accounts. Every
+        change you make here is written to the audit log at the bottom, as the database requires.</p>
+
+      <div class="stat-row card" id="adminStats"></div>
+
+      <nav class="sort-row admin-jump" aria-label="Sections">
+        <a class="btn-small" href="#reviewsSection">Reviews</a>
+        <a class="btn-small" href="#creatorsSection">Creators</a>
+        <a class="btn-small" href="#catalogSection">Catalog</a>
+        <a class="btn-small" href="#ordersSection">Orders</a>
+        <a class="btn-small" href="#usersSection">Users</a>
+        <a class="btn-small" href="#logSection">Activity log</a>
+      </nav>
+
+      <h2 id="reviewsSection">Reviews</h2>
+      <p class="meta">A hidden review disappears from the store and from the plan's rating and count. Only admins see
+        it, and it can be restored.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Date</th><th>Plan</th><th>Reviewer</th><th>Rating</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="reviewRows"></tbody>
+        </table>
+      </div>
+
+      <h2 id="creatorsSection">Creators</h2>
+      <p class="meta">A verified creator shows the check mark. A suspended creator's plans are not for sale; cooks who
+        already bought one keep it.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Creator</th><th>Verified</th><th>Status</th><th>Recipes</th><th>Plans</th><th>Actions</th></tr></thead>
+          <tbody id="creatorRows"></tbody>
+        </table>
+      </div>
+
+      <h2 id="catalogSection">Catalog</h2>
+      <h3>Plans and collections</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Plan</th><th>Creator</th><th>Type</th><th>Price</th><th>Status</th><th>Sold</th><th>Action</th></tr></thead>
+          <tbody id="productRows"></tbody>
+        </table>
+      </div>
+      <h3>Recipes</h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Recipe</th><th>Creator</th><th>Status</th><th>Access</th><th>In plans</th><th>Action</th></tr></thead>
+          <tbody id="recipeRows"></tbody>
+        </table>
+      </div>
+
+      <h2 id="ordersSection">Orders</h2>
+      <div class="toolbar">
+        <label for="orderSearch">Find</label>
+        <input type="text" id="orderSearch" placeholder="buyer name or order number" aria-describedby="orderShowing">
+        <span class="showing" id="orderShowing"></span>
+      </div>
+      <p class="meta">Refunding a paid order takes its plans back from the buyer. A pending order can be cancelled.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Order</th><th>Date</th><th>Buyer</th><th>Plans</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="orderRows"></tbody>
+        </table>
+      </div>
+
+      <h2 id="usersSection">Users</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Account</th><th>Roles</th><th>Joined</th><th>Orders</th><th>Saves</th><th>Reviews</th></tr></thead>
+          <tbody id="userRows"></tbody>
+        </table>
+      </div>
+
+      <h2 id="logSection">Activity log</h2>
+      <p class="meta">The <code>admin_actions</code> table: who did what, to which row, and when.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Target</th><th>Note</th></tr></thead>
+          <tbody id="logRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+
+  <script src="js/seed-data.js?v=11"></script>
+  <script src="js/db.js?v=11"></script>
+  <script src="js/rules.js?v=11"></script>
+  <script src="js/common.js?v=11"></script>
+  <script src="js/admin.js?v=11"></script>
+</body>
+</html>
