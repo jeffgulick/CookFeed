@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My studio | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=11">
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <nav class="nav" aria-label="Main">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+      <button type="button" class="menu-button" id="menuButton" aria-expanded="false" aria-controls="navLinks" hidden>Menu</button>
+      <div class="nav-links" id="navLinks">
+        <a class="navlink" href="index.html">Discover</a>
+        <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+        <a class="navlink" href="orders.html" data-shop>Your orders</a>
+        <a class="navlink" href="help.html">Help</a>
+        <a class="navlink active" href="studio.html" data-creator hidden aria-current="page">My studio</a>
+        <a class="navlink" href="admin.html" data-admin hidden>Admin</a>
+        <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap" id="main" tabindex="-1">
+    <span class="pill">My studio</span>
+    <h1>Your recipes and plans</h1>
+    <div id="studioArea">
+      <p class="lede" id="studioLede">What you publish, what you sell, and what it has earned.
+        <a id="storefrontLink" href="creator.html">See your storefront &rarr;</a></p>
+
+      <div class="stat-row card" id="studioStats"></div>
+
+      <h2>My recipes</h2>
+      <p class="meta">A recipe starts as a draft only you can open. A <strong>free</strong> recipe is on Discover and
+        your storefront for anyone to save. A <strong>premium</strong> recipe is reached only by buying a plan it
+        is in, and a plan sells only premium recipes.</p>
+      <div class="sort-row">
+        <button type="button" class="btn-primary" id="newRecipe">New recipe</button>
+      </div>
+      <div class="table-scroll">
+        <table id="recipeTable">
+          <thead><tr><th>Recipe</th><th>Status</th><th>Access</th><th>Saved by</th><th>In plans</th><th>Actions</th></tr></thead>
+          <tbody id="recipeRows"></tbody>
+        </table>
+      </div>
+
+      <form class="card editor" id="recipeForm" hidden novalidate>
+        <h3 id="recipeFormHeading">New recipe</h3>
+        <div class="field">
+          <label for="recipeTitle">Title</label>
+          <input type="text" id="recipeTitle" maxlength="120" required>
+          <p class="field-error" id="recipeTitleError"></p>
+        </div>
+        <div class="field">
+          <label for="recipeDescription">Description</label>
+          <textarea id="recipeDescription" maxlength="2000" rows="2"></textarea>
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="recipeServings">Serves</label>
+            <input type="number" id="recipeServings" min="1" max="20" value="4" inputmode="numeric">
+            <p class="field-error" id="recipeServingsError"></p>
+          </div>
+          <div class="field">
+            <label for="recipePrep">Prep minutes</label>
+            <input type="number" id="recipePrep" min="0" max="600" value="10" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="recipeCook">Cook minutes</label>
+            <input type="number" id="recipeCook" min="0" max="600" value="20" inputmode="numeric">
+          </div>
+        </div>
+        <fieldset class="field">
+          <legend>Access</legend>
+          <label class="radio"><input type="radio" name="recipeVisibility" value="Public" checked> Free: anyone can open and save it</label>
+          <label class="radio"><input type="radio" name="recipeVisibility" value="ProductOnly"> Premium: only buyers of a plan it is in</label>
+          <p class="field-error" id="recipeVisibilityError"></p>
+        </fieldset>
+        <fieldset class="field">
+          <legend>Ingredients</legend>
+          <div id="ingredientLines"></div>
+          <button type="button" class="btn-small" id="addIngredient">Add an ingredient</button>
+          <p class="field-error" id="recipeIngredientsError"></p>
+        </fieldset>
+        <div class="field">
+          <label for="recipeSteps">Steps, one per line</label>
+          <textarea id="recipeSteps" rows="4"></textarea>
+          <p class="field-error" id="recipeStepsError"></p>
+        </div>
+        <div class="sort-row">
+          <button type="submit" class="btn-primary" id="saveRecipe">Save recipe</button>
+          <button type="button" class="btn-secondary" id="cancelRecipe">Cancel</button>
+        </div>
+      </form>
+
+      <h2>My plans and collections</h2>
+      <p class="meta">A plan is for sale as soon as you create it. Retiring it takes it off the store; everyone who
+        bought it keeps it.</p>
+      <div class="sort-row">
+        <button type="button" class="btn-primary" id="newProduct">New plan or collection</button>
+      </div>
+      <div class="table-scroll">
+        <table id="productTable">
+          <thead><tr><th>Plan</th><th>Type</th><th>Price</th><th>Contents</th><th>Status</th><th>Sold</th><th>Actions</th></tr></thead>
+          <tbody id="productRows"></tbody>
+        </table>
+      </div>
+
+      <form class="card editor" id="productForm" hidden novalidate>
+        <h3 id="productFormHeading">New plan or collection</h3>
+        <fieldset class="field" id="productTypeField">
+          <legend>Type</legend>
+          <label class="radio"><input type="radio" name="productType" value="MealPlan" checked> Meal plan: recipes on days and meals</label>
+          <label class="radio"><input type="radio" name="productType" value="RecipeCollection"> Collection: recipes in the order to cook them</label>
+        </fieldset>
+        <div class="field">
+          <label for="productTitle">Title</label>
+          <input type="text" id="productTitle" maxlength="120" required>
+          <p class="field-error" id="productTitleError"></p>
+        </div>
+        <div class="field">
+          <label for="productDescription">Description</label>
+          <textarea id="productDescription" maxlength="2000" rows="2"></textarea>
+        </div>
+        <div class="field">
+          <label for="productPrice">Price in dollars</label>
+          <input type="number" id="productPrice" min="0" max="500" step="0.01" value="9.99" inputmode="decimal">
+          <p class="field-error" id="productPriceError"></p>
+        </div>
+        <fieldset class="field">
+          <legend>Recipes in it</legend>
+          <p class="meta">Only published premium recipes can be sold. For a meal plan, pick the day and meal of each.</p>
+          <div id="placementList"></div>
+          <p class="field-error" id="placementError"></p>
+        </fieldset>
+        <div class="sort-row">
+          <button type="submit" class="btn-primary" id="saveProduct">Save plan</button>
+          <button type="button" class="btn-secondary" id="cancelProduct">Cancel</button>
+        </div>
+      </form>
+
+      <h2>Sales</h2>
+      <p class="meta" id="salesSummary"></p>
+      <div class="table-scroll">
+        <table id="salesTable">
+          <thead><tr><th>Date</th><th>Buyer</th><th>Plan</th><th>Paid</th><th>Status</th></tr></thead>
+          <tbody id="salesRows"></tbody>
+        </table>
+      </div>
+
+      <h2>Reviews of my plans</h2>
+      <div id="studioReviews"></div>
+    </div>
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+
+  <script src="js/seed-data.js?v=11"></script>
+  <script src="js/db.js?v=11"></script>
+  <script src="js/rules.js?v=11"></script>
+  <script src="js/common.js?v=11"></script>
+  <script src="js/studio.js?v=11"></script>
+</body>
+</html>
