@@ -190,3 +190,43 @@ test("a suspended creator sees why, and cannot put a new plan on sale", async ({
   await page.click("#saveProduct");
   expect(await textOf(page, "#placementError")).toMatch(/suspended/);
 });
+
+test("Enter in the plan form never saves it: picking from a menu or typing keeps the form open, only Save saves", async ({ page }) => {
+  await signInAs(page, KENJI);
+  await page.goto("studio.html");
+  await page.click("#newProduct");
+  // A complete plan: a title, a price and a meal. Today, Enter anywhere would put it on sale.
+  await page.selectOption("#placementList .place-recipe", { index: 1 });
+  await page.fill("#productTitle", "Weekend in Osaka");
+  await page.keyboard.press("Enter");
+  await page.fill("#productPrice", "11.99");
+  await page.keyboard.press("Enter");
+  await page.selectOption("#placementList .place-day", "3");
+  await page.focus("#placementList .place-day");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#productForm")).toBeVisible();
+  await expect(page.locator("#productRows tr")).toHaveCount(1);              // nothing saved yet
+  await expect(page.locator("#productTitle")).toHaveValue("Weekend in Osaka");
+  await page.click("#saveProduct");
+  await expect(page.locator("#productForm")).toBeHidden();
+  await expect(page.locator("#productRows tr")).toHaveCount(2);
+});
+
+test("Enter in the recipe form never saves it either, and still starts a new line in the steps", async ({ page }) => {
+  await signInAs(page, KENJI);
+  await page.goto("studio.html");
+  await page.click("#newRecipe");
+  await page.fill("#recipeTitle", "Yakitori");
+  await page.keyboard.press("Enter");
+  await page.focus("#ingredientLines .line-ingredient");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#recipeForm")).toBeVisible();
+  await page.fill("#recipeSteps", "Thread the chicken");
+  await page.focus("#recipeSteps");
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Grill it");
+  await expect(page.locator("#recipeSteps")).toHaveValue("Thread the chicken\nGrill it");
+  await expect(page.locator("#recipeForm")).toBeVisible();
+});
