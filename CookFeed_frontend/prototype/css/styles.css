@@ -76,13 +76,15 @@ a { color: var(--accent); }
   z-index: 10;
 }
 
+/* Wider than the page (980px) so eight links, the account and the cart stay on one row on a laptop;
+   the links shrink their spacing before anything wraps. */
 .nav-inner {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   flex-wrap: wrap;
   padding: 12px 16px;
-  max-width: 980px;
+  max-width: 1120px;
   margin: 0 auto;
 }
 
@@ -99,7 +101,7 @@ a { color: var(--accent); }
 
 /* The links, then the cart, on wide screens. On phones the links fold into the Menu button (see
    "small screens"). The cart comes first in the page source so it sits beside the menu there. */
-.nav-links { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; order: 1; }
+.nav-links { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; order: 1; }
 .cart-chip { order: 2; }
 .menu-button { display: none; order: 3; }
 
@@ -127,9 +129,10 @@ main:focus { outline: none; }
   color: var(--muted);
   text-decoration: none;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   padding: 6px 2px;
   border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
 .nav a.navlink:hover { color: var(--ink); }
@@ -149,6 +152,8 @@ main:focus { outline: none; }
 }
 
 .account-name strong { color: var(--ink); }
+/* "Signed in as" is read out but not drawn: the name alone keeps the row short. */
+.account-name .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .account-name:hover strong { color: var(--accent); }
 
 .link-button {
