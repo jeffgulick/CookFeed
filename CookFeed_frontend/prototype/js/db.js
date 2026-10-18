@@ -905,20 +905,44 @@ function createTrip(userId, name, items) {
   return trip;
 }
 
+/* One row per recipe on a trip. A recipe already on the trip is not added again (the caller compares what
+   it asked with what came back and says "already on this trip"). A recipe named twice in one call, as a
+   plan with oats on two mornings or a week with the same dinner twice, becomes one item whose people are
+   summed, so the list still buys enough for both meals. */
 function addTripItems(tripId, items) {
   var trip = tripById(tripId);
   var user = userById(trip.userId);
-  var added = [];
+  var wanted = [];
   items.forEach(function (item) {
     var recipe = rowById("recipes", item.recipeId);
-    if (!canPlan(user, recipe)) { return; }
-    var row = { id: nextId("shoppingTripItems"), tripId: tripId, recipeId: item.recipeId,
-      servings: item.servings > 0 ? item.servings : recipe.servings };
+    if (!canPlan(user, recipe) || tripHasRecipe(tripId, item.recipeId)) { return; }
+    var people = item.servings > 0 ? item.servings : recipe.servings;
+    var same = wanted.filter(function (w) { return w.recipeId === item.recipeId; })[0];
+    if (same) { same.servings = same.servings + people; return; }
+    wanted.push({ recipeId: item.recipeId, servings: people });
+  });
+  var added = wanted.map(function (w) {
+    var row = { id: nextId("shoppingTripItems"), tripId: tripId, recipeId: w.recipeId, servings: w.servings };
     db().shoppingTripItems.push(row);
-    added.push(row);
+    return row;
   });
   commit();
   return added;
+}
+
+function tripHasRecipe(tripId, recipeId) {
+  return db().shoppingTripItems.some(function (i) { return i.tripId === tripId && i.recipeId === recipeId; });
+}
+
+/* The distinct recipes a trip would get from an owned plan that are not on it yet. */
+function tripMissingFromProduct(tripId, user, productId) {
+  var item = paidItemsOf(user).filter(function (oi) { return oi.productId === productId; })[0];
+  if (!item) { return []; }
+  var ids = [];
+  db().orderItemRecipes.filter(function (oir) { return oir.orderItemId === item.id; }).forEach(function (oir) {
+    if (ids.indexOf(oir.recipeId) === -1 && !tripHasRecipe(tripId, oir.recipeId)) { ids.push(oir.recipeId); }
+  });
+  return ids;
 }
 
 /* Every recipe of a plan the cook owns (their purchase snapshot, 3.3), each as the recipe is written. */
@@ -980,6 +1004,18 @@ function setTripSkip(tripId, ingredientId, skipped) {
   tables.shoppingTripSkips = tables.shoppingTripSkips.filter(function (s) { return !(s.tripId === tripId && s.ingredientId === ingredientId); });
   if (skipped) { tables.shoppingTripSkips.push({ tripId: tripId, ingredientId: ingredientId }); }
   commit();
+}
+
+/* A sent or done trip shopped again: a fresh Building trip with the same recipes and people. What the cook
+   had at home last time stays off the list (the skips come along); they can put it back. */
+function copyTrip(tripId) {
+  var trip = tripById(tripId);
+  if (trip === null) { return null; }
+  var copy = createTrip(trip.userId, trip.name + " again", tripItems(tripId).map(function (i) {
+    return { recipeId: i.recipeId, servings: i.servings };
+  }));
+  tripSkips(tripId).forEach(function (ingredientId) { setTripSkip(copy.id, ingredientId, true); });
+  return copy;
 }
 
 function deleteTrip(tripId) {

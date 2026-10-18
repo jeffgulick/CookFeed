@@ -26,8 +26,16 @@ test("a free recipe is shopped from its page for the people set; an owned plan j
     await expect(page.locator("#shopNameField")).toBeHidden();
     await page.click("#shopSubmit");
     await expect(page).toHaveURL(/list\.html\?trip=1$/);
-    await expect(page.locator(".trip-item")).toHaveCount(7);            // 1 recipe + the plan's 6 meals
-    await expect(page.locator(".toast")).toContainText("6 recipes added");
+    await expect(page.locator(".trip-item")).toHaveCount(6);            // 1 recipe + the plan's 5 distinct recipes
+    await expect(page.locator(".toast")).toContainText("5 recipes added");
+    // The oats are on two mornings: one item, for both.
+    await expect(page.locator(".trip-item", { hasText: "Overnight Oats" }).locator("input")).toHaveValue("10");
+    // Shopping the same plan onto the same trip again adds nothing.
+    await page.goto("product.html?id=4");
+    await page.click("#shopPlan");
+    await page.click("#shopSubmit");
+    await expect(page.locator(".toast")).toContainText("already on this trip");
+    await expect(page.locator(".trip-item")).toHaveCount(6);
   });
 
   await test.step("a new trip can still be chosen and named", async () => {

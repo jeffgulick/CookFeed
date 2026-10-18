@@ -691,8 +691,6 @@ a.cart-chip:hover { background: var(--accent-tint); }
 }
 
 .send:hover { border-color: var(--line-strong); background: var(--paper); }
-.send.ready { border-color: var(--good-line); background: var(--good-tint); }
-.send.ready:hover { background: var(--good-tint-hover); }
 
 .send-icon { font-size: 16px; line-height: 1; }
 
@@ -1139,6 +1137,11 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .placement label { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 0; }
 .placement select { width: auto; padding: 6px 10px; }
 .placement-off label { color: var(--muted); font-weight: 400; }
+/* A row a ticked plan brings, or one already on the trip: tinted, ticked, and not counted again. */
+.placement.in-plan, .placement.on-trip, .pick-row.on-trip { background: var(--accent-soft); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
+.placement.on-trip label, .pick-row.on-trip { color: var(--muted); }
+.pick-tag { font-size: 12px; font-weight: 600; color: var(--accent); margin-left: 6px; }
+.pick-tag:empty { display: none; }
 .placement .meta { grid-column: 2 / 4; }
 @media (max-width: 640px) {
   .ingredient-line { grid-template-columns: 1fr 1fr; }

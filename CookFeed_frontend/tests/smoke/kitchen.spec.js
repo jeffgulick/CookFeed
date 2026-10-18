@@ -53,53 +53,90 @@ test("a week becomes a trip, scaled to the people planned; the list is ticked, e
     await expect(page.locator(".store-line")).toHaveCount(before);
   });
 
-  await test.step("shopping it keeps the list editable; done closes it", async () => {
+  await test.step("shopping it keeps the list editable; Trip complete closes it and goes back to the kitchen", async () => {
     await page.click("#startShopping");
     await expect(page.locator("#tripStatus")).toHaveText("Shopping");
     await page.locator(".trip-item", { hasText: "Weeknight Beef Tacos" }).locator(".remove-item").click();
     await expect(page.locator(".store-line", { hasText: "ground beef" })).toHaveCount(0);
+    await expect(page.locator("#finishTrip")).toContainText("Trip complete");
     await page.click("#finishTrip");
     await page.click("#confirmOk");
+    await expect(page).toHaveURL(/kitchen\.html$/);
+    await expect(page.locator(".toast")).toContainText("is done");
+    const row = page.locator("#tripRows tr", { hasText: "Week of Sept 21" });
+    await expect(row).toContainText("Done");
+    await expect(row.locator(".finish-trip")).toHaveCount(0);
+    await expect(row.locator(".reshop-trip")).toHaveCount(1);
+    await page.goto("list.html?trip=1");
     await expect(page.locator("#tripStatus")).toContainText("Done");
     await expect(page.locator(".skip-line")).toHaveCount(0);
     await expect(page.locator("#addMore")).toBeHidden();
-    await page.goto("kitchen.html");
-    await expect(page.locator("#tripRows tr", { hasText: "Week of Sept 21" })).toContainText("Done");
+    await expect(page.locator("#shopAgain")).toBeVisible();
   });
 });
 
-test("a trip is built from any recipes and plans, for any number of people, sent, and received", async ({ page }) => {
+test("a trip is built from any recipes and plans, each recipe once, sent, received, and shopped again", async ({ page }) => {
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
   await page.click("#newTrip");
   await page.fill("#tripName", "Taco night");
   await page.locator("#buildPlans .pick-plan[value='4']").check();                     // Family Week on a Budget
+  // Ticking the plan lights up the saved recipes it brings (pancakes, cookies): ticked, not counted again.
+  await expect(page.locator("#buildRecipes .placement.in-plan")).toHaveCount(2);
+  const cookies = page.locator("#buildRecipes .placement", { hasText: "Brown Butter" });
+  await expect(cookies.locator(".pick-recipe")).toBeChecked();
+  await expect(cookies.locator(".pick-recipe")).toBeDisabled();
+  await expect(cookies).toContainText("with Family Week on a Budget");
+  await page.locator("#buildPlans .pick-plan[value='4']").uncheck();
+  await expect(page.locator("#buildRecipes .placement.in-plan")).toHaveCount(0);
+  await expect(cookies.locator(".pick-recipe")).not.toBeChecked();
+  await page.locator("#buildPlans .pick-plan[value='4']").check();
   const carbonara = page.locator("#buildRecipes .placement", { hasText: "Spaghetti Carbonara" });
   await carbonara.locator(".pick-recipe").check();
   await carbonara.locator(".pick-servings").fill("8");
   await page.click("#buildSubmit");
   await expect(page).toHaveURL(/list\.html\?trip=/);
   await expect(page.locator("#tripHeading")).toHaveText("Taco night");
-  await expect(page.locator(".trip-item")).toHaveCount(7);                             // 1 recipe + the plan's 6 meals
+  await expect(page.locator(".trip-item")).toHaveCount(6);                             // 1 recipe + the plan's 5 distinct recipes
+  await expect(page.locator(".trip-item", { hasText: "Overnight Oats" })).toHaveCount(1);   // on two mornings, once on the trip
   await expect(page.locator(".store-line[data-key='spaghetti|g']")).toContainText(/800 g/);          // 400 g written for 4, cooked for 8
 
-  await test.step("add more, then change the people", async () => {
+  await test.step("add more: what is on the trip already cannot be added again", async () => {
     await page.click("#addMore");
-    await page.locator("#buildRecipes .placement", { hasText: "Brown Butter" }).locator(".pick-recipe").check();
+    const onTrip = page.locator("#buildRecipes .placement", { hasText: "Brown Butter" });
+    await expect(onTrip).toHaveClass(/on-trip/);
+    await expect(onTrip.locator(".pick-recipe")).toBeDisabled();
+    await expect(page.locator("#buildPlans .pick-plan[value='4']")).toBeDisabled();
+    await expect(page.locator("#buildPlans")).toContainText("already on this trip");
+    await page.locator("#buildRecipes .placement", { hasText: "Focaccia" }).locator(".pick-recipe").check();
     await page.click("#buildSubmit");
-    await expect(page.locator(".trip-item")).toHaveCount(8);
+    await expect(page.locator(".trip-item")).toHaveCount(7);
     await page.locator(".trip-item", { hasText: "Spaghetti Carbonara" }).first().locator("input").fill("4");
     await expect(page.locator(".store-line[data-key='spaghetti|g']")).toContainText(/400 g/);
   });
 
-  await test.step("send it to Instacart and confirm the items arrived", async () => {
+  await test.step("send it to Instacart: back to the kitchen, where the items are received", async () => {
     await page.click("#sendInstacart");
     await page.click("#confirmOk");
-    await expect(page.locator("#tripStatus")).toHaveText("Sent to Instacart");
-    await expect(page.locator("#finishTrip")).toContainText("Items received");
-    await page.click("#finishTrip");
+    await expect(page).toHaveURL(/kitchen\.html$/);
+    await expect(page.locator(".toast")).toContainText("sent to Instacart");
+    const row = page.locator("#tripRows tr", { hasText: "Taco night" });
+    await expect(row).toContainText("Sent to Instacart");
+    await expect(row.locator(".finish-trip")).toHaveText("Items received");
+    await row.locator(".finish-trip").click();
     await page.click("#confirmOk");
-    await expect(page.locator("#tripStatus")).toContainText("Done");
+    await expect(row).toContainText("Done");
+  });
+
+  await test.step("shop it again: a fresh trip with the same recipes and people", async () => {
+    await page.locator("#tripRows tr", { hasText: "Taco night" }).locator(".reshop-trip").click();
+    await expect(page).toHaveURL(/list\.html\?trip=2/);
+    await expect(page.locator("#tripHeading")).toHaveText("Taco night again");
+    await expect(page.locator("#tripStatus")).toHaveText("Building");
+    await expect(page.locator(".trip-item")).toHaveCount(7);
+    await expect(page.locator(".store-line[data-key='spaghetti|g']")).toContainText(/400 g/);
+    await page.goto("kitchen.html");
+    await expect(page.locator("#tripRows tr")).toHaveCount(2);
   });
 });
 

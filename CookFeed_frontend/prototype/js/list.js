@@ -11,7 +11,7 @@ var trip = null;
 var tripUser = null;
 
 function haveKey() {
-  return "cookfeed.have.trip." + trip.id;
+  return tripHaveKey(trip.id);
 }
 
 function haveItems() {
@@ -42,12 +42,13 @@ function renderHeader() {
   document.getElementById("sendFavor").hidden = !editable || trip.status === "Sent";
   document.getElementById("finishTrip").hidden = !editable;
   document.getElementById("finishTrip").querySelector(".send-text").textContent =
-    trip.status === "Sent" ? "Items received" : trip.status === "Shopping" ? "Trip complete" : "Done";
+    trip.status === "Sent" ? "Items received" : "Trip complete";
+  document.getElementById("shopAgain").hidden = trip.status === "Building" || trip.status === "Shopping";
   document.getElementById("addMore").hidden = !editable;
   document.getElementById("tripHint").textContent = trip.status === "Building"
     ? "Tick off what you already have, take off what you do not need, then shop it yourself or send it."
-    : trip.status === "Shopping" ? "Tick things off as you go. You can still change the list."
-    : trip.status === "Sent" ? "Confirm when the items arrive." : "This trip is done. It stays here as a record.";
+    : trip.status === "Shopping" ? "Tick things off as you go. You can still change the list. Trip complete takes you back to your kitchen."
+    : trip.status === "Sent" ? "Confirm when the items arrive, or shop it again as a new trip." : "This trip is done. It stays here as a record; Shop it again makes a new trip from it.";
 }
 
 /* ---------- the list ---------- */
@@ -149,26 +150,26 @@ function onHaveChanged(event) {
   renderList();
 }
 
+/* Sending and finishing both close the trip page and go back to My kitchen, where the trip's row shows its
+   new state and can be opened, finished, shopped again or deleted. */
 function send(partner) {
-  confirmDialog("Send this list to " + partner + "? In the real app the list opens there to order; here the trip is marked sent.",
+  confirmDialog("Send this list to " + partner + "? In the real app the list opens there to order; here the trip is marked sent and you go back to My kitchen.",
     "Send to " + partner).then(function (ok) {
     if (!ok) { return; }
-    trip = setTripStatus(trip.id, "Sent", partner);
-    renderTrip();
-    showToast("Sent to " + partner + ". Confirm when the items arrive.");
+    setTripStatus(trip.id, "Sent", partner);
+    window.location.href = "kitchen.html?sent=" + trip.id;
   });
 }
 
 function finish() {
-  var message = trip.status === "Sent" ? "Did everything arrive? The trip is marked done and cleared from your active trips."
-    : "Trip complete? It is marked done and cleared from your active trips.";
-  confirmDialog(message, "Done").then(function (ok) {
-    if (!ok) { return; }
-    trip = setTripStatus(trip.id, "Done");
-    removeStored(haveKey());
-    renderTrip();
-    showToast("Done. Enjoy the cooking.");
+  finishTrip(trip).then(function (done) {
+    if (done) { window.location.href = "kitchen.html?done=" + trip.id; }
   });
+}
+
+function shopAgain() {
+  var copy = copyTrip(trip.id);
+  window.location.href = "list.html?trip=" + copy.id + "&added=" + tripItems(copy.id).length;
 }
 
 function onAddSubmitted(event) {
@@ -182,7 +183,11 @@ function onAddSubmitted(event) {
   picked.productIds.forEach(function (id) { added = added + addProductToTrip(trip.id, id).length; });
   document.getElementById("buildDialog").close();
   renderTrip();
-  showToast(plural(added, "recipe", "recipes") + " added to the trip.");
+  if (added === 0) {
+    showToast("Everything you ticked is already on this trip.", "error");
+    return;
+  }
+  showToast(plural(added, "recipe", "recipes") + " added to the trip. A recipe already on it is never added twice.");
 }
 
 /* ---------- start ---------- */
@@ -202,7 +207,8 @@ document.addEventListener("DOMContentLoaded", function () {
   renderTrip();
   var added = queryNumber("added");
   if (added !== null) {
-    showToast(plural(added, "recipe", "recipes") + " added. This is your trip: shop it or send it when you are ready.");
+    if (added === 0) { showToast("Nothing added: it is already on this trip.", "error"); }
+    else { showToast(plural(added, "recipe", "recipes") + " added. This is your trip: shop it or send it when you are ready."); }
     window.history.replaceState(null, "", "list.html?trip=" + trip.id);
   }
 
@@ -219,10 +225,12 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("sendInstacart").addEventListener("click", function () { send("Instacart"); });
   document.getElementById("sendFavor").addEventListener("click", function () { send("Favor"); });
   document.getElementById("finishTrip").addEventListener("click", finish);
+  document.getElementById("shopAgain").addEventListener("click", shopAgain);
   document.getElementById("printTrip").addEventListener("click", function () { window.print(); });
   document.getElementById("addMore").addEventListener("click", function () {
-    document.getElementById("buildPlans").innerHTML = pickerPlansHtml(tripUser);
-    document.getElementById("buildRecipes").innerHTML = pickerRecipesHtml(tripUser, { withDays: false, preRecipeId: null });
+    document.getElementById("buildPlans").innerHTML = pickerPlansHtml(tripUser, trip.id);
+    document.getElementById("buildRecipes").innerHTML = pickerRecipesHtml(tripUser, { withDays: false, preRecipeId: null, tripId: trip.id });
+    wirePicker(document.getElementById("buildForm"));
     document.getElementById("buildError").textContent = "";
     document.getElementById("buildDialog").showModal();
   });
