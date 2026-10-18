@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shopping trip | Cookfeed</title>
+  <link rel="stylesheet" href="css/styles.css?v=12">
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <nav class="nav" aria-label="Main">
+    <div class="nav-inner">
+      <a class="brand" href="index.html">Cook<span>feed</span></a>
+      <a class="cart-chip" href="cart.html" data-shop>Cart: <span id="cartCount">0</span></a>
+      <button type="button" class="menu-button" id="menuButton" aria-expanded="false" aria-controls="navLinks" hidden>Menu</button>
+      <div class="nav-links" id="navLinks">
+        <a class="navlink" href="index.html">Discover</a>
+        <a class="navlink" href="plans.html">Plans &amp; collections</a>
+        <a class="navlink" href="recipes.html">Recipes</a>
+        <a class="navlink" href="kitchen.html" data-shop>My kitchen</a>
+        <a class="navlink" href="orders.html" data-shop>Your orders</a>
+        <a class="navlink" href="help.html">Help</a>
+        <a class="navlink" href="studio.html" data-creator hidden>My studio</a>
+        <a class="navlink" href="admin.html" data-admin hidden>Admin</a>
+        <span class="account" id="accountArea"><a class="navlink" href="signin.html">Sign in</a></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap store-wrap" id="main" tabindex="-1">
+    <div id="tripArea">
+      <p class="meta"><a href="kitchen.html">&larr; My kitchen</a></p>
+      <span class="pill">Shopping trip</span>
+      <h1 id="tripHeading">Shopping trip</h1>
+      <p class="byline"><span class="tag" id="tripStatus"></span> <span id="tripSummary"></span></p>
+
+      <div class="send-row" id="tripActions">
+        <button class="send ready" id="startShopping"><span class="send-icon">&#128722;</span><span class="send-text">I'm shopping this</span></button>
+        <button class="send" id="sendInstacart"><span class="send-icon">&#128666;</span><span class="send-text">Send to Instacart</span></button>
+        <button class="send" id="sendFavor"><span class="send-icon">&#128663;</span><span class="send-text">Send to Favor</span></button>
+        <button class="send ready" id="finishTrip"><span class="send-icon">&#10003;</span><span class="send-text">Done</span></button>
+        <button class="send" id="printTrip"><span class="send-icon">&#128424;</span><span class="send-text">Print</span></button>
+      </div>
+      <p class="meta" id="tripHint"></p>
+
+      <div class="card print-area">
+        <div class="list-head">
+          <h3 id="listHeading">To buy</h3>
+        </div>
+        <div class="list-progress">
+          <span id="listProgressText">0 of 0 items still to buy</span>
+          <div class="progress-track"><div class="progress-fill" id="listProgressFill"></div></div>
+          <button type="button" class="link-button" id="clearHave">Uncheck all</button>
+        </div>
+        <div class="store-list" id="storeList"></div>
+        <div class="skipped-strip" id="skippedStrip" hidden></div>
+      </div>
+
+      <h2>What this trip cooks</h2>
+      <p class="meta">Change the people for a recipe, take one off, or add more. The list above follows.</p>
+      <div class="card">
+        <div id="tripItems"></div>
+        <div class="sort-row">
+          <button type="button" class="btn-secondary" id="addMore">Add recipes</button>
+          <button type="button" class="link-button" id="deleteTrip">Delete this trip</button>
+        </div>
+      </div>
+    </div>
+
+    <dialog class="build-dialog" id="buildDialog" aria-labelledby="buildHeading">
+      <form method="dialog" id="buildForm" novalidate>
+        <h3 id="buildHeading">Add to this trip</h3>
+        <p class="meta">Tick anything else you want to cook, each for the people you choose.</p>
+        <fieldset class="field">
+          <legend>Plans you own</legend>
+          <div id="buildPlans"></div>
+        </fieldset>
+        <fieldset class="field">
+          <legend>Saved recipes</legend>
+          <div id="buildRecipes"></div>
+        </fieldset>
+        <p class="field-error" id="buildError"></p>
+        <div class="dialog-actions">
+          <button type="button" class="btn-secondary" id="buildCancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="buildSubmit">Add to the trip</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+
+  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+
+  <script src="js/seed-data.js?v=12"></script>
+  <script src="js/db.js?v=12"></script>
+  <script src="js/rules.js?v=12"></script>
+  <script src="js/common.js?v=12"></script>
+  <script src="js/list.js?v=12"></script>
+</body>
+</html>

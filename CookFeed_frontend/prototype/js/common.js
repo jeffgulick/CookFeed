@@ -555,3 +555,49 @@ document.addEventListener("DOMContentLoaded", function () {
     showStorageNotice();
   }
 });
+
+/* ---------- the picker: what to cook ----------
+   Used by the Build dialog on My kitchen and the Add recipes dialog on a trip page: the plans the cook owns
+   (each goes on as a whole) and the recipes they saved, each with the people to cook for. With withDays,
+   each recipe also gets a day and meal, for putting it on a week. */
+function pickerPlansHtml(user) {
+  return ownedProductsFor(user).map(function (o) {
+    return "<label class='radio'><input type='checkbox' class='pick-plan' value='" + o.product.id + "'> " +
+      escapeHtml(o.productTitle) + " <span class='meta'>(" + productCounts(o) + ")</span></label>";
+  }).join("") || "<p class='meta'>You have not bought a plan yet.</p>";
+}
+
+function pickerRecipesHtml(user, options) {
+  var dayOptions = DAY_NAMES.map(function (day, i) { return "<option value='" + i + "'>" + day + "</option>"; }).join("");
+  var slotOptions = SLOT_ORDER.map(function (slot) {
+    return "<option value='" + slot + "'" + (slot === "Dinner" ? " selected" : "") + ">" + slot + "</option>";
+  }).join("");
+  return savesFor(user.id).map(function (save) {
+    var recipe = rowById("recipes", save.recipeId);
+    return "<div class='placement'><label><input type='checkbox' class='pick-recipe' value='" + recipe.id + "'" +
+      (recipe.id === options.preRecipeId ? " checked" : "") + "> " + escapeHtml(recipe.title) + "</label>" +
+      "<span class='pick-people'>for <input type='number' class='pick-servings' min='1' max='20' value='" + recipe.servings +
+        "' aria-label='People for " + escapeHtml(recipe.title) + "'> people</span>" +
+      (options.withDays ? "<span class='pick-when'><select aria-label='Day for " + escapeHtml(recipe.title) + "' class='pick-day'>" + dayOptions +
+        "</select> <select aria-label='Meal for " + escapeHtml(recipe.title) + "' class='pick-slot'>" + slotOptions + "</select></span>" : "") +
+      "</div>";
+  }).join("") || "<p class='meta'>Save a recipe first, and it appears here.</p>";
+}
+
+/* What was ticked: the plan ids, and the recipes with people (and day and meal when asked). */
+function readPicker(root) {
+  var productIds = [];
+  var plans = root.querySelectorAll(".pick-plan:checked");
+  for (var i = 0; i < plans.length; i = i + 1) { productIds.push(Number(plans[i].value)); }
+  var items = [];
+  var rows = root.querySelectorAll(".placement");
+  for (var k = 0; k < rows.length; k = k + 1) {
+    var box = rows[k].querySelector(".pick-recipe");
+    if (!box.checked) { continue; }
+    var people = Number(rows[k].querySelector(".pick-servings").value);
+    var day = rows[k].querySelector(".pick-day");
+    items.push({ recipeId: Number(box.value), servings: people > 0 ? people : 0,
+      dayOffset: day ? Number(day.value) : null, slot: day ? rows[k].querySelector(".pick-slot").value : null });
+  }
+  return { productIds: productIds, items: items };
+}

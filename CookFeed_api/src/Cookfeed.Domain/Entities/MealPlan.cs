@@ -15,8 +15,5 @@ public class MealPlan
 
     public DateTimeOffset CreatedAt { get; set; }
 
-    /// <summary>When the cook marked this week's shopping list as shopped (§3.9). Null until they do.</summary>
-    public DateTimeOffset? ShoppedAt { get; set; }
-
     public List<MealPlanEntry> Entries { get; set; } = [];
 }

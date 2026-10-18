@@ -16,7 +16,7 @@ const PAGES = [
   "recipe.html?id=99", "creator.html?handle=kenji-kitchen",
   "creator.html?handle=maria-cooks", "creator.html?handle=dan-meal-preps", "creator.html?handle=nobody",
   "reviews.html?product=3", "reviews.html?product=4", "cart.html", "orders.html", "kitchen.html",
-  "help.html", "signin.html", "studio.html", "admin.html", "plans.html", "recipes.html"
+  "help.html", "signin.html", "studio.html", "admin.html", "plans.html", "recipes.html", "list.html"
 ];
 
 const test = base.test.extend({

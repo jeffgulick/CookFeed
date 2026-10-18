@@ -251,7 +251,6 @@ test("Alex's seeded week holds four meals in calendar order, the teriyaki planne
   const p = loadPrototype();
   const plan = p.planFor(ALEX, "2026-09-21");
   assert.equal(plan.name, "Week of Sept 21");
-  assert.equal(plan.shoppedAt, null);
   const entries = p.planEntries(plan.id);
   assert.deepEqual(plain(entries.map((e) => e.title)), ["Five-Day Overnight Oats", "Chicken Teriyaki, the Real Way",
     "Weeknight Beef Tacos", "15-Minute Spaghetti Carbonara"]);
@@ -272,7 +271,7 @@ test("the week's list scales each meal by its planned servings (Q8)", () => {
   assert.equal(p.buildShoppingList([TERIYAKI], null).find((l) => l.name === "boneless chicken thigh").amount, 500);
 });
 
-test("a cook plans a recipe, a whole plan they bought, rescales, removes, and marks the week shopped (3.9)", () => {
+test("a cook plans a recipe and a whole plan they bought onto a week, rescales and removes (3.9)", () => {
   const p = loadPrototype();
   const week = "2026-10-19";
   assert.equal(p.planFor(ALEX, week), null);
@@ -289,9 +288,51 @@ test("a cook plans a recipe, a whole plan they bought, rescales, removes, and ma
   assert.equal(p.planEntries(p.planFor(ALEX, week).id).find((e) => e.id === entry.id).planned, 2);
   p.removePlanEntry(entry.id);
   assert.equal(p.planEntries(p.planFor(ALEX, week).id).length, 6);
-  assert.notEqual(p.markWeekShopped(ALEX, week, true).shoppedAt, null);
-  assert.notEqual(loadPrototype(p.localStorage).planFor(ALEX, week).shoppedAt, null);
-  assert.equal(p.markWeekShopped(ALEX, week, false).shoppedAt, null);
+  assert.equal(loadPrototype(p.localStorage).planEntries(p.planFor(ALEX, week).id).length, 6);
+});
+
+test("a shopping trip is built from any recipes and plans, scaled, shopped, and kept across a reload (3.9)", () => {
+  const p = loadPrototype();
+  assert.equal(p.tripsFor(ALEX).length, 0);
+  const trip = p.createTrip(ALEX, "Taco night", [{ recipeId: TACOS, servings: 8 }, { recipeId: ONIGIRI, servings: 0 }]);
+  assert.equal(p.tripItems(trip.id).length, 2);
+  assert.equal(p.tripItems(trip.id)[1].servings, 4);                 // 0 means as written
+  assert.equal(p.addProductToTrip(trip.id, FAMILY_WEEK).length, 6);
+  assert.equal(p.tripItems(trip.id).length, 8);
+  const list = p.buildShoppingList(p.tripRecipeLines(trip.id), null);
+  assert.equal(list.find((l) => l.name === "ground beef").amount, 1500);   // 500 g for 4, cooked for 8, plus Family Week's tacos
+  assert.equal(trip.status, "Building");
+  assert.equal(p.tripEditable(trip), true);
+  // Already have the beef: it leaves the list to buy, and can come back.
+  p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, true);
+  assert.equal(p.tripList(trip.id).lines.some((l) => l.name === "ground beef"), false);
+  assert.equal(p.tripList(trip.id).skipped.length, 1);
+  p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, false);
+  assert.equal(p.tripList(trip.id).skipped.length, 0);
+  assert.equal(p.setTripStatus(trip.id, "Shopping").status, "Shopping");
+  assert.equal(p.tripEditable(p.tripById(trip.id)), true);
+  assert.equal(p.setTripStatus(trip.id, "Sent", "Instacart").sentTo, "Instacart");
+  assert.notEqual(p.setTripStatus(trip.id, "Done").completedAt, null);
+  assert.equal(p.tripEditable(p.tripById(trip.id)), false);
+  assert.equal(loadPrototype(p.localStorage).tripById(trip.id).status, "Done");
+  assert.equal(p.setTripStatus(trip.id, "Lost"), null);
+  p.removeTripItem(p.tripItems(trip.id)[0].id);
+  assert.equal(p.tripItems(trip.id).length, 7);
+  p.deleteTrip(trip.id);
+  assert.equal(p.tripsFor(ALEX).length, 0);
+  assert.equal(p.tripItems(trip.id).length, 0);
+});
+
+test("a planned week becomes a trip for the people each meal was planned for; nothing the cook may not open joins (3.9)", () => {
+  const p = loadPrototype();
+  const trip = p.tripFromWeek(ALEX, "2026-09-21");
+  assert.equal(trip.name, "Week of Sept 21");
+  assert.equal(p.tripItems(trip.id).find((i) => i.recipeId === TERIYAKI).servings, 4);
+  assert.equal(p.buildShoppingList(p.tripRecipeLines(trip.id), null).find((l) => l.name === "boneless chicken thigh").amount, 1000);
+  assert.equal(p.tripFromWeek(SAM, "2026-09-21"), null);
+  const sams = p.createTrip(SAM, "Try", [{ recipeId: ONIGIRI, servings: 2 }, { recipeId: TAMAGOYAKI, servings: 2 }]);
+  assert.equal(p.tripItems(sams.id).length, 1);
+  assert.equal(p.addProductToTrip(sams.id, JAPAN).length, 0);
 });
 
 test("only a recipe the cook may open can be planned, and a plan they did not buy cannot be added (3.3)", () => {

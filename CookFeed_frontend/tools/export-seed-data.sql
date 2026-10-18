@@ -33,6 +33,9 @@ WITH table_rows (table_name, n, row_json) AS (
     UNION ALL SELECT 'order_item_recipes', row_number() OVER (ORDER BY id), to_jsonb(t) FROM order_item_recipes t
     UNION ALL SELECT 'reviews', row_number() OVER (ORDER BY id), to_jsonb(t) FROM reviews t
     UNION ALL SELECT 'admin_actions', row_number() OVER (ORDER BY id), to_jsonb(t) FROM admin_actions t
+    UNION ALL SELECT 'shopping_trips', row_number() OVER (ORDER BY id), to_jsonb(t) FROM shopping_trips t
+    UNION ALL SELECT 'shopping_trip_items', row_number() OVER (ORDER BY id), to_jsonb(t) FROM shopping_trip_items t
+    UNION ALL SELECT 'shopping_trip_skips', row_number() OVER (ORDER BY trip_id, ingredient_id), to_jsonb(t) FROM shopping_trip_skips t
 ),
 -- snake_case to camelCase: initcap('price_cents') is 'Price_Cents'; drop the underscores and lower the first
 -- letter to get 'priceCents'.
