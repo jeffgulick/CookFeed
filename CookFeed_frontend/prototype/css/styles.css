@@ -1169,6 +1169,8 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .stepper-small input::-webkit-outer-spin-button, .stepper-small input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .people-error { flex-basis: 100%; font-size: 13px; margin: 0; }
 .people-error:empty { display: none; }
+/* Why a studio or console button is off, written out under the buttons. */
+.action-note { display: block; font-size: 13px; color: var(--ink-soft); margin-top: 6px; white-space: normal; max-width: 34ch; }
 .pick-people, .pick-when { display: flex; gap: 6px; align-items: center; }
 .tile-actions { display: block; margin: 8px 16px 14px; }
 .plan-card { cursor: default; }

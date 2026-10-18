@@ -421,3 +421,28 @@ test("data safety: a stale copy refuses to write, ids are never reused, and the 
   assert.equal(q.isSavedBy(SAM, ONIGIRI), false);
   assert.equal(q.addReview(SAM, FAMILY_WEEK, 5, true, "I never bought this plan at all."), null);
 });
+
+test("access and moderation: sold recipes stay published, the admin's take-downs stay down, and only owners' reviews count (3.3, 3.5, 3.8)", () => {
+  const p = loadPrototype();
+  // In a plan and bought: the creator cannot unpublish it.
+  assert.match(p.setRecipePublished(TERIYAKI, false), /Three Weeknights in Japan/);
+  assert.equal(p.rowById("recipes", TERIYAKI).isPublished, true);
+  // The admin can take it down; the plan stops selling and the creator cannot put it back.
+  assert.equal(p.adminSetRecipePublished(ADMIN, TERIYAKI, false), "");
+  assert.equal(p.isForSale(p.rowById("products", JAPAN)), false);
+  assert.match(p.setRecipePublished(TERIYAKI, true), /Cookfeed took/);
+  assert.equal(p.adminSetRecipePublished(ADMIN, TERIYAKI, true), "");
+  assert.equal(p.isForSale(p.rowById("products", JAPAN)), true);
+  // The admin never publishes a creator's draft.
+  assert.match(p.adminSetRecipePublished(ADMIN, 13, true), /Only its creator/);
+  // A plan with no recipes, or one the admin retired, does not go back on sale from the studio.
+  assert.match(p.adminSetProductActive(ADMIN, SUMMER_GRILLING, true), /no recipes/);
+  assert.equal(p.adminSetProductActive(ADMIN, JAPAN, false), "");
+  assert.match(p.setProductActive(JAPAN, true), /Cookfeed retired/);
+  assert.equal(p.adminSetProductActive(ADMIN, JAPAN, true), "");
+  // A refunded buyer's review stops counting.
+  const counted = p.reviewsFor(JAPAN).length;
+  p.setOrderStatus(ADMIN, 1, "Refunded", "test");
+  assert.equal(p.reviewsFor(JAPAN).length, counted - 1);
+  assert.equal(p.reviewsFor(JAPAN, true).length, counted);
+});

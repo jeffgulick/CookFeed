@@ -88,8 +88,10 @@ function soldCount(productId) {
 function renderCatalog() {
   document.getElementById("productRows").innerHTML = rowsWhere("products", function () { return true; })
     .sort(function (a, b) { return a.id - b.id; }).map(function (product) {
+      var creator = creatorFor(product.creatorId);
       var status = !product.isActive ? "<span class='tag tag-muted'>Retired</span>"
-        : !isForSale(product) ? "<span class='tag tag-no'>Creator suspended</span>"
+        : creator && creator.suspendedAt !== null ? "<span class='tag tag-no'>Creator suspended</span>"
+        : !isForSale(product) ? "<span class='tag tag-no'>Not for sale: a recipe was taken down</span>"
         : "<span class='tag tag-yes'>For sale</span>";
       return "<tr data-id='" + product.id + "'>" +
         "<td><a href='" + productUrl(product.id) + "'>" + escapeHtml(product.title) + "</a></td>" +
@@ -113,8 +115,11 @@ function renderCatalog() {
         "<td><span class='tag " + (recipe.isPublished ? "tag-yes" : "tag-muted") + "'>" + (recipe.isPublished ? "Published" : "Draft") + "</span></td>" +
         "<td><span class='tag " + (recipe.visibility === "Public" ? "tag-muted" : "tag-premium") + "'>" + (recipe.visibility === "Public" ? "Free" : "Premium") + "</span></td>" +
         "<td>" + (inPlans.length ? escapeHtml(inPlans.join(", ")) : "<span class='meta'>none</span>") + "</td>" +
-        "<td class='actions'><button type='button' class='btn-small' data-action='recipe' data-publish='" + !recipe.isPublished + "'>" +
-          (recipe.isPublished ? "Unpublish" : "Publish") + "</button></td></tr>";
+        "<td class='actions'>" + (recipe.isPublished
+          ? "<button type='button' class='btn-small' data-action='recipe' data-publish='false'>Take down</button>"
+          : adminTookDown("recipes", recipe.id)
+            ? "<button type='button' class='btn-small' data-action='recipe' data-publish='true'>Put back</button>"
+            : "<span class='meta'>Creator's draft</span>") + "</td></tr>";
     }).join("");
 }
 
@@ -223,14 +228,23 @@ function onConsoleClicked(event) {
     var product = rowById("products", id);
     message = active ? "Put \"" + product.title + "\" back on sale?" : "Retire \"" + product.title + "\"? It leaves the store; buyers keep it.";
     label = active ? "Restore" : "Retire";
-    apply = function () { adminSetProductActive(admin.id, id, active); return "\"" + product.title + "\"" + (active ? " is for sale again." : " is retired."); };
+    apply = function () {
+      var problem = adminSetProductActive(admin.id, id, active);
+      return problem ? { problem: problem } : "\"" + product.title + "\"" + (active ? " is for sale again." : " is retired.");
+    };
   } else if (action === "recipe") {
     var publish = button.getAttribute("data-publish") === "true";
     var recipe = rowById("recipes", id);
-    message = publish ? "Publish \"" + recipe.title + "\" on the creator's behalf?"
-                      : "Unpublish \"" + recipe.title + "\"? Only its creator will see it; cooks who bought it keep it.";
-    label = publish ? "Publish" : "Unpublish";
-    apply = function () { adminSetRecipePublished(admin.id, id, publish); return "\"" + recipe.title + "\"" + (publish ? " is published." : " is unpublished."); };
+    var buyers = recipeBuyers(id);
+    message = publish ? "Put \"" + recipe.title + "\" back for everyone?"
+                      : "Take \"" + recipe.title + "\" down? Only its creator will see it" +
+                        (buyers ? ", and the " + plural(buyers, "cook who bought it loses", "cooks who bought it lose") + " it too" : "") +
+                        ". Any plan it is in stops selling. Its creator cannot put it back.";
+    label = publish ? "Put back" : "Take down";
+    apply = function () {
+      var problem = adminSetRecipePublished(admin.id, id, publish);
+      return problem ? { problem: problem } : "\"" + recipe.title + "\"" + (publish ? " is back." : " is taken down.");
+    };
   } else if (action === "order") {
     var status = button.getAttribute("data-status");
     var number = orderNumber({ id: id });
@@ -247,7 +261,8 @@ function onConsoleClicked(event) {
     if (!ok) { return; }
     var toast = apply();
     refreshAll();
-    showToast(toast + " Logged.");
+    if (toast && toast.problem) { showToast(toast.problem, "error"); }
+    else { showToast(toast + " Logged."); }
     document.getElementById("main").focus({ preventScroll: true });
   });
 }

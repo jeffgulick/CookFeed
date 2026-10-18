@@ -442,12 +442,17 @@ function withReviewer(review) {
   return Object.assign({}, review, { reviewerName: rowById("users", review.userId).displayName });
 }
 
-/* A product's reviews, newest first. A review the admin hid (reviews.hidden_at, 3.8) is left out unless
-   includeHidden is set, which only the admin's own view does. */
+/* A product's reviews that count, newest first. A review the admin hid (reviews.hidden_at, 3.8) does not
+   count, nor does one whose author no longer owns the product (their order was refunded, 3.5: a review
+   needs a Paid order). includeHidden, which only the admin's own view sets, lists those too. */
 function reviewsFor(productId, includeHidden) {
-  return db().reviews.filter(function (r) { return r.productId === productId && (includeHidden || r.hiddenAt === null); })
+  return db().reviews.filter(function (r) { return r.productId === productId && (includeHidden || reviewCounts(r)); })
     .sort(newestFirst("createdAt"))
     .map(withReviewer);
+}
+
+function reviewCounts(review) {
+  return review.hiddenAt === null && ownsProduct(userById(review.userId), review.productId);
 }
 
 /* Every review in the store, for the admin console. */
@@ -548,12 +553,20 @@ function updateRecipe(recipeId, fields) {
 
 /* Publishing sets published_at the first time (ck_recipes_published_has_date); unpublishing hides the
    recipe from everyone but its creator. Buyers keep a recipe they bought either way. */
+/* The creator publishes or unpublishes their recipe. Returns "" when done, or why not (rules.js
+   creatorPublishProblem): a sold recipe or one in a plan stays published; what the admin took down stays down. */
 function setRecipePublished(recipeId, published) {
   var recipe = rowById("recipes", recipeId);
+  var problem = creatorPublishProblem(recipe, published);
+  if (problem !== "") { return problem; }
+  writeRecipePublished(recipe, published);
+  return "";
+}
+
+function writeRecipePublished(recipe, published) {
   recipe.isPublished = published;
   if (published && recipe.publishedAt === null) { recipe.publishedAt = nowIso(); }
   commit();
-  return recipe;
 }
 
 /* Free or premium. Returns "" when done, or the reason the database would refuse it (rules.js). */
@@ -618,11 +631,15 @@ function updateProduct(productId, fields) {
 }
 
 /* Retire or restore. A retired product is not for sale; buyers keep it (design section 3.3). */
+/* The creator retires a plan or puts it back on sale. Returns "" when done, or why not (rules.js
+   restoreProblem): no recipes, a recipe taken down, or the admin retired it. */
 function setProductActive(productId, active) {
   var product = rowById("products", productId);
+  var problem = active ? restoreProblem(product, false) : "";
+  if (problem !== "") { return problem; }
   product.isActive = active;
   commit();
-  return product;
+  return "";
 }
 
 /* The orders that bought a creator's products, newest first: their sales (Q10). */
@@ -689,16 +706,28 @@ function setCreatorVerified(adminId, creatorId, verified) {
   return profile;
 }
 
+/* The admin retires a plan, or puts back one that can be sold again. Returns "" when done, or why not. */
 function adminSetProductActive(adminId, productId, active) {
-  if (rowById("products", productId) === null) { return null; }
-  var logged = logAdminAction(adminId, active ? "RestoreProduct" : "RetireProduct", "products", productId);
-  return logged === null ? null : setProductActive(productId, active);
+  var product = rowById("products", productId);
+  if (product === null || !isAdmin(userById(adminId))) { return "Only the admin can do that."; }
+  var problem = active ? restoreProblem(product, true) : "";
+  if (problem !== "") { return problem; }
+  logAdminAction(adminId, active ? "RestoreProduct" : "RetireProduct", "products", productId);
+  product.isActive = active;
+  commit();
+  return "";
 }
 
+/* The admin takes a recipe down, for everyone but its creator (buyers included: moderation), or puts back
+   one the admin took down. The admin never publishes a creator's draft. Returns "" when done, or why not. */
 function adminSetRecipePublished(adminId, recipeId, published) {
-  if (rowById("recipes", recipeId) === null) { return null; }
-  var logged = logAdminAction(adminId, published ? "PublishRecipe" : "UnpublishRecipe", "recipes", recipeId);
-  return logged === null ? null : setRecipePublished(recipeId, published);
+  var recipe = rowById("recipes", recipeId);
+  if (recipe === null || !isAdmin(userById(adminId))) { return "Only the admin can do that."; }
+  if (published && !adminTookDown("recipes", recipeId)) { return "Only its creator can publish \"" + recipe.title + "\"."; }
+  if (published && publishProblem(recipe) !== "") { return publishProblem(recipe); }
+  logAdminAction(adminId, published ? "PublishRecipe" : "UnpublishRecipe", "recipes", recipeId);
+  writeRecipePublished(recipe, published);
+  return "";
 }
 
 /* The two changes an admin makes to an order: a Paid order is refunded, a Pending one is cancelled.

@@ -33,13 +33,6 @@ function plansHolding(recipeId) {
 }
 
 /* A recipe can be published once it has something to cook from. */
-function publishProblem(recipe) {
-  var details = recipeWithDetails(recipe.id);
-  if (details.ingredients.length === 0) { return "Add at least one ingredient before publishing."; }
-  if (details.steps.length === 0) { return "Add at least one step before publishing."; }
-  return "";
-}
-
 function paidSales() {
   return salesFor(studioUser.id).filter(function (s) { return s.status === "Paid"; });
 }
@@ -72,7 +65,8 @@ function renderRecipes() {
     var inPlans = plansHolding(recipe.id);
     var free = recipe.visibility === "Public";
     var freeProblem = free ? "" : visibilityProblem(recipe, "Public");
-    var publishHint = recipe.isPublished ? "" : publishProblem(recipe);
+    var publishHint = creatorPublishProblem(recipe, !recipe.isPublished);
+    var note = publishHint || freeProblem;
 
     return "<tr data-recipe-id='" + recipe.id + "'>" +
       "<td><a href='recipe.html?id=" + recipe.id + "'>" + escapeHtml(recipe.title) + "</a>" +
@@ -82,11 +76,13 @@ function renderRecipes() {
       "<td>" + plural(saveCount(recipe.id), "cook", "cooks") + "</td>" +
       "<td>" + (inPlans.length ? escapeHtml(inPlans.join(", ")) : "<span class='meta'>none</span>") + "</td>" +
       "<td class='actions'>" +
-      "<button type='button' class='btn-small' data-action='publish'" + (publishHint ? " disabled title='" + escapeHtml(publishHint) + "'" : "") + ">" +
+      "<button type='button' class='btn-small' data-action='publish'" + (publishHint ? " disabled" : "") + ">" +
         (recipe.isPublished ? "Unpublish" : "Publish") + "</button> " +
-      "<button type='button' class='btn-small' data-action='visibility'" + (freeProblem ? " disabled title='" + escapeHtml(freeProblem) + "'" : "") + ">" +
+      "<button type='button' class='btn-small' data-action='visibility'" + (freeProblem ? " disabled" : "") + ">" +
         (free ? "Make premium" : "Make free") + "</button> " +
       "<button type='button' class='btn-small' data-action='edit'>Edit</button>" +
+      // Why a button is off, as text anyone can read (a tooltip never shows on a phone).
+      (note ? "<span class='action-note'>" + escapeHtml(note) + "</span>" : "") +
       "</td></tr>";
   }).join("");
   document.getElementById("recipeRows").innerHTML = html || "<tr><td colspan='6' class='meta'>No recipes yet. Start one above.</td></tr>";
@@ -233,19 +229,27 @@ function onRecipeTableClicked(event) {
     var publishing = !recipe.isPublished;
     confirmDialog(publishing ? "Publish \"" + recipe.title + "\"? " + (recipe.visibility === "Public"
         ? "Anyone will be able to open and save it." : "Only buyers of a plan it is in will open it.")
-      : "Unpublish \"" + recipe.title + "\"? Only you will see it; cooks who bought it keep it.",
+      : "Unpublish \"" + recipe.title + "\"? Only you will see it.",
       publishing ? "Publish" : "Unpublish").then(function (ok) {
       if (!ok) { return; }
-      setRecipePublished(recipe.id, publishing);
+      var problem = setRecipePublished(recipe.id, publishing);
       refreshAll();
-      showToast(publishing ? "\"" + recipe.title + "\" is published." : "\"" + recipe.title + "\" is a draft again.");
+      showToast(problem || (publishing ? "\"" + recipe.title + "\" is published." : "\"" + recipe.title + "\" is a draft again."),
+        problem ? "error" : undefined);
     });
   } else if (action === "visibility") {
     var toFree = recipe.visibility === "ProductOnly";
-    var problem = setRecipeVisibility(recipe.id, toFree ? "Public" : "ProductOnly");
-    refreshAll();
-    showToast(problem !== "" ? problem : "\"" + recipe.title + "\" is now " + (toFree ? "free to save." : "premium."),
-      problem !== "" ? "error" : undefined);
+    var savers = saveCount(recipe.id);
+    confirmDialog(toFree ? "Make \"" + recipe.title + "\" free? Anyone will be able to open and save it."
+        : "Make \"" + recipe.title + "\" premium? Only buyers of a plan it is in will open it." +
+          (savers ? " " + plural(savers, "cook who saved it loses", "cooks who saved it lose") + " it until they buy that plan." : ""),
+      toFree ? "Make free" : "Make premium").then(function (ok) {
+      if (!ok) { return; }
+      var problem = setRecipeVisibility(recipe.id, toFree ? "Public" : "ProductOnly");
+      refreshAll();
+      showToast(problem !== "" ? problem : "\"" + recipe.title + "\" is now " + (toFree ? "free to save." : "premium."),
+        problem !== "" ? "error" : undefined);
+    });
   }
 }
 
@@ -396,9 +400,10 @@ function onProductTableClicked(event) {
   confirmDialog(retiring ? "Retire \"" + product.title + "\"? It leaves the store; everyone who bought it keeps it."
                          : "Put \"" + product.title + "\" back on sale?", retiring ? "Retire" : "Restore").then(function (ok) {
     if (!ok) { return; }
-    setProductActive(product.id, !retiring);
+    var problem = setProductActive(product.id, !retiring);
     refreshAll();
-    showToast(retiring ? "\"" + product.title + "\" is retired." : "\"" + product.title + "\" is for sale again.");
+    showToast(problem || (retiring ? "\"" + product.title + "\" is retired." : "\"" + product.title + "\" is for sale again."),
+      problem ? "error" : undefined);
   });
 }
 
