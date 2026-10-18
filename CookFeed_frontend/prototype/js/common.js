@@ -117,7 +117,7 @@ function updateAccountArea() {
     return;
   }
   area.innerHTML =
-    '<a class="account-name" href="signin.html" title="Switch account">Signed in as <strong>' +
+    '<a class="account-name" href="signin.html" title="Switch account"><span class="sr-only">Signed in as </span><strong>' +
     escapeHtml(user.displayName) + '</strong></a>' +
     '<button type="button" class="link-button" id="signOutButton">Sign out</button>';
   document.getElementById("signOutButton").addEventListener("click", function () {
