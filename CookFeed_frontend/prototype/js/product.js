@@ -121,6 +121,7 @@ function renderBuy() {
 function renderShoppingList() {
   var nothingOpen = shoppableRecipeIds().length === 0 && product.recipes.length > 0;
   document.getElementById("shopPlan").hidden = !ownsProduct(currentUser(), product.id);
+  document.getElementById("planPlan").hidden = !ownsProduct(currentUser(), product.id);
   document.getElementById("listBody").hidden = nothingOpen;
   document.querySelector(".stepper-row").hidden = nothingOpen;
   document.getElementById("hoverHint").hidden = nothingOpen;
@@ -358,15 +359,13 @@ var sendTargets = {
    will do rather than pretending the order went through. */
 function sendList(target) {
   var partner = sendTargets[target];
-  showToast("Sending happens from a shopping trip. Press Shop this plan, then Send to " + partner.name + " on the trip.");
+  showToast("Sending happens from your shopping list. Press Shop this plan, then Send to " + partner.name + " on the list.");
 }
 
-/* 3.9: every meal of the plan onto a shopping trip, each for the people the stepper says (or as written). */
+/* 3.9: every meal the cook bought onto the shopping list: their purchase snapshot (3.3), not the plan as its
+   creator has changed it since. */
 function shopThisPlan() {
-  var people = currentPeople === null ? 0 : currentPeople;
-  openShopDialog(currentUser(), product.recipes.map(function (placement) {
-    return { recipeId: placement.recipeId, servings: people };
-  }), product.title);
+  tellShopped(shopProduct(currentUser().id, product.id));
 }
 
 /* Printing is real: the print stylesheet leaves only the lines still to buy. */
@@ -409,4 +408,5 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("sendFavor").addEventListener("click", function () { sendList("favor"); });
   document.getElementById("printButton").addEventListener("click", printList);
   document.getElementById("shopPlan").addEventListener("click", shopThisPlan);
+  document.getElementById("planPlan").addEventListener("click", function () { openPlanProductDialog(currentUser(), product); });
 });

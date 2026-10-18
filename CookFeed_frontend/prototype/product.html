@@ -56,7 +56,7 @@
 
     <h2>What is included</h2>
     <p class="hover-hint" id="hoverHint">Point at a recipe for a quick look at the time, the ingredients and how it starts.
-      Save a recipe to keep it in <a href="kitchen.html">My kitchen</a>, where you plan your week. Once the plan is yours, <strong>Shop this plan</strong> puts every meal on a shopping trip.</p>
+      Save a recipe to keep it in <a href="kitchen.html">My kitchen</a>, where you plan your week. Once the plan is yours, <strong>Shop this plan</strong> puts every meal on your shopping list.</p>
     <div class="grid" id="planRecipes"></div>
 
     <h2>Everything you need to buy</h2>
@@ -64,7 +64,10 @@
     <div class="card print-area">
       <div class="list-head">
         <h3 id="listHeading">Shopping list &mdash; as published</h3>
-        <button type="button" class="btn-primary" id="shopPlan" hidden>Shop this plan</button>
+        <span class="list-head-actions">
+          <button type="button" class="btn-secondary" id="shopPlan" hidden>Shop this plan</button>
+          <button type="button" class="btn-secondary" id="planPlan" hidden>Add to my week</button>
+        </span>
       </div>
 
       <div class="stepper-row">
@@ -89,12 +92,12 @@
         <button class="send" id="sendInstacart">
           <span class="send-icon">&#128722;</span>
           <span class="send-text">Send to Instacart</span>
-          <span class="send-tag">From a trip</span>
+          <span class="send-tag">From your list</span>
         </button>
         <button class="send" id="sendFavor">
           <span class="send-icon">&#128663;</span>
           <span class="send-text">Send to Favor</span>
-          <span class="send-tag">From a trip</span>
+          <span class="send-tag">From your list</span>
         </button>
         <button class="send" id="printButton">
           <span class="send-icon">&#128424;</span>

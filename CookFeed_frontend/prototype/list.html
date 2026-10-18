@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Shopping trip | Cookfeed</title>
+  <title>Shopping list | Cookfeed</title>
   <link rel="stylesheet" href="css/styles.css?v=16">
 </head>
 <body>
@@ -32,17 +32,17 @@
   <main class="wrap store-wrap" id="main" tabindex="-1">
     <div id="tripArea">
       <p class="meta"><a href="kitchen.html">&larr; My kitchen</a></p>
-      <span class="pill">Shopping trip</span>
-      <h1 id="tripHeading">Shopping trip</h1>
+      <span class="pill">Shopping list</span>
+      <h1 id="tripHeading">Shopping list</h1>
       <p class="byline"><span class="tag" id="tripStatus"></span> <span id="tripSummary"></span></p>
 
       <div class="send-row" id="tripActions">
-        <button class="send" id="startShopping"><span class="send-icon">&#128722;</span><span class="send-text">I'm shopping this</span></button>
-        <button class="send" id="sendInstacart"><span class="send-icon">&#128666;</span><span class="send-text">Send to Instacart</span></button>
-        <button class="send" id="sendFavor"><span class="send-icon">&#128663;</span><span class="send-text">Send to Favor</span></button>
-        <button class="send" id="finishTrip"><span class="send-icon">&#10003;</span><span class="send-text">Trip complete</span></button>
-        <button class="send" id="shopAgain" hidden><span class="send-icon">&#8635;</span><span class="send-text">Shop it again</span></button>
-        <button class="send" id="printTrip"><span class="send-icon">&#128424;</span><span class="send-text">Print</span></button>
+        <button type="button" class="send" id="startShopping">Start shopping</button>
+        <button type="button" class="send" id="sendInstacart">Send to Instacart</button>
+        <button type="button" class="send" id="sendFavor">Send to Favor</button>
+        <button type="button" class="send" id="finishTrip">Done shopping</button>
+        <button type="button" class="send" id="shopAgain">Shop again</button>
+        <button type="button" class="send" id="printTrip">Print</button>
       </div>
       <p class="meta" id="tripHint"></p>
 
@@ -50,29 +50,29 @@
         <div class="list-head">
           <h3 id="listHeading">To buy</h3>
         </div>
-        <div class="list-progress">
+        <div class="list-progress" id="listProgress">
           <span id="listProgressText">0 of 0 items still to buy</span>
           <div class="progress-track"><div class="progress-fill" id="listProgressFill"></div></div>
-          <button type="button" class="link-button" id="clearHave">Uncheck all</button>
+          <button type="button" class="link-button" id="clearHave">Untick all</button>
         </div>
         <div class="store-list" id="storeList"></div>
         <div class="skipped-strip" id="skippedStrip" hidden></div>
       </div>
 
-      <h2>What this trip cooks</h2>
-      <p class="meta">Change the people for a recipe, take one off, or add more. The list above follows.</p>
+      <h2>What this list cooks</h2>
+      <p class="meta" id="itemsHint">Change the people for a recipe, take one off, or add more. The list above follows.</p>
       <div class="card">
         <div id="tripItems"></div>
         <div class="sort-row">
           <button type="button" class="btn-secondary" id="addMore">Add recipes</button>
-          <button type="button" class="link-button" id="deleteTrip">Delete this trip</button>
+          <button type="button" class="link-button" id="deleteTrip">Delete this list</button>
         </div>
       </div>
     </div>
 
     <dialog class="build-dialog" id="buildDialog" aria-labelledby="buildHeading">
       <form method="dialog" id="buildForm" novalidate>
-        <h3 id="buildHeading">Add to this trip</h3>
+        <h3 id="buildHeading">Add to this list</h3>
         <p class="meta">Tick anything else you want to cook, each for the people you choose.</p>
         <fieldset class="field">
           <legend>Plans you own</legend>
@@ -85,7 +85,7 @@
         <p class="field-error" id="buildError"></p>
         <div class="dialog-actions">
           <button type="button" class="btn-secondary" id="buildCancel">Cancel</button>
-          <button type="submit" class="btn-primary" id="buildSubmit">Add to the trip</button>
+          <button type="submit" class="btn-primary" id="buildSubmit">Add to the list</button>
         </div>
       </form>
     </dialog>

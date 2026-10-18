@@ -1,18 +1,22 @@
 /* Cookfeed prototype - My kitchen page (design section 3.9)
 
-   The plans the signed-in account bought, the recipes it saved, the week it is cooking, and its shopping
-   trips. Saving a recipe or buying a plan puts nothing on a list: the cook builds a trip when they want
-   one, for a single visit to the store, from any recipes and plans, or from a planned week. A trip opens on
-   its own page (list.html), where it is ticked off, edited, sent, and marked done. */
+   In the order a cook uses it: the week they are cooking (opened on the current week), their one shopping
+   list, the plans they bought, the recipes they saved, and their past lists. Saving a recipe or buying a plan
+   puts nothing on a list: Shop this week, or Shop this on a recipe or plan page, adds to the list, and the
+   list opens on its own page (list.html), where it is ticked off, edited, sent, and marked done. */
 
 var kitchenUser = null;
 var currentWeek = null;
-var dialogMode = "trip";    // "trip": a new shopping trip; "week": recipes and plans onto this week
+
+function thisWeek() {
+  return weekStartOf(parseIsoDate(todayIso()));
+}
 
 /* ---------- plans and saved recipes ---------- */
 
 function renderOwnedPlans() {
   var owned = ownedProductsFor(kitchenUser);
+  var week = weekPhrase(currentWeek);
   document.getElementById("ownedPlans").innerHTML = owned.map(function (o) {
     return "<div class='card product-tile plan-card' data-product-id='" + o.product.id + "'>" +
       "<img src='" + escapeHtml(o.product.coverImageUrl || "") + "' alt=''>" +
@@ -20,8 +24,8 @@ function renderOwnedPlans() {
       "<span class='recipe-title'><a href='" + productUrl(o.product.id) + "'>" + escapeHtml(o.productTitle) + "</a></span>" +
       "<span class='meta'>" + productCounts(o) + " &middot; yours to keep</span>" +
       "<span class='tile-actions'>" + (productOnWeek(kitchenUser.id, currentWeek, o.product.id)
-        ? "<span class='tag tag-yes'>On this week &#10003;</span>"
-        : "<button type='button' class='btn-small plan-product'>Add to this week</button>") + "</span>" +
+        ? "<span class='tag tag-yes'>On " + escapeHtml(week) + " &#10003;</span>"
+        : "<button type='button' class='btn-small plan-product'>Add to " + escapeHtml(week) + "</button>") + "</span>" +
       "</div>";
   }).join("");
   document.getElementById("noPlans").hidden = owned.length > 0;
@@ -46,12 +50,32 @@ function dayLabel(iso) {
   return DAY_NAMES[(parseIsoDate(iso).getDay() + 6) % 7] + ", " + formatShortDate(iso);
 }
 
+function weekDays() {
+  var days = [];
+  for (var i = 0; i < 7; i = i + 1) { days.push(addDays(currentWeek, i)); }
+  return days;
+}
+
 function renderWeek() {
   var plan = planFor(kitchenUser.id, currentWeek);
   var entries = plan === null ? [] : planEntries(plan.id);
+  var onThisWeek = currentWeek === thisWeek();
 
-  document.getElementById("weekLabel").textContent = "Week of " + formatShortDate(currentWeek);
-  document.getElementById("tripFromWeek").disabled = entries.length === 0;
+  document.getElementById("weekLabel").textContent = weekLabel(currentWeek);
+  document.getElementById("weekDates").textContent = formatShortDate(currentWeek) + " to " + formatShortDate(addDays(currentWeek, 6));
+  document.getElementById("backRow").hidden = onThisWeek;
+  var shop = document.getElementById("shopWeek");
+  shop.textContent = "Shop " + weekPhrase(currentWeek);
+  shop.disabled = entries.length === 0;
+
+  // This week is empty but another week has meals: say where they are.
+  var other = onThisWeek ? otherPlannedWeek(kitchenUser.id) : null;
+  document.getElementById("otherWeek").hidden = other === null;
+  if (other !== null) {
+    var link = document.getElementById("otherWeekLink");
+    link.textContent = weekLabel(other);
+    link.href = "kitchen.html?week=" + other;
+  }
 
   var html = "";
   var lastDay = null;
@@ -68,91 +92,60 @@ function renderWeek() {
       "</div>";
   });
   document.getElementById("weekEntries").innerHTML = html ||
-    "<p class='meta'>Nothing planned for this week yet. Press <strong>Add to this week</strong> to pick what to cook.</p>";
+    "<p class='meta'>Nothing planned for " + escapeHtml(weekPhrase(currentWeek)) + " yet. Press <strong>Plan it</strong> on a saved recipe, " +
+    "or add one of your plans.</p>";
 }
 
-/* ---------- shopping trips ---------- */
+/* ---------- the shopping list, and past lists ---------- */
+
+function statusText(trip) {
+  return trip.status === "Sent" ? "Sent to " + trip.sentTo : trip.status === "Done" ? "Done " + formatDate(trip.completedAt) : trip.status;
+}
 
 function statusTag(trip) {
-  var text = trip.status === "Sent" ? "Sent to " + trip.sentTo : trip.status === "Done" ? "Done " + formatDate(trip.completedAt) : trip.status;
   var kind = trip.status === "Done" ? "tag-muted" : trip.status === "Building" ? "tag-premium" : "tag-yes";
-  return "<span class='tag " + kind + "'>" + escapeHtml(text) + "</span>";
+  return "<span class='tag " + kind + "'>" + escapeHtml(statusText(trip)) + "</span>";
+}
+
+function renderActiveList() {
+  var trip = activeListFor(kitchenUser.id);
+  var area = document.getElementById("activeList");
+  if (trip === null) {
+    area.innerHTML = "<p><strong>No shopping list yet.</strong></p>" +
+      "<p class='meta'>Press <strong>Shop this week</strong> above, <strong>Shop this recipe</strong> on a recipe, or " +
+      "<strong>Shop this plan</strong> on a plan you own, and it goes on your list.</p>" +
+      "<button type='button' class='btn-secondary' id='startList'>Start a shopping list</button>";
+    return;
+  }
+  var href = "list.html?trip=" + trip.id;
+  area.innerHTML = "<p><a href='" + href + "'><strong>" + escapeHtml(trip.name) + "</strong></a> " + statusTag(trip) + "</p>" +
+    "<p class='meta'>" + plural(tripItems(trip.id).length, "recipe", "recipes") + " &middot; " +
+    plural(tripList(trip.id).lines.length, "item", "items") + " to buy</p>" +
+    "<a class='btn-secondary' id='openActiveList' href='" + href + "'>Open list</a>";
 }
 
 function renderTrips() {
-  var trips = tripsFor(kitchenUser.id);
+  var trips = tripsFor(kitchenUser.id).filter(function (t) { return t.status === "Sent" || t.status === "Done"; });
   document.getElementById("tripRows").innerHTML = trips.map(function (trip) {
-    var items = tripItems(trip.id);
+    var href = "list.html?trip=" + trip.id;
     return "<tr data-trip-id='" + trip.id + "'" + (trip.status === "Done" ? " class='row-muted'" : "") + ">" +
-      "<td><a href='list.html?trip=" + trip.id + "'>" + escapeHtml(trip.name) + "</a></td>" +
-      "<td>" + formatDate(trip.createdAt) + "</td>" +
-      "<td>" + plural(items.length, "recipe", "recipes") + "</td>" +
-      "<td>" + statusTag(trip) + "</td>" +
-      "<td class='actions'><a class='btn-small' href='list.html?trip=" + trip.id + "'>Open</a> " +
-      (trip.status === "Done" ? "" : "<button type='button' class='btn-small finish-trip'>" + (trip.status === "Sent" ? "Items received" : "Trip complete") + "</button> ") +
-      (trip.status === "Building" || trip.status === "Shopping" ? "" : "<button type='button' class='btn-small reshop-trip'>Shop again</button> ") +
+      "<td data-label='List'><a href='" + href + "'>" + escapeHtml(trip.name) + "</a></td>" +
+      "<td data-label='Made'>" + formatDate(trip.createdAt) + "</td>" +
+      "<td data-label='Recipes'>" + plural(tripItems(trip.id).length, "recipe", "recipes") + "</td>" +
+      "<td data-label='Status'>" + statusTag(trip) + "</td>" +
+      "<td class='actions'><a class='btn-small' href='" + href + "'>Open</a> " +
+      (trip.status === "Sent" ? "<button type='button' class='btn-small finish-trip'>Items arrived</button> " : "") +
+      (canShopAgain(trip) ? "<button type='button' class='btn-small reshop-trip'>Shop again</button> " : "") +
       "<button type='button' class='btn-small delete-trip'>Delete</button></td></tr>";
-  }).join("") || "<tr><td colspan='5' class='meta'>No trips yet. Press <strong>New shopping trip</strong>, or make one from the week above.</td></tr>";
+  }).join("") || "<tr><td colspan='5' class='meta'>No past lists yet. A list you send or finish shopping is kept here.</td></tr>";
 }
 
 function renderKitchen() {
+  renderWeek();
+  renderActiveList();
   renderOwnedPlans();
   renderSavedRecipes();
-  renderWeek();
   renderTrips();
-}
-
-/* ---------- the Build dialog, for a new trip or for the week ---------- */
-
-function openDialog(mode, preRecipeId) {
-  dialogMode = mode;
-  var forWeek = mode === "week";
-  document.getElementById("buildHeading").textContent = forWeek ? "Add to the week of " + formatShortDate(currentWeek) : "New shopping trip";
-  document.getElementById("tripNameField").hidden = forWeek;
-  document.getElementById("buildHint").textContent = forWeek
-    ? "A plan goes on its own days. A recipe goes on the day and meal you pick, for the people you choose."
-    : "Tick anything you want to cook, as many recipes as you like, each for the people you choose. You can add more and take things off later.";
-  document.getElementById("buildPlans").innerHTML = pickerPlansHtml(kitchenUser, null);
-  document.getElementById("buildRecipes").innerHTML = pickerRecipesHtml(kitchenUser, { withDays: forWeek, preRecipeId: preRecipeId, tripId: null });
-  wirePicker(document.getElementById("buildForm"));
-  document.getElementById("buildSubmit").textContent = forWeek ? "Add to the week" : "Create the trip";
-  document.getElementById("buildError").textContent = "";
-  if (!forWeek) { document.getElementById("tripName").value = ""; }
-  document.getElementById("buildDialog").showModal();
-}
-
-function onBuildSubmitted(event) {
-  event.preventDefault();
-  var picked = readPicker(document.getElementById("buildForm"));
-  if (picked.problem) {
-    document.getElementById("buildError").textContent = picked.problem;
-    return;
-  }
-  if (picked.productIds.length === 0 && picked.items.length === 0) {
-    document.getElementById("buildError").textContent = "Tick at least one plan or recipe.";
-    return;
-  }
-
-  if (dialogMode === "week") {
-    var added = 0;
-    picked.productIds.forEach(function (id) { added = added + addProductToPlan(kitchenUser.id, currentWeek, id).length; });
-    picked.items.forEach(function (item) {
-      var recipe = rowById("recipes", item.recipeId);
-      var entry = addPlanEntry(kitchenUser.id, currentWeek, item.recipeId, addDays(currentWeek, item.dayOffset), item.slot,
-        item.servings === recipe.servings || item.servings === 0 ? null : item.servings);
-      if (entry !== null) { added = added + 1; }
-    });
-    document.getElementById("buildDialog").close();
-    renderKitchen();
-    showToast(plural(added, "meal", "meals") + " added to the week of " + formatShortDate(currentWeek) + ".");
-    return;
-  }
-
-  var name = document.getElementById("tripName").value.trim() || "Trip on " + formatShortDate(isoDate(new Date()));
-  var trip = createTrip(kitchenUser.id, name, picked.items);
-  picked.productIds.forEach(function (id) { addProductToTrip(trip.id, id); });
-  document.getElementById("buildDialog").close();
-  window.location.href = "list.html?trip=" + trip.id;
 }
 
 /* ---------- clicks ---------- */
@@ -168,16 +161,18 @@ function onKitchenClicked(event) {
   }
   var planIt = event.target.closest(".plan-recipe");
   if (planIt !== null) {
-    openDialog("week", Number(planIt.getAttribute("data-recipe-id")));
+    var planned = rowById("recipes", Number(planIt.getAttribute("data-recipe-id")));
+    openPlanDialog(kitchenUser, planned, weekDays(), planned.servings, function () { renderWeek(); renderOwnedPlans(); });
     return;
   }
   var planProduct = event.target.closest(".plan-product");
   if (planProduct !== null) {
     var productId = Number(planProduct.closest(".plan-card").getAttribute("data-product-id"));
     var entries = addProductToPlan(kitchenUser.id, currentWeek, productId) || [];
-    renderKitchen();
-    showToast(entries.length === 0 ? "Every meal of this plan is already on the week of " + formatShortDate(currentWeek) + "."
-      : plural(entries.length, "meal", "meals") + " added to the week of " + formatShortDate(currentWeek) + ".");
+    renderWeek();
+    renderOwnedPlans();
+    showToast(entries.length === 0 ? "Every meal of this plan is already on " + weekPhrase(currentWeek) + "."
+      : plural(entries.length, "meal", "meals") + " added to " + weekPhrase(currentWeek) + ".");
     document.getElementById("weekEntries").scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
@@ -185,8 +180,15 @@ function onKitchenClicked(event) {
   if (remove !== null) {
     removePlanEntry(Number(remove.closest(".week-row").getAttribute("data-entry-id")));
     renderWeek();
+    renderOwnedPlans();
     showToast("Taken off the week.");
     document.getElementById("main").focus({ preventScroll: true });
+    return;
+  }
+  if (event.target.closest("#startList") !== null) {
+    if (activeListFor(kitchenUser.id) === null) {
+      window.location.href = "list.html?trip=" + createTrip(kitchenUser.id, listName(), []).id;
+    }
     return;
   }
   var finish = event.target.closest(".finish-trip");
@@ -195,7 +197,7 @@ function onKitchenClicked(event) {
     finishTrip(finished).then(function (done) {
       if (!done) { return; }
       renderTrips();
-      showToast("\"" + finished.name + "\" is done. It stays in your trips as a record.");
+      showToast("\"" + finished.name + "\" is done. It stays in your past lists.");
       document.getElementById("main").focus({ preventScroll: true });
     });
     return;
@@ -203,13 +205,13 @@ function onKitchenClicked(event) {
   var reshop = event.target.closest(".reshop-trip");
   if (reshop !== null) {
     var copy = copyTrip(Number(reshop.closest("tr").getAttribute("data-trip-id")));
-    window.location.href = "list.html?trip=" + copy.id + "&added=" + tripItems(copy.id).length;
+    if (copy !== null) { window.location.href = "list.html?trip=" + copy.id + "&added=" + tripItems(copy.id).length; }
     return;
   }
   var del = event.target.closest(".delete-trip");
   if (del !== null) {
     var trip = tripById(Number(del.closest("tr").getAttribute("data-trip-id")));
-    confirmDialog("Delete the trip \"" + trip.name + "\"? Its list goes with it.", "Delete trip").then(function (ok) {
+    confirmDialog("Delete the list \"" + trip.name + "\"? It cannot be brought back.", "Delete list").then(function (ok) {
       if (!ok) { return; }
       deleteTrip(trip.id);
       renderTrips();
@@ -226,16 +228,16 @@ function onWeekServingsChanged(input, people) {
   return setEntryServings(entryId, people === recipe.servings ? null : people) !== null;
 }
 
-function makeTripFromWeek() {
-  var trip = tripFromWeek(kitchenUser.id, currentWeek);
-  if (trip === null) { return; }
-  window.location.href = "list.html?trip=" + trip.id;
+function shopTheWeek() {
+  var result = shopWeek(kitchenUser.id, currentWeek);
+  renderActiveList();
+  tellShopped(result, renderActiveList);
 }
 
-function moveWeek(days) {
-  currentWeek = addDays(currentWeek, days);
-  renderOwnedPlans();
+function showWeek(weekStart) {
+  currentWeek = weekStart;
   renderWeek();
+  renderOwnedPlans();
 }
 
 /* ---------- start ---------- */
@@ -249,30 +251,27 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
   kitchenUser = user;
-  // Start on the latest week the cook planned, or this week.
-  var plans = plansFor(user.id);
-  currentWeek = plans.length ? plans[0].weekStart : weekStartOf(new Date());
+  // Open on the current week, or on the week a link names (kitchen.html?week=2026-10-19).
+  var asked = queryText("week");
+  currentWeek = asked !== null && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? weekStartOf(parseIsoDate(asked)) : thisWeek();
 
   renderKitchen();
-  // Back from a trip that was sent or finished: say so, and show the trips.
+  // Back from a list that was sent or finished: say so, and show the past lists.
   var sent = queryNumber("sent");
   var done = queryNumber("done");
   if (sent !== null || done !== null) {
     var backFrom = tripById(sent !== null ? sent : done);
     if (backFrom !== null) {
-      showToast(sent !== null ? "\"" + backFrom.name + "\" sent to " + backFrom.sentTo + ". Open it to confirm when the items arrive, or shop it again."
-                              : "\"" + backFrom.name + "\" is done. It stays in your trips as a record.");
+      showToast(sent !== null ? "\"" + backFrom.name + "\" sent to " + backFrom.sentTo + ". Press Items arrived when it comes."
+                              : "\"" + backFrom.name + "\" is done. It stays in your past lists.");
       document.getElementById("tripRows").scrollIntoView({ block: "center" });
     }
     window.history.replaceState(null, "", "kitchen.html");
   }
   document.querySelector("main").addEventListener("click", onKitchenClicked);
   wirePeopleBoxes(document.getElementById("weekEntries"), onWeekServingsChanged);
-  document.getElementById("prevWeek").addEventListener("click", function () { moveWeek(-7); });
-  document.getElementById("nextWeek").addEventListener("click", function () { moveWeek(7); });
-  document.getElementById("planWeek").addEventListener("click", function () { openDialog("week", null); });
-  document.getElementById("tripFromWeek").addEventListener("click", makeTripFromWeek);
-  document.getElementById("newTrip").addEventListener("click", function () { openDialog("trip", null); });
-  document.getElementById("buildForm").addEventListener("submit", onBuildSubmitted);
-  document.getElementById("buildCancel").addEventListener("click", function () { document.getElementById("buildDialog").close(); });
+  document.getElementById("prevWeek").addEventListener("click", function () { showWeek(addDays(currentWeek, -7)); });
+  document.getElementById("nextWeek").addEventListener("click", function () { showWeek(addDays(currentWeek, 7)); });
+  document.getElementById("backToThisWeek").addEventListener("click", function () { showWeek(thisWeek()); });
+  document.getElementById("shopWeek").addEventListener("click", shopTheWeek);
 });

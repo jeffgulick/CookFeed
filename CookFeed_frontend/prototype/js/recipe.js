@@ -145,14 +145,21 @@ function renderSaveState() {
   var saved = isSavedBy(user.id, currentRecipe.id);
   area.innerHTML = "<button type='button' id='saveButton' class='" + (saved ? "btn-secondary" : "btn-primary") +
     "' title='" + SAVE_HINT + "'>" + (saved ? "Saved &#10003;" : "Save recipe") + "</button> " +
-    "<button type='button' id='shopButton' class='btn-secondary' title='Put its ingredients on a shopping trip, for the people above'>Shop this recipe</button>";
+    "<button type='button' id='shopButton' class='btn-secondary'>Shop this recipe</button> " +
+    "<button type='button' id='planButton' class='btn-secondary'>Add to my week</button>";
   document.getElementById("saveButton").addEventListener("click", saveThisRecipe);
   document.getElementById("shopButton").addEventListener("click", shopThisRecipe);
+  document.getElementById("planButton").addEventListener("click", planThisRecipe);
 }
 
-/* 3.9: straight onto a shopping trip, for the people the stepper says, without going through My kitchen. */
+/* 3.9: straight onto the shopping list, for the people the stepper says, without going through My kitchen. */
 function shopThisRecipe() {
-  openShopDialog(currentUser(), [{ recipeId: currentRecipe.id, servings: currentServings }], currentRecipe.title);
+  tellShopped(shopRecipes(currentUser().id, [{ recipeId: currentRecipe.id, servings: currentServings }]));
+}
+
+/* 3.9: onto a day in the next two weeks, for the people the stepper says. */
+function planThisRecipe() {
+  openPlanDialog(currentUser(), currentRecipe, upcomingDays(null, 14), currentServings);
 }
 
 function saveThisRecipe() {

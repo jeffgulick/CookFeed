@@ -752,8 +752,8 @@ function allOrders() {
 }
 
 /* ---------- the week: meal_plans and meal_plan_entries (design section 3.9) ----------
-   A cook's plan for one week: recipes on dates and meals, each optionally rescaled. A week can be turned
-   into a shopping trip (tripFromWeek below), which is what gets shopped. */
+   A cook's plan for one week: recipes on dates and meals, each optionally rescaled. Shop this week puts a
+   week on the shopping list (shopWeek below), which is what gets shopped. */
 
 var SLOT_ORDER = ["Breakfast", "Lunch", "Dinner", "Snack"];
 var MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
@@ -786,6 +786,50 @@ function weekStartOf(date) {
 function formatShortDate(iso) {
   var date = parseIsoDate(iso);
   return MONTH_NAMES[date.getMonth()] + " " + date.getDate();
+}
+
+/* Today as "yyyy-mm-dd", unless a caller (a test) names the day. */
+function todayIso(today) {
+  return today || isoDate(new Date());
+}
+
+/* A week named for the cook: "This week", "Next week", or "Week of Sept 21, 2026", marked "(past)" once it
+   is over, so an old week is never mistaken for the one being cooked. */
+function weekLabel(weekStart, today) {
+  var current = weekStartOf(parseIsoDate(todayIso(today)));
+  if (weekStart === current) { return "This week"; }
+  if (weekStart === addDays(current, 7)) { return "Next week"; }
+  var text = "Week of " + formatShortDate(weekStart) + ", " + parseIsoDate(weekStart).getFullYear();
+  return weekStart < current ? text + " (past)" : text;
+}
+
+/* When this week is empty, the week the cook did plan: the nearest one coming up, or else the latest past one.
+   null when this week has meals or no other week does. */
+function otherPlannedWeek(userId, today) {
+  var current = weekStartOf(parseIsoDate(todayIso(today)));
+  var planned = plansFor(userId).filter(function (p) { return planEntries(p.id).length > 0; })
+    .map(function (p) { return p.weekStart; });
+  if (planned.indexOf(current) !== -1) { return null; }
+  var upcoming = planned.filter(function (w) { return w > current; }).sort();
+  if (upcoming.length) { return upcoming[0]; }
+  var past = planned.filter(function (w) { return w < current; }).sort();
+  return past.length ? past[past.length - 1] : null;
+}
+
+/* The week a whole plan goes on: this week from Monday to Thursday, next week from Friday, when most of this
+   week's days are gone. */
+function defaultPlanWeek(today) {
+  var date = parseIsoDate(todayIso(today));
+  var current = weekStartOf(date);
+  var day = date.getDay();                                         // 0 is Sunday
+  return day >= 1 && day <= 4 ? current : addDays(current, 7);
+}
+
+/* The days a single recipe can be put on: today and the days after it. */
+function upcomingDays(today, count) {
+  var days = [];
+  for (var i = 0; i < count; i = i + 1) { days.push(addDays(todayIso(today), i)); }
+  return days;
 }
 
 function plansFor(userId) {
@@ -992,13 +1036,14 @@ function buildShoppingList(entries, people) {
   return list;
 }
 
-/* ---------- shopping trips (design section 3.9) ----------
-   A trip is a list a cook built for one visit to the store: the recipes they mean to cook, each for a number
-   of people (shopping_trips, shopping_trip_items), and where it is in its life: Building, Shopping (in the
-   store), Sent (to Instacart or Favor), or Done, which clears it and keeps it as history. Saving a recipe or
-   buying a plan puts nothing on a trip; the cook builds one when they want it, from any recipes, a whole plan
-   they own, or a planned week, and edits it until it is done. The lines are computed from the items (Q8's
-   arithmetic), never stored; an ingredient the cook already has is skipped (shopping_trip_skips). */
+/* ---------- shopping lists (design section 3.9) ----------
+   A shopping list (a row of shopping_trips) is what a cook buys on one visit to the store: the recipes they mean
+   to cook, each for a number of people (shopping_trip_items), and where it is in its life: Building, Shopping
+   (in the store), Sent (to Instacart or Favor, read-only from then on), or Done, which keeps it as history. A
+   cook has one list at a time: Shop this recipe, Shop this plan and Shop this week add straight to the list
+   being built or shopped, and make it when there is none. Saving a recipe or buying a plan puts nothing on a
+   list. The lines are computed from the items (Q8's arithmetic), never stored; an ingredient the cook already
+   has is skipped (shopping_trip_skips). */
 
 var TRIP_STATUSES = ["Building", "Shopping", "Sent", "Done"];
 
@@ -1071,22 +1116,70 @@ function tripMissingFromProduct(tripId, user, productId) {
   return ids;
 }
 
-/* Every recipe of a plan the cook owns (their purchase snapshot, 3.3), each as the recipe is written. */
-function addProductToTrip(tripId, productId) {
-  var trip = tripById(tripId);
-  var item = paidItemsOf(userById(trip.userId)).filter(function (oi) { return oi.productId === productId; })[0];
+/* Every meal of a plan the cook owns, from their purchase snapshot (what they bought, 3.3, not the plan as its
+   creator has changed it since), each as the recipe is written. [] for a plan they do not own. */
+function snapshotItems(userId, productId) {
+  var item = paidItemsOf(userById(userId)).filter(function (oi) { return oi.productId === productId; })[0];
   if (!item) { return []; }
-  return addTripItems(tripId, db().orderItemRecipes.filter(function (oir) { return oir.orderItemId === item.id; })
-    .sort(bySortOrder).map(function (oir) { return { recipeId: oir.recipeId, servings: 0 }; }));
+  return db().orderItemRecipes.filter(function (oir) { return oir.orderItemId === item.id; })
+    .sort(bySortOrder).map(function (oir) { return { recipeId: oir.recipeId, servings: 0 }; });
 }
 
-/* A planned week as a trip: each meal for the people it was planned for. */
-function tripFromWeek(userId, weekStart) {
+function addProductToTrip(tripId, productId) {
+  return addTripItems(tripId, snapshotItems(tripById(tripId).userId, productId));
+}
+
+/* ---------- 3.9: one list at a time ---------- */
+
+/* "Shopping list, Oct 18": a list is named for the day it was started. */
+function listName(today) {
+  return "Shopping list, " + formatShortDate(todayIso(today));
+}
+
+/* The list being built or shopped, or null. A sent or done list is not it. */
+function activeListFor(userId) {
+  return tripsFor(userId).filter(function (t) { return t.status === "Building" || t.status === "Shopping"; })[0] || null;
+}
+
+/* Put recipes ({ recipeId, servings }) on the cook's list, making it when there is none. Returns what Undo
+   needs: the list, the item rows this call added, and whether it made the list. null, and nothing changed,
+   when none of the recipes is one the cook may open (3.3, canPlan), so no empty list is left behind. */
+function shopItems(userId, items, today) {
+  var user = userById(userId);
+  var allowed = items.filter(function (item) { return canPlan(user, rowById("recipes", item.recipeId)); });
+  if (allowed.length === 0) { return null; }
+  var trip = activeListFor(userId);
+  var created = trip === null;
+  if (created) { trip = createTrip(userId, listName(today), []); }
+  return { trip: trip, added: addTripItems(trip.id, allowed), created: created };
+}
+
+function shopRecipes(userId, items, today) {
+  return shopItems(userId, items, today);
+}
+
+function shopProduct(userId, productId, today) {
+  return shopItems(userId, snapshotItems(userId, productId), today);
+}
+
+/* A planned week: each meal for the people it was planned for. null for a week with nothing on it. */
+function shopWeek(userId, weekStart, today) {
   var plan = planFor(userId, weekStart);
   if (plan === null) { return null; }
-  return createTrip(userId, plan.name, planEntries(plan.id).map(function (e) {
+  return shopItems(userId, planEntries(plan.id).map(function (e) {
     return { recipeId: e.recipeId, servings: e.planned };
-  }));
+  }), today);
+}
+
+/* Undo one Shop this: take off exactly the items it added; if it made the list, the list goes too. */
+function undoShop(result) {
+  if (!result || !tripEditable(tripById(result.trip.id))) { return false; }
+  var ids = result.added.map(function (row) { return row.id; });
+  var tables = db();
+  tables.shoppingTripItems = tables.shoppingTripItems.filter(function (i) { return ids.indexOf(i.id) === -1; });
+  commit();
+  if (result.created && tripItems(result.trip.id).length === 0) { deleteTrip(result.trip.id); }
+  return true;
 }
 
 /* Every change to a trip's items and skips is refused once the trip is closed (tripEditable). */
@@ -1123,9 +1216,10 @@ function setTripStatus(tripId, status, sentTo) {
   return trip;
 }
 
-/* A done trip is history; everything before that can still be edited, in the store included. */
+/* A list can change while it is built or shopped, in the store included. Once sent, the partner is shopping
+   it, so it is read-only; once done, it is history. */
 function tripEditable(trip) {
-  return trip !== null && trip.status !== "Done";
+  return trip !== null && (trip.status === "Building" || trip.status === "Shopping");
 }
 
 /* The ingredients the cook took off a trip's list because they have them. */
@@ -1141,12 +1235,18 @@ function setTripSkip(tripId, ingredientId, skipped) {
   commit();
 }
 
-/* A sent or done trip shopped again: a fresh Building trip with the same recipes and people. What the cook
-   had at home last time stays off the list (the skips come along); they can put it back. */
-function copyTrip(tripId) {
+/* A done list can be shopped again, but only when the cook has no list going: one list at a time. A sent list
+   is finished first, when its items arrive. */
+function canShopAgain(trip) {
+  return trip !== null && trip.status === "Done" && activeListFor(trip.userId) === null;
+}
+
+/* A done list shopped again: a fresh Building list, named for today, with the same recipes and people.
+   What the cook had at home last time stays off the list (the skips come along); they can put it back. */
+function copyTrip(tripId, today) {
   var trip = tripById(tripId);
-  if (trip === null) { return null; }
-  var copy = createTrip(trip.userId, trip.name + " again", tripItems(tripId).map(function (i) {
+  if (!canShopAgain(trip)) { return null; }
+  var copy = createTrip(trip.userId, listName(today), tripItems(tripId).map(function (i) {
     return { recipeId: i.recipeId, servings: i.servings };
   }));
   tripSkips(tripId).forEach(function (ingredientId) { setTripSkip(copy.id, ingredientId, true); });

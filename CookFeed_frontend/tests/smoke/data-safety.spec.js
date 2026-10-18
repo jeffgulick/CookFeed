@@ -1,38 +1,38 @@
 /* Data safety: what a cook or the admin can do that must never leave the data wrong. Two tabs, numbers of
-   people, a week pressed twice, a deleted trip's ticks, a plan that went off sale in a cart, a double tap. */
+   people, a week pressed twice, a deleted list's ticks, a plan that went off sale in a cart, a double tap. */
 
 const { test, expect, signInAs, ALEX, PRIYA, ADMIN } = require("./support");
 
+const IN_ALEXS_WEEK = new Date("2026-09-23T12:00:00");           // the kitchen opens on the week of today
+
 test("two tabs never overwrite each other: a stale tab reloads instead of saving over newer data", async ({ page, context }) => {
+  await page.clock.setFixedTime(IN_ALEXS_WEEK);
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
   const other = await context.newPage();
   await other.goto(page.url());
 
-  // A trip made in the other tab appears here, and a trip made here does not replace it.
-  await other.click("#newTrip");
-  await other.fill("#tripName", "Made in the other tab");
-  await other.locator("#buildRecipes .pick-recipe").first().check();
-  await other.click("#buildSubmit");
+  // A list started in the other tab appears here, and this tab cannot start a second one over it.
+  await other.click("#startList");
   await expect(other).toHaveURL(/list\.html\?trip=1$/);
-  await expect(page.locator("#tripRows")).toContainText("Made in the other tab");
-  await page.click("#newTrip");
-  await page.fill("#tripName", "Made here");
-  await page.locator("#buildRecipes .pick-recipe").first().check();
-  await page.click("#buildSubmit");
-  await expect(page).toHaveURL(/list\.html\?trip=2$/);
+  await expect(page.locator("#activeList")).toContainText("Shopping list, Sept 23");
+  await expect(page.locator("#startList")).toHaveCount(0);
+  await page.click("#shopWeek");
+  await expect(page.locator(".toast")).toContainText("added to your shopping list");
   await page.goto("kitchen.html");
-  await expect(page.locator("#tripRows tr")).toHaveCount(2);
+  await expect(page.locator("#activeList")).toContainText("4 recipes");
 
-  // A trip completed here closes on the other tab too; the other tab cannot bring it back.
-  await page.locator("#tripRows tr", { hasText: "Made in the other tab" }).locator(".finish-trip").click();
+  // A list sent here closes on the other tab too; the other tab cannot change it any more.
+  await page.click("#openActiveList");
+  await page.click("#sendInstacart");
   await page.click("#confirmOk");
-  await expect(other.locator("#tripStatus")).toContainText("Done");
+  await expect(other.locator("#tripStatus")).toContainText("Sent to Instacart");
   await expect(other.locator(".remove-item")).toHaveCount(0);
   await other.close();
 });
 
 test("a number of people is a whole number from 1 to 50; anything else is refused with a reason and never saved", async ({ page }) => {
+  await page.clock.setFixedTime(IN_ALEXS_WEEK);
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
   const teriyaki = page.locator("#weekEntries .week-row", { hasText: "Chicken Teriyaki" });
@@ -52,25 +52,29 @@ test("a number of people is a whole number from 1 to 50; anything else is refuse
 });
 
 test("a plan put on the week twice, or double-clicked, adds its meals once", async ({ page }) => {
+  await page.clock.setFixedTime(IN_ALEXS_WEEK);
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
   await page.click("#nextWeek");
   const card = page.locator("#ownedPlans .plan-card", { hasText: "Family Week" });
   await card.locator(".plan-product").dblclick();
   await expect(page.locator("#weekEntries .week-row")).toHaveCount(6);
-  await expect(card).toContainText("On this week");
+  await expect(card).toContainText("On next week");
   await expect(card.locator(".plan-product")).toHaveCount(0);
 });
 
-test("a deleted trip's ticks never show on a new trip, and its number is not reused", async ({ page }) => {
+test("a deleted list's ticks never show on a new list, and its number is not reused", async ({ page }) => {
+  await page.clock.setFixedTime(IN_ALEXS_WEEK);
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
-  await page.click("#tripFromWeek");
+  await page.click("#shopWeek");
+  await page.click("#openActiveList");
   await expect(page).toHaveURL(/trip=1$/);
   await page.locator(".store-line input[type='checkbox']").first().check();
   await page.click("#deleteTrip");
   await page.click("#confirmOk");
-  await page.click("#tripFromWeek");
+  await page.click("#shopWeek");
+  await page.click("#openActiveList");
   await expect(page).toHaveURL(/trip=2$/);
   await expect(page.locator(".store-line input[type='checkbox']:checked")).toHaveCount(0);
 });
