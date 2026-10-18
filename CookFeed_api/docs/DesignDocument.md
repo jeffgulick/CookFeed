@@ -59,7 +59,7 @@ A request runs controller → service → repository → EF Core. Controllers on
 |---|---|---|
 | `Cookfeed.Domain.Tests` (14) | `ShoppingListAggregator` applies the §7 policy: the flour example totals 1,032.91 g, milk converts toward millilitres, an ingredient without a density stays as two unmerged lines, count never merges with mass, the base-unit fallbacks, rounding and sorting | xUnit only; no database, no mocks |
 | `Cookfeed.Application.Tests` (20) | The services' own rules: the feed's one-extra-row paging, the storefront's handle rule (ASCII letters, digits and hyphens, then lower-cased), the caller passed through for order history and the shopping list, and the aggregator's output reaching the response. The §3 write rules (no self-purchase in the cart, a review needs a `Paid` order, `ProductOnly` access, the checkout snapshot) get their tests here with those features | xUnit with NSubstitute fakes of the repository interfaces, so each rule is tested without a database |
-| `Cookfeed.IntegrationTests` (154) | **The database:** the EF Core migration creates exactly the schema in `schema.sql` (tables, columns, indexes, check constraints, keys, triggers); `seed.sql` loads unchanged and Q1–Q16 return the same rows as on the `schema.sql` database; the six triggers and the delete rules refuse what §3 and §5 say they refuse; Q16 stays empty after save, unsave and account deletion; `DbSeeder` produces exactly the rows and id sequences of `seed.sql`. **The API over HTTP:** each endpoint returns what the reference queries return on the same database (Q1, Q2, Q3, Q5, Q8, Q9); ProductOnly recipes and drafts never reach the feed or storefront; the order-history snapshot survives a product rename; `orders.total_cents` equals the sum of its lines; the shopping list counts a ProductOnly recipe only once it is bought and never a draft; the `X-User-Id` header is parsed the same strict way on every route; bad input is a 400 and every error is a ProblemDetails body | xUnit against real PostgreSQL; each run creates throwaway databases and drops them afterwards. HTTP tests start the API in memory with `WebApplicationFactory<Program>` |
+| `Cookfeed.IntegrationTests` (154) | **The database:** the EF Core migration creates exactly the schema in `schema.sql` (tables, columns, indexes, check constraints, keys, triggers); `seed.sql` loads unchanged and Q1–Q16 return the same rows as on the `schema.sql` database; the seven triggers and the delete rules refuse what §3 and §5 say they refuse; Q16 stays empty after save, unsave and account deletion; `DbSeeder` produces exactly the rows and id sequences of `seed.sql`. **The API over HTTP:** each endpoint returns what the reference queries return on the same database (Q1, Q2, Q3, Q5, Q8, Q9); ProductOnly recipes and drafts never reach the feed or storefront; the order-history snapshot survives a product rename; `orders.total_cents` equals the sum of its lines; the shopping list counts a ProductOnly recipe only once it is bought and never a draft; the `X-User-Id` header is parsed the same strict way on every route; bad input is a 400 and every error is a ProblemDetails body | xUnit against real PostgreSQL; each run creates throwaway databases and drops them afterwards. HTTP tests start the API in memory with `WebApplicationFactory<Program>` |
 
 **Continuous integration.** `.github/workflows/api-tests.yml` runs on every pull request, and every push to `main`, that touches `CookFeed_api/`. Each run gets a fresh GitHub-hosted Ubuntu 24.04 machine and a `postgres:16.15` service container, the same version as `docker-compose.yml`, and takes about a minute. It has three steps:
 
@@ -156,8 +156,8 @@ Three roles, held through `user_roles`:
 | Role | Grants | Who holds it |
 |---|---|---|
 | `HomeCook` | save recipes, keep a cart, place orders, plan meals, write reviews | every ordinary account, granted at sign-up; **every creator**, so a creator shops like anyone else |
-| `Creator` | publish recipes, sell products | accounts with a `creator_profiles` row; always together with `HomeCook` |
-| `Admin` | operational access only | a dedicated account that holds **no other role** |
+| `Creator` | publish recipes, sell products, and manage both in the studio (§3.8) | accounts with a `creator_profiles` row; always together with `HomeCook` |
+| `Admin` | operational access only: the Admin console of §3.8 (moderate reviews, verify and suspend creators, retire products, unpublish recipes, refund and cancel orders), never buying, saving, selling or creating | a dedicated account that holds **no other role** |
 
 The answers to the questions as they were asked:
 
@@ -222,10 +222,38 @@ The prototype (`CookFeed_frontend/prototype`) shows these rules for whichever se
 | A `ProductOnly` recipe opens only for a buyer | §3.3 | A non-buyer sees its card without a link, its ingredients stay off the plan's shopping list, and its page explains which plan it comes with. A buyer sees "Yours through *plan*". Storefronts and the trending list never show it. |
 | Save counts follow the save rows | §3.4 | Every count is counted from the saves, so saving moves it by exactly one. |
 | Only buyers review, once per product | §3.5 | The review form appears only for a buyer who has not reviewed the product yet, and posts under their account name. Anyone else is told why there is no form. |
+| A creator manages only their own recipes and products | §3.8 | My studio (`studio.html`) lists the signed-in creator's rows only, and the two §3.3 rules are explained before they would refuse: a free or draft recipe cannot be picked for a plan, and a recipe in a plan cannot be made free. |
+| The admin's changes are logged and show everywhere | §3.8 | The Admin console (`admin.html`): a hidden review leaves the store and the rating; a suspended creator's plans read "No longer for sale" and their storefront says so; a refunded order's plan is no longer owned and its recipes lock again; the activity log shows `admin_actions`. |
 
 **What the client does and does not decide.** The original note here said the admin rule would need no client-side role logic. That holds for enforcement: the API refuses every request the rules forbid, and the database refuses the rows that must never exist, whatever a client does. But a client that only reacted to refusals would offer the admin an Add to cart button that always fails. So the client also reads the rules, to decide what to *offer*: the same questions `rules.js` answers, asked of the caller's roles and purchases. The Angular client will get those answers from the API's DTOs (`ownedByViewer`, `viewerIsCreator`, `inCart` and the roles of the signed-in user), not by recomputing them.
 
 One case the queries leave open, settled in the prototype: a creator can always open their own recipes, including `ProductOnly` ones and drafts. Q14 covers buyers only; the recipe-detail endpoint (`docs/BuildLog.md` roadmap item 3) will add the creator.
+
+### 3.8 What creators and the admin manage
+
+Walking through the prototype as each account showed that the three roles looked the same: a creator and the admin saw the home-cook site with controls removed and nothing added. This section is what each role runs, built in the prototype first (roadmap items 14 and 15 are the API).
+
+**A creator's studio.** A creator manages their own rows and nobody else's:
+
+- **Recipes:** draft, edit, publish and unpublish, free (`Public`) or premium (`ProductOnly`). A draft is open only to its creator; unpublishing hides a recipe from everyone but its creator, while buyers keep it through their snapshots. The two §3.3 rules apply as the creator works: a plan takes only published premium recipes, and a recipe in a plan cannot be made free.
+- **Products:** create a meal plan (recipes on days and meals) or a collection (recipes in order), price it, edit it, retire it and restore it. A retired product is not for sale; buyers keep it.
+- **Sales and reviews:** the `order_items` whose `creator_id` is theirs (Q10), and the reviews of their products.
+
+**The admin's console.** The admin never buys, saves, sells or creates (§3.1). It runs the store:
+
+| The admin can | Column or table | Effect |
+|---|---|---|
+| hide or restore a review | `reviews.hidden_at` | a hidden review is shown only to admins and leaves the product's rating and count (Q12, Q13 filter it) |
+| verify a creator | `creator_profiles.is_verified` | the check mark on the storefront and cards |
+| suspend or restore a creator | `creator_profiles.suspended_at` | a suspended creator's products are not for sale; buyers keep them |
+| retire or restore any product | `products.is_active` | the same as the creator's own retire |
+| unpublish or publish any recipe | `recipes.is_published` | the same as the creator's own |
+| refund a `Paid` order, cancel a `Pending` one | `orders.status` | a refunded order grants nothing: ownership reads `Paid` orders only (Q11, Q14), so its recipes lock again |
+| look up orders and accounts | | by buyer name or order number |
+
+**Every admin change is logged.** `admin_actions` holds one row per change: the admin, the action (`HideReview`, `SuspendCreator`, `RefundOrder`, ...), the table and id of the row changed, an optional note, and when. The API writes it in the same transaction as the change. The `admin_actions_admin_only` trigger refuses a row whose `admin_user_id` does not hold `Admin`, so the trail cannot be forged by another account, and the admin account cannot be deleted while its actions exist (`ON DELETE RESTRICT`). Q17h demonstrates the refusal.
+
+Where the rules live follows §3.1: the triggers hold what must never exist (a forged audit row, a free recipe in a product), the API checks who may act (only the creator edits their recipe, only the admin hides a review), and the prototype's `rules.js` decides what to offer (`canManageRecipe`, `canManageProduct`, `isAdmin`, `isForSale`, `placementProblem`, `visibilityProblem`).
 
 ---
 
@@ -312,8 +340,9 @@ ck_reviews_rating_range                      rating BETWEEN 1 AND 5
 | `user_roles_admin_only` | `user_roles`, before insert/update | `Admin` is never held with another role (§3.1) |
 | `product_recipes_product_only` | `product_recipes`, before insert/update | a product holds only `ProductOnly` recipes (§3.3) |
 | `recipes_in_product_product_only` | `recipes`, before update of `visibility` | a recipe in a product cannot be made `Public` (§3.3) |
+| `admin_actions_admin_only` | `admin_actions`, before insert/update | only an `Admin` account writes the audit trail (§3.8) |
 
-The refusals raise `check_violation` with a named constraint (`ck_cart_items_no_self_purchase`, `ck_order_items_no_self_purchase`, `ck_user_roles_admin_only`, `ck_product_recipes_product_only`, `ck_recipes_in_product_product_only`) so the API can map them to a 4xx exactly as it maps a real `CHECK`. EF Core does not model triggers; they ship in the migration as raw SQL (`migrationBuilder.Sql(...)`), copied verbatim from `schema.sql`, and an integration test fails if the two ever differ.
+The refusals raise `check_violation` with a named constraint (`ck_cart_items_no_self_purchase`, `ck_order_items_no_self_purchase`, `ck_user_roles_admin_only`, `ck_product_recipes_product_only`, `ck_recipes_in_product_product_only`, `ck_admin_actions_admin_only`) so the API can map them to a 4xx exactly as it maps a real `CHECK`. EF Core does not model triggers; they ship in the migration as raw SQL (`migrationBuilder.Sql(...)`), copied verbatim from `schema.sql`, and an integration test fails if the two ever differ.
 
 **Types.** Money is integer cents (`price_cents`, `total_cents`, `unit_price_cents`) with a 3-letter `currency` column — never floating point. Quantities are `numeric(10,3)`; conversion factors `numeric(12,6)`; density `numeric(8,4)`. All timestamps are `timestamptz` stored in UTC; calendar dates (`week_start`, `planned_date`) are `date`, because "Monday the 21st" is not an instant. Enums (`unit category`, `meal slot`, `product type`, `order status`, `visibility`) are stored as short `varchar` rather than PostgreSQL enum types so that adding a value is an `INSERT`-compatible change rather than an `ALTER TYPE`, and so the values are readable in `psql`.
 
