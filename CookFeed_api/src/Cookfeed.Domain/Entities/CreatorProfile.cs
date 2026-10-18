@@ -19,6 +19,9 @@ public class CreatorProfile
 
     public bool IsVerified { get; set; }
 
+    /// <summary>Set when an admin suspends the creator: their products are not for sale until it is cleared (§3.8).</summary>
+    public DateTimeOffset? SuspendedAt { get; set; }
+
     public List<Recipe> Recipes { get; set; } = [];
 
     public List<Product> Products { get; set; } = [];

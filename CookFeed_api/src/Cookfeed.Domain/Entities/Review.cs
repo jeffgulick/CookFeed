@@ -21,4 +21,7 @@ public class Review
     public required string Body { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>Set when an admin hides the review from everyone but admins (§3.8). Null means shown.</summary>
+    public DateTimeOffset? HiddenAt { get; set; }
 }

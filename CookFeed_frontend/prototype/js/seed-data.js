@@ -572,6 +572,7 @@ window.COOKFEED_SEED = {
             "body": "I bought this on a Sunday and had all three dinners on the table by Wednesday. The shopping list is the whole reason it worked. One trip, nothing left over.",
             "rating": 5,
             "userId": 1,
+            "hiddenAt": null,
             "createdAt": "2026-08-12T12:00:00+00:00",
             "productId": 3,
             "recommends": true
@@ -581,6 +582,7 @@ window.COOKFEED_SEED = {
             "body": "Teriyaki alone was worth the price. I scaled the plan to six for my family and the quantities came out right. Taking one star off because I wanted a fourth night.",
             "rating": 4,
             "userId": 2,
+            "hiddenAt": null,
             "createdAt": "2026-08-09T12:00:00+00:00",
             "productId": 3,
             "recommends": true
@@ -590,6 +592,7 @@ window.COOKFEED_SEED = {
             "body": "Good recipes, but I already cook Japanese food most weeks so there was not much here I did not know. Better suited to someone just starting out.",
             "rating": 3,
             "userId": 5,
+            "hiddenAt": null,
             "createdAt": "2026-08-02T12:00:00+00:00",
             "productId": 3,
             "recommends": false
@@ -2012,21 +2015,24 @@ window.COOKFEED_SEED = {
             "handle": "maria-cooks",
             "userId": 3,
             "avatarUrl": "images/creators/maria-cooks.svg",
-            "isVerified": true
+            "isVerified": true,
+            "suspendedAt": null
         },
         {
             "bio": "Japanese home cooking with a weeknight clock. Most dinners under 30 minutes, everything shoppable.",
             "handle": "kenji-kitchen",
             "userId": 4,
             "avatarUrl": "images/creators/kenji-kitchen.svg",
-            "isVerified": true
+            "isVerified": true,
+            "suspendedAt": null
         },
         {
             "bio": "Dad of three. I cook on Sunday so we eat all week. No fancy gear.",
             "handle": "dan-meal-preps",
             "userId": 5,
             "avatarUrl": "images/creators/dan-meal-preps.svg",
-            "isVerified": false
+            "isVerified": false,
+            "suspendedAt": null
         }
     ],
     "mealPlanEntries": [
