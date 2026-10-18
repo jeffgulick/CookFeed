@@ -10,6 +10,7 @@
   --accent-soft: #fff0e6;
   --good: #166534;              /* 4.5:1 or better on --good-soft, --card and --paper */
   --star: #e0a012;
+  --star-text: #8a5a00;         /* --star as text: 4.5:1 on white and on the page */
   --radius: 14px;
   --shadow: 0 1px 2px rgba(36, 29, 22, .05), 0 8px 24px rgba(36, 29, 22, .06);
 
@@ -373,7 +374,7 @@ tr:last-child td { border-bottom: none; }
 }
 
 .big-num { font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
-.stars { color: var(--star); letter-spacing: 2px; }
+.stars { color: var(--star-text); letter-spacing: 2px; }   /* text: 4.5:1, where --star is too light */
 .summary .stars { font-size: 20px; }
 
 .review {
@@ -607,7 +608,8 @@ a.cart-chip:hover { background: var(--accent-tint); }
   background: var(--player-bar);
 }
 
-.play { color: var(--on-dark); font-size: 15px; }
+.play { color: var(--on-dark); font-size: 15px; background: none; border: 1px solid var(--on-dark); border-radius: 999px; padding: 4px 10px; min-width: 32px; min-height: 32px; }
+.play:focus-visible { outline: 3px solid var(--on-dark); outline-offset: 2px; }
 
 .track {
   flex: 1;
@@ -1093,8 +1095,8 @@ p.owned-label { margin: 0 0 12px; }
 .order-items .line-price { margin-left: auto; font-weight: 700; }
 .receipt-items { text-align: left; display: inline-block; }
 
-.faq h3 { margin: 18px 0 4px; }
-.faq h3:first-child { margin-top: 0; }
+.faq h2 { margin: 18px 0 4px; font-size: 17px; }
+.faq h2:first-child { margin-top: 0; }
 .faq p { margin: 0; color: var(--ink-soft); }
 
 footer a { color: inherit; }
@@ -1121,7 +1123,7 @@ footer a { color: inherit; }
 .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 
 /* ---------- 3.8: what creators and the admin manage ---------- */
-.tag-muted { background: var(--paper-deep, #f1ebe2); color: var(--muted); }
+.tag-muted { background: var(--paper-deep, #f1ebe2); color: var(--ink-soft); }   /* --muted on it is 4.37:1 */
 .review.hidden-review { border-style: dashed; background: var(--paper); }
 .notice-strip {
   margin: 12px 0 0; padding: 10px 14px; border-radius: 10px;
@@ -1166,7 +1168,7 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 
 /* ---------- 3.9: the week and shopping trips ---------- */
 .week-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.week-head h3 { margin: 0; flex: 1; }
+.week-head h2 { margin: 0; flex: 1; font-size: 20px; }
 .week-day { margin: 16px 0 6px; font-size: 15px; color: var(--muted); }
 .week-row { display: grid; grid-template-columns: 90px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
 .week-slot { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }

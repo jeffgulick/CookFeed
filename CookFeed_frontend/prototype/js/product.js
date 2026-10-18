@@ -102,13 +102,13 @@ function renderHeader() {
   items.push("<strong>" + plural(product.recipeCount, "full cooking video", "full cooking videos") + ".</strong> " +
     "Every step is marked in the video, so you can jump straight to the part you are on.");
   if (product.type === "MealPlan") {
-    items.push("<strong>One shopping list for all " + plural(product.mealCount, "meal", "meals") + ",</strong> " +
-      "scaled to however many people you cook for, sorted by aisle, and ready to print.");
+    items.push("<strong>Every ingredient for all " + plural(product.mealCount, "meal", "meals") + ",</strong> " +
+      "combined and sorted by aisle. Shop this plan puts it all on your shopping list in one press.");
     items.push("<strong>A plan that is already worked out.</strong> Meals on " + planDays() +
       ", chosen so the ingredients overlap and little goes to waste.");
   } else {
-    items.push("<strong>One shopping list for every recipe,</strong> scaled to however many people you cook for, " +
-      "sorted by aisle, and ready to print.");
+    items.push("<strong>Every ingredient for every recipe,</strong> combined and sorted by aisle. " +
+      "Shop this collection puts it all on your shopping list in one press.");
     items.push("<strong>Chosen by " + escapeHtml(creator.displayName) + ",</strong> in the order they would cook them.");
   }
   // A product sells only ProductOnly recipes (design section 3.3; the database refuses anything else).

@@ -23,9 +23,9 @@ var product = null;
 var REVIEW_GATES = {
   noShop: "Admin accounts do not write reviews. You can hide a review below, or restore one you hid; hidden reviews show only to admins.",
   yourOwn: "This is your own %noun%. Creators cannot review their own.",
-  alreadyReviewed: "You have reviewed this %noun%. Thank you! You can remove your review above and write a new one.",
+  alreadyReviewed: "You have reviewed this %noun%. Thank you! You can delete your review above and write a new one.",
   hiddenReview: "Cookfeed hid your review, so other cooks do not see it and it is not counted in the rating.",
-  refundedReview: "Your order for this %noun% was refunded, so your review is not counted. You can remove it above.",
+  refundedReview: "Your order for this %noun% was refunded, so your review is not counted. You can delete it above.",
   mustBuy: "Only cooks who bought this %noun% can review it, so every review comes from someone who cooked it."
 };
 
@@ -122,7 +122,7 @@ function renderReviews() {
     html = html + "<p>" + escapeHtml(review.body) + "</p>";
     if (isMine(review) && !hidden) {
       html = html + "<button type='button' class='link-button remove-review' data-id='" +
-                    review.id + "'>Remove my review</button>";
+                    review.id + "'>Delete my review</button>";
     }
     if (isAdmin(currentUser())) {
       html = html + "<button type='button' class='link-button moderate-review' data-id='" + review.id +
@@ -132,7 +132,7 @@ function renderReviews() {
   }
 
   if (shown.length === 0) {
-    html = "<div class='review empty-reviews'>No reviews match these filters.</div>";
+    html = "<div class='review empty-reviews'>" + (all.length === 0 ? "No reviews yet." : "No reviews match these filters.") + "</div>";
   }
 
   document.getElementById("reviewList").innerHTML = html;
@@ -165,10 +165,21 @@ function updateSummary() {
   var average = hasReviews ? total / all.length : 0;
   var percent = hasReviews ? Math.round((recommendCount / all.length) * 100) : 0;
 
-  document.getElementById("averageNumber").textContent = average.toFixed(1);
-  document.getElementById("averageStars").textContent = buildStars(Math.round(average));
-  document.getElementById("reviewCount").textContent = all.length;
-  document.getElementById("recommendPercent").textContent = percent + "%";
+  // No reviews is not a rating of zero: say so, rather than showing 0.0, five empty stars and 0%.
+  var summary = document.getElementById("reviewSummary");
+  if (!hasReviews) {
+    summary.innerHTML = "<div><p><strong>No reviews yet.</strong></p><p class='meta'>Cooks who buy this " + productNoun(product) +
+      " can review it here.</p></div>";
+    document.getElementById("reviewTools").hidden = true;
+    return;
+  }
+  document.getElementById("reviewTools").hidden = false;
+  summary.innerHTML = "<div><div class='big-num' id='averageNumber'>" + average.toFixed(1) + "</div>" +
+    "<div class='stars' id='averageStars' aria-label='" + average.toFixed(1) + " out of 5 stars'>" + buildStars(Math.round(average)) + "</div>" +
+    "<div class='meta'><span id='reviewCount'>" + all.length + "</span> " + (all.length === 1 ? "review" : "reviews") + "</div></div>" +
+    "<div><div class='big-num' id='recommendPercent'>" + percent + "%</div>" +
+    "<div class='meta'>would recommend this " + productNoun(product) + "</div></div>" +
+    "<div class='breakdown' id='ratingBars' aria-label='Filter reviews by star rating'></div>";
 
   var html = "";
   for (var star = 5; star >= 1; star = star - 1) {
@@ -235,14 +246,14 @@ function onReviewListClicked(event) {
   }
 
   var id = Number(button.getAttribute("data-id"));
-  confirmDialog("Remove your review? This cannot be undone.", "Remove review").then(function (ok) {
+  confirmDialog("Delete your review? This cannot be undone.", "Delete review").then(function (ok) {
     if (!ok) {
       return;
     }
     removeReview(currentUser().id, id);
     refreshPage();
     renderFormGate();
-    showToast("Your review was removed.");
+    showToast("Your review was deleted.");
     document.getElementById("main").focus({ preventScroll: true });
   });
 }
@@ -412,7 +423,6 @@ function renderHeader() {
   document.getElementById("productTitle").textContent = product.title;
   document.getElementById("productByline").innerHTML = creatorByline(creatorFor(product.creatorId)) +
     " &middot; <a href='" + productUrl(product.id) + "'>back to the " + noun + "</a>";
-  document.getElementById("recommendNoun").textContent = noun;
   document.getElementById("recommendQuestion").textContent =
     "Would you recommend this " + noun + " to another home cook?";
   document.getElementById("footLink").href = productUrl(product.id);
@@ -447,7 +457,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.getElementById("reviewForm").addEventListener("submit", onFormSubmitted);
 
-  document.getElementById("ratingBars").addEventListener("click", onBarClicked);
+  document.getElementById("reviewSummary").addEventListener("click", onBarClicked);
   document.getElementById("sortReviews").addEventListener("change", renderReviews);
   document.getElementById("recommendOnly").addEventListener("change", renderReviews);
   document.getElementById("clearFilters").addEventListener("click", clearFilters);

@@ -34,21 +34,10 @@
     <h1 id="productTitle">Reviews</h1>
     <p class="byline" id="productByline"></p>
 
-    <div class="card summary">
-      <div>
-        <div class="big-num" id="averageNumber">0.0</div>
-        <div class="stars" id="averageStars"></div>
-        <div class="meta"><span id="reviewCount">0</span> reviews</div>
-      </div>
-      <div>
-        <div class="big-num" id="recommendPercent">0%</div>
-        <div class="meta">would recommend this <span id="recommendNoun">plan</span></div>
-      </div>
-      <div class="breakdown" id="ratingBars" aria-label="Filter reviews by star rating"></div>
-    </div>
+    <div class="card summary" id="reviewSummary"></div>
 
     <h2>What cooks are saying</h2>
-    <div class="toolbar">
+    <div class="toolbar" id="reviewTools">
       <label>Sort
         <select id="sortReviews">
           <option value="newest">Newest first</option>
@@ -112,7 +101,7 @@
     </div>
   </main>
 
-  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+  <footer>Cookfeed prototype &middot; short-video recipes &middot; <a href="help.html">Help</a></footer>
 
   <script src="js/seed-data.js?v=16"></script>
   <script src="js/db.js?v=16"></script>

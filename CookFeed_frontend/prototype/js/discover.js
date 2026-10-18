@@ -38,7 +38,7 @@ function renderCreators() {
 document.addEventListener("DOMContentLoaded", function () {
   var user = currentUser();
   document.getElementById("greeting").textContent = user === null
-    ? "Short cooking videos, real recipes, and one shopping list for the week."
+    ? "Short cooking videos, real recipes, and a shopping list built from what you cook."
     : "Welcome back, " + user.displayName.split(" ")[0] + ".";
 
   renderProducts();

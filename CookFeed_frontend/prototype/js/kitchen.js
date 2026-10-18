@@ -16,7 +16,8 @@ function thisWeek() {
 
 function renderOwnedPlans() {
   var owned = ownedProductsFor(kitchenUser);
-  var week = weekPhrase(currentWeek);
+  var label = weekLabel(currentWeek);
+  var week = label === "This week" || label === "Next week" ? label.toLowerCase() : "the week shown";
   document.getElementById("ownedPlans").innerHTML = owned.map(function (o) {
     return "<div class='card product-tile plan-card' data-product-id='" + o.product.id + "'>" +
       "<img src='" + escapeHtml(o.product.coverImageUrl || "") + "' alt=''>" +
@@ -38,7 +39,7 @@ function renderSavedRecipes() {
     return recipeCardHtml(recipe, {
       foot: "<a class='meta' href='" + recipe.pageUrl + "'>Cook it &rarr;</a>" +
             "<span><button class='btn-small plan-recipe' data-recipe-id='" + id + "'>Plan it</button> " +
-            "<button class='btn-small unsave-button'>Remove</button></span>"
+            "<button class='btn-small unsave-button' aria-label='Unsave " + escapeHtml(recipe.title) + "'>Unsave</button></span>"
     });
   }).join("");
   document.getElementById("emptyKitchen").hidden = ids.length > 0;
@@ -65,7 +66,10 @@ function renderWeek() {
   document.getElementById("weekDates").textContent = formatShortDate(currentWeek) + " to " + formatShortDate(addDays(currentWeek, 6));
   document.getElementById("backRow").hidden = onThisWeek;
   var shop = document.getElementById("shopWeek");
-  shop.textContent = "Shop " + weekPhrase(currentWeek);
+  // The heading names the week, so the button needs no date: "Shop this week", "Shop next week", or, for any
+  // other week, "Shop these meals".
+  var label = weekLabel(currentWeek);
+  shop.textContent = label === "This week" || label === "Next week" ? "Shop " + label.toLowerCase() : "Shop these meals";
   shop.disabled = entries.length === 0;
 
   // This week is empty but another week has meals: say where they are.
@@ -88,7 +92,7 @@ function renderWeek() {
       "<span class='week-slot'>" + entry.slot + "</span>" +
       "<a href='recipe.html?id=" + entry.recipeId + "'>" + escapeHtml(entry.title) + "</a>" +
       "<span class='week-servings'>for " + peopleBoxHtml(entry.planned, entry.title) + "</span>" +
-      "<button type='button' class='link-button remove-entry'>Remove</button>" +
+      "<button type='button' class='link-button remove-entry' aria-label='Take " + escapeHtml(entry.title) + " off the week'>Take off week</button>" +
       "</div>";
   });
   document.getElementById("weekEntries").innerHTML = html ||

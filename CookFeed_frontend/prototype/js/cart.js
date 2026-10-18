@@ -5,7 +5,7 @@
    snapshot of each plan's recipes that the buyer keeps.
 
    Interactions on this page:
-     - Remove takes one line out; Empty cart takes everything out
+     - Take out of cart takes one line out; Empty cart takes everything out
      - Place order turns the cart into a stored order and shows a receipt */
 
 /* The cart rows joined to their products, skipping anything no longer sold. */
@@ -42,7 +42,7 @@ function renderCart() {
     html = html + "<span class='pill'>" + productTypeLabel(product) + "</span>";
     html = html + "<div class='recipe-title'><a href='" + productUrl(product.id) + "'>" + escapeHtml(product.title) + "</a></div>";
     html = html + "<div class='meta'>by " + escapeHtml(creator.handle) + " &middot; " + productCounts(product) + "</div>";
-    html = html + "<div class='line-actions'><button class='btn-small remove-item'>Remove</button></div>";
+    html = html + "<div class='line-actions'><button class='btn-small remove-item'>Take out of cart</button></div>";
     html = html + "</div>";
     html = html + "<div class='line-price'>" + formatPrice(product.priceCents) + "</div>";
     html = html + "</div>";
@@ -70,7 +70,7 @@ function renderCart() {
   updateCartChip();
 }
 
-/* Remove clicks inside the cart lines. One listener handles every line (event delegation). */
+/* Take out of cart clicks inside the cart lines. One listener handles every line (event delegation). */
 function onCartClicked(event) {
   var button = event.target.closest(".remove-item");
   if (button === null) {
@@ -78,13 +78,13 @@ function onCartClicked(event) {
   }
 
   var product = rowById("products", Number(button.closest(".line-item").getAttribute("data-product-id")));
-  confirmDialog("Remove " + product.title + " from your cart?", "Remove").then(function (ok) {
+  confirmDialog("Take " + product.title + " out of your cart?", "Take it out").then(function (ok) {
     if (!ok) {
       return;
     }
     removeFromCart(currentUser().id, product.id);
     renderCart();
-    showToast(product.title + " was removed.");
+    showToast(product.title + " is out of your cart.");
     // The line and its button are gone: put focus somewhere that still exists.
     document.getElementById("main").focus({ preventScroll: true });
   });

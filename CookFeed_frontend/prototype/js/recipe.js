@@ -76,6 +76,11 @@ function stepRecipeServings(change) {
 }
 
 function resetRecipeServings() {
+  // The mock player: Play starts at the first step that is marked in the video.
+  document.getElementById("playButton").addEventListener("click", function () {
+    var first = currentRecipe.steps.filter(function (step) { return step.videoTimestampSeconds !== null; })[0] || currentRecipe.steps[0];
+    if (first) { jumpToStep(first.videoTimestampSeconds || 0, first.stepNumber); }
+  });
   document.getElementById("servingsInput").value = currentRecipe.servings;
   applyRecipeServings();
 }
@@ -134,14 +139,23 @@ function renderSaveState() {
 
   document.getElementById("savedBy").textContent = savedByText(saveCount(currentRecipe.id));
 
+  // The note under the buttons says what they do, and only to someone who has them: a guest is told what
+  // signing in offers, and the admin, who never saves or shops, is told nothing.
+  var note = document.getElementById("saveNote");
+  note.hidden = true;
   if (user === null) {
     area.innerHTML = signInLink("save");
+    note.textContent = "Sign in to keep this recipe in My kitchen, put it on your week, and shop it.";
+    note.hidden = false;
     return;
   }
   if (!canSave(user, currentRecipe)) {
     area.innerHTML = "";
     return;
   }
+  note.innerHTML = "Saving keeps this recipe in <a href='kitchen.html'>My kitchen</a>. <strong>Shop this recipe</strong> puts its " +
+    "ingredients on your shopping list, and <strong>Add to my week</strong> puts it on a day, both for the people you set below.";
+  note.hidden = false;
   var saved = isSavedBy(user.id, currentRecipe.id);
   area.innerHTML = "<button type='button' id='saveButton' class='" + (saved ? "btn-secondary" : "btn-primary") +
     "' title='" + SAVE_HINT + "'>" + (saved ? "Saved &#10003;" : "Save recipe") + "</button> " +
@@ -244,12 +258,20 @@ function productsWith(recipeId) {
     .filter(function (p, index, all) { return p.isActive && all.indexOf(p) === index; });
 }
 
-function showLocked(recipe) {
-  var links = productsWith(recipe.id).map(function (p) {
+/* A premium recipe the viewer cannot open says what applies to them: the admin, who never buys, is told who
+   can open it; anyone else where to get it, or, when no plan holding it is for sale, where to look instead. */
+function showLocked(recipe, user) {
+  if (isAdmin(user)) {
+    showMissing(recipe.title, "&#128274; A premium recipe. Only its creator and the cooks who own its plan can open it.");
+    return;
+  }
+  var links = productsWith(recipe.id).filter(isForSale).map(function (p) {
     return "<a href='" + productUrl(p.id) + "'>" + escapeHtml(p.title) + "</a>";
   });
-  var where = links.length ? " It comes with " + links.join(" and ") + "." : "";
-  showMissing(recipe.title, "&#128274; This recipe is only for cooks who bought the plan it is in." + where);
+  showMissing(recipe.title, links.length
+    ? "&#128274; This recipe comes with " + links.join(" and ") + ". Buy it to open the recipe."
+    : "&#128274; This recipe came with a plan that is no longer for sale. <a href='recipes.html'>Browse the free recipes</a> " +
+      "or <a href='plans.html'>see the plans</a>.");
 }
 
 /* ---------- start ---------- */
@@ -265,7 +287,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
   if (!canOpenRecipe(user, row)) {
-    showLocked(row);
+    showLocked(row, user);
     return;
   }
 
@@ -278,6 +300,11 @@ document.addEventListener("DOMContentLoaded", function () {
   renderIngredients(currentServings);
   renderSteps();
 
+  // The mock player: Play starts at the first step that is marked in the video.
+  document.getElementById("playButton").addEventListener("click", function () {
+    var first = currentRecipe.steps.filter(function (step) { return step.videoTimestampSeconds !== null; })[0] || currentRecipe.steps[0];
+    if (first) { jumpToStep(first.videoTimestampSeconds || 0, first.stepNumber); }
+  });
   document.getElementById("servingsInput").value = currentRecipe.servings;
   document.getElementById("servingsReset").textContent = "Reset to " + currentRecipe.servings + " as written";
   updateServingsButtons();

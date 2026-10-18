@@ -106,7 +106,7 @@ function renderItems() {
     return "<div class='trip-item' data-item-id='" + item.id + "'>" +
       "<a href='recipe.html?id=" + item.recipeId + "'>" + escapeHtml(item.title) + "</a>" +
       (editable ? "<span class='trip-people'>for " + peopleBoxHtml(item.servings, item.title) + "</span>" +
-                  "<button type='button' class='link-button remove-item'>Remove</button>"
+                  "<button type='button' class='link-button remove-item' aria-label='Take " + escapeHtml(item.title) + " off the list'>Take off list</button>"
                 : "<span class='meta'>for " + item.servings + " people</span><span></span>") +
       "</div>";
   }).join("") || "<p class='meta'>No recipes on this list yet.</p>";
