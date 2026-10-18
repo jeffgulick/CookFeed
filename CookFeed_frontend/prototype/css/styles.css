@@ -100,8 +100,8 @@ a { color: var(--accent); }
 
 .brand span { color: var(--accent); }
 
-/* The links, then the cart, on wide screens. On phones the links fold into the Menu button (see
-   "small screens"). The cart comes first in the page source so it sits beside the menu there. */
+/* The links, then the cart, on wide screens. On phones the links fold into a hamburger button at the
+   top left, before the brand (see "small screens"), and the cart sits at the right. */
 .nav-links { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; order: 1; }
 .cart-chip { order: 2; }
 .menu-button { display: none; order: 3; }
@@ -479,15 +479,39 @@ footer {
 
   /* The nav: the brand, the cart and Menu on one row, and the links open below them. Without
      JavaScript there is no has-menu class, and the links simply wrap as on a wide screen. */
+  /* The hamburger: three bars, which turn into an X while the menu is open. 44px, a main action's size. */
   .nav.has-menu .menu-button {
-    display: inline-block;
-    padding: 6px 14px;
-    background: var(--card);
-    border-color: var(--line);
-    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    order: 0;
+    width: 44px;
+    height: 44px;
+    margin-left: -8px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 10px;
     color: var(--ink);
-    font-size: 14px;
   }
+  .menu-bars, .menu-bars::before, .menu-bars::after {
+    display: block;
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    transition: transform .15s ease, background .15s ease;
+  }
+  .menu-bars { position: relative; }
+  .menu-bars::before, .menu-bars::after { content: ""; position: absolute; left: 0; }
+  .menu-bars::before { top: -7px; }
+  .menu-bars::after { top: 7px; }
+  .nav.open .menu-bars { background: transparent; }
+  .nav.open .menu-bars::before { transform: translateY(7px) rotate(45deg); }
+  .nav.open .menu-bars::after { transform: translateY(-7px) rotate(-45deg); }
+  .nav.has-menu .brand { order: 0; }
+  .nav.has-menu .cart-chip { margin-left: auto; }
+  .nav.has-menu .nav-inner { gap: 8px; }
   .nav.has-menu .nav-links {
     display: none;
     order: 4;
@@ -1206,9 +1230,22 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .build-dialog h3 { margin-top: 0; }
 .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
 .trip-item { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+@media (max-width: 640px) {
+  /* On a phone a recipe on the list stacks: its name across the row, then the people and Take off list. */
+  .trip-item { grid-template-columns: 1fr auto; grid-template-areas: "title title" "people actions"; row-gap: 6px; }
+  .trip-item > a { grid-area: title; }
+  .trip-item > .trip-people, .trip-item > .meta { grid-area: people; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .trip-item .people-box { flex-wrap: nowrap; }
+  .trip-item > .remove-item { grid-area: actions; }
+}
 .store-wrap { max-width: 720px; }
 .store-list h3 { margin: 22px 0 6px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .store-line { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line-soft); font-size: 18px; }
+/* Before shopping starts there is no tick box, so the name takes the first column. */
+.store-line.no-tick { grid-template-columns: 1fr auto; }
+/* The amount, with Have it under it, so a long name keeps its room on a phone. */
+.store-qty { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.store-qty .skip-line { font-size: 14px; }
 .store-line input[type="checkbox"] { width: 26px; height: 26px; accent-color: var(--good); }
 .store-line.have .store-name { text-decoration: line-through; color: var(--faint); }
 .store-name small { display: block; font-size: 13px; color: var(--muted); }
@@ -1216,6 +1253,11 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .skipped-strip { margin-top: 14px; padding: 10px 14px; border-radius: 10px; background: var(--paper); color: var(--muted); font-size: 14px; }
 .skipped-strip button { margin-left: 6px; }
 @media (max-width: 640px) {
+  /* An iPhone zooms in on a form field with text under 16px, and the page then slides sideways: none is smaller. */
+  input, select, textarea { font-size: max(16px, 1em); }
+  /* On a phone the week's dates get their own line, with the two buttons under them. */
+  .week-head h2 { order: -1; flex-basis: 100%; white-space: nowrap; }
+  .week-head #nextWeek { margin-left: auto; }
   /* On a phone a meal stacks: the handle and the meal, the recipe, the people, then the buttons. */
   .week-row { grid-template-columns: 32px 1fr auto; grid-template-areas: "handle slot slot" "title title title" "people people people" "actions actions actions"; }
   .week-row .drag-handle { grid-area: handle; }

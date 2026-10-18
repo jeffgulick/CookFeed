@@ -118,16 +118,16 @@ test("text is not shown to people it does not apply to", async ({ page }) => {
   await expect(page.locator(".line-item button", { hasText: "Take out of cart" })).toHaveCount(1);
 });
 
-test("the kitchen names the week once, and its shop button says which meals", async ({ page }) => {
+test("the kitchen names the week once, by its dates, and never as this week or next week", async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-18T12:00:00"));
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
-  await expect(page.locator("main h2").first()).toHaveText("This week");
+  await expect(page.locator("main h2").first()).toHaveText("Oct 12 – 18");
   await expect(page.locator("#weekLabel")).toHaveCount(1);
-  await expect(page.locator("main h3", { hasText: "This week" })).toHaveCount(0);
+  expect(await textOf(page, "main")).not.toMatch(/this week|next week/i);
   await page.click("#otherWeekLink");
-  await expect(page.locator("main h2").first()).toHaveText("Week of Sept 21, 2026 (past)");
+  await expect(page.locator("main h2").first()).toHaveText("Sept 21 – 27");
   await expect(page.locator("#shopWeek")).toHaveText("Shop these meals");
   await page.click("#backToThisWeek");
-  await expect(page.locator("#shopWeek")).toHaveText("Shop this week");
+  await expect(page.locator("main h2").first()).toHaveText("Oct 12 – 18");
 });

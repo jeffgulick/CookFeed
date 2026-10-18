@@ -87,7 +87,7 @@ test("the receipt leads to the plan and the week, with no Still deciding", async
   await page.locator(".receipt button", { hasText: "Add to my week" }).click();
   await expect(page.locator("#planWeekChoice input[value='2026-10-12']")).toBeChecked();
   await page.click("#planPlanSubmit");
-  await expect(page.locator(".toast")).toContainText("3 meals added to this week");
+  await expect(page.locator(".toast")).toContainText("3 meals added to the week of Oct 12 – 18");
 });
 
 test("an empty cart and an empty order history lead to the plans", async ({ page }) => {

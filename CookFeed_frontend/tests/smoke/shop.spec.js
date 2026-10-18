@@ -67,7 +67,7 @@ test("Add to my week puts a recipe on a day from today, and an owned plan on a w
   await expect(page.locator("#planDialog .people-input")).toHaveValue("6");
   await page.selectOption("#planDay", { label: "Tuesday, Oct 20" });
   await page.click("#planSubmit");
-  await expect(page.locator(".toast")).toContainText("added to next week");
+  await expect(page.locator(".toast")).toContainText("added to the week of Oct 19 – 25");
   await expect(page.locator(".toast a")).toHaveAttribute("href", "kitchen.html?week=2026-10-19");
 
   await page.goto("product.html?id=4");                                  // Family Week, owned
@@ -75,10 +75,10 @@ test("Add to my week puts a recipe on a day from today, and an owned plan on a w
   // On a Sunday this week is nearly over, so next week is offered first.
   await expect(page.locator("#planWeekChoice input[value='2026-10-19']")).toBeChecked();
   await page.click("#planPlanSubmit");
-  await expect(page.locator(".toast")).toContainText("6 meals added to next week");
+  await expect(page.locator(".toast")).toContainText("6 meals added to the week of Oct 19 – 25");
 
   await page.goto("kitchen.html?week=2026-10-19");
-  await expect(page.locator("#weekLabel")).toHaveText("Next week");
+  await expect(page.locator("#weekLabel")).toHaveText("Oct 19 – 25");
   await expect(page.locator("#weekEntries .week-row")).toHaveCount(7);
   await expect(page.locator("#weekEntries .week-row", { hasText: "Sheet-Pan" }).locator(".people-input")).toHaveValue("6");
 });

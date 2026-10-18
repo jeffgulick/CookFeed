@@ -75,12 +75,12 @@ function renderList() {
     }
     var ticked = ticking && have[line.key] === true;
     var name = escapeHtml(line.name);
-    html = html + "<div class='store-line" + (ticked ? " have" : "") + (editable ? "" : " read-only") + "' data-key='" + escapeHtml(line.key) +
+    html = html + "<div class='store-line" + (ticked ? " have" : "") + (editable ? "" : " read-only") + (ticking ? "" : " no-tick") + "' data-key='" + escapeHtml(line.key) +
       "' data-ingredient-id='" + line.ingredientId + "'>" +
       (ticking ? "<input type='checkbox' aria-label='In my basket: " + name + "'" + (ticked ? " checked" : "") + ">" : "") +
       "<span class='store-name'>" + name + "<small>for " + escapeHtml(line.recipes.join(", ")) + "</small></span>" +
-      "<span class='store-qty'>" + formatQuantity(line.amount) + " " + escapeHtml(line.unit) +
-      (editable ? " <button type='button' class='link-button skip-line' aria-label='Have it: " + name + "'>Have it</button>" : "") +
+      "<span class='store-qty'><span>" + formatQuantity(line.amount) + " " + escapeHtml(line.unit) + "</span>" +
+      (editable ? "<button type='button' class='link-button skip-line' aria-label='Have it: " + name + "'>Have it</button>" : "") +
       "</span></div>";
   });
   document.getElementById("storeList").innerHTML = html || "<p class='meta'>Nothing to buy yet." + (editable ? " Add recipes below." : "") + "</p>";
