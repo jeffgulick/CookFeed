@@ -78,8 +78,9 @@ test("an account's saves come newest first", () => {
 
 test("the cart holds one copy of each plan, starting from the seed", () => {
   const p = loadPrototype();
-  assert.deepEqual(plain(p.cartFor(ALEX).map((c) => c.productId)), [BREAD_BOX]);
-  assert.equal(p.addToCart(ALEX, BREAD_BOX), false);
+  assert.deepEqual(plain(p.cartFor(PRIYA).map((c) => c.productId)), [BREAD_BOX]);
+  assert.equal(p.addToCart(PRIYA, BREAD_BOX), false);
+  assert.equal(p.cartFor(ALEX).length, 0);
   assert.equal(p.addToCart(SAM, JAPAN), true);
   assert.equal(p.addToCart(SAM, JAPAN), false);
   assert.equal(p.cartFor(SAM).length, 1);

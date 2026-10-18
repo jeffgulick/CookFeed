@@ -5,8 +5,8 @@
 const base = require("@playwright/test");
 
 // The seeded accounts the specs sign in as (users.id in seed.sql).
-const GUEST = null, ALEX = 1, KENJI = 4, ADMIN = 6, SAM = 7;
-const ACCOUNTS = { guest: GUEST, alex: ALEX, kenji: KENJI, admin: ADMIN, sam: SAM };
+const GUEST = null, ALEX = 1, PRIYA = 2, KENJI = 4, ADMIN = 6, SAM = 7;
+const ACCOUNTS = { guest: GUEST, alex: ALEX, priya: PRIYA, kenji: KENJI, admin: ADMIN, sam: SAM };
 
 // Every page address the prototype has, including the not-found cases.
 const PAGES = [
@@ -62,4 +62,4 @@ async function textOf(page, selector) {
 }
 
 module.exports = { test, expect: base.expect, signInAs, brokenImages, contrast, textOf, PAGES, ACCOUNTS,
-  GUEST, ALEX, KENJI, ADMIN, SAM };
+  GUEST, ALEX, PRIYA, KENJI, ADMIN, SAM };

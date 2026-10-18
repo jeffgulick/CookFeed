@@ -1,7 +1,7 @@
 /* The marketplace rules of DesignDocument section 3, as each seeded account sees them on screen. The rule
    logic itself is unit-tested in tests/rules.test.js; these check that every page shows what it decides. */
 
-const { test, expect, signInAs, textOf, GUEST, ALEX, KENJI, ADMIN } = require("./support");
+const { test, expect, signInAs, textOf, GUEST, ALEX, PRIYA, KENJI, ADMIN } = require("./support");
 
 test.describe("a signed-out visitor", () => {
   test.beforeEach(async ({ page }) => { await signInAs(page, GUEST); });
@@ -51,10 +51,11 @@ test.describe("a signed-out visitor", () => {
 test.describe("Alex, a home cook with seeded orders", () => {
   test.beforeEach(async ({ page }) => { await signInAs(page, ALEX); });
 
-  test("starts with The Bread Box in the cart", async ({ page }) => {
+  test("starts with an empty cart, and may buy again the plan whose order was cancelled", async ({ page }) => {
     await page.goto("cart.html");
-    await expect(page.locator("#cartLines")).toContainText("The Bread Box");
-    await expect(page.locator("#cartCount")).toHaveText("1");
+    await expect(page.locator("#cartCount")).toHaveText("0");
+    await page.goto("product.html?id=2");
+    await expect(page.locator("#buyArea .buy-button")).toHaveCount(1);
   });
 
   test("sees three orders, one of them cancelled", async ({ page }) => {
@@ -78,6 +79,18 @@ test.describe("Alex, a home cook with seeded orders", () => {
     await expect(page.locator("#ownedNote")).toHaveText("Yours through Roman Pasta Collection");
     await page.goto("kitchen.html");
     await expect(page.locator("#savedRecipes .recipe-card")).toHaveCount(6);
+  });
+});
+
+test.describe("Priya, a home cook with The Bread Box in her cart", () => {
+  test.beforeEach(async ({ page }) => { await signInAs(page, PRIYA); });
+
+  test("starts with it in the cart, and the plan says so", async ({ page }) => {
+    await page.goto("cart.html");
+    await expect(page.locator("#cartLines")).toContainText("The Bread Box");
+    await expect(page.locator("#cartCount")).toHaveText("1");
+    await page.goto("product.html?id=2");
+    expect(await textOf(page, "#buyArea")).toMatch(/^In your cart/);
   });
 });
 

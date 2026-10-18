@@ -177,7 +177,7 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
 
 - **Each account starts from the database.** `js/db.js` copies the tables people change (saves,
   carts, orders, order lines, the order's recipe snapshot, reviews) from the seed into one
-  `localStorage` key, `cookfeed.db`. Signing in as Alex shows his cart, saves, orders and review;
+  `localStorage` key, `cookfeed.db`. Signing in as Alex shows his saves, orders and review, and Priya's cart has The Bread Box in it;
   what you do is kept per account on top. Reset prototype data, on the sign-in page, puts the seed
   back, and so does regenerating `seed-data.js`.
 - **The rules are in one file.** `js/rules.js` answers who may shop, buy, open, save and review.

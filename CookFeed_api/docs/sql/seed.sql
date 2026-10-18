@@ -444,9 +444,10 @@ INSERT INTO meal_plan_entries (id, meal_plan_id, recipe_id, planned_date, slot, 
   (4, 1, 9, '2026-09-21', 'Breakfast', NULL);
 
 -- Cart
--- Alex added The Bread Box back to his cart the day after cancelling his order for it (order 3).
+-- Priya has The Bread Box in her cart, not yet bought. Alex's cart is empty: his cancelled order for The
+-- Bread Box (order 3) is history, and nothing in it is his.
 INSERT INTO cart_items (user_id, product_id, added_at) VALUES
-  (1, 2, '2026-09-06 12:00:00+00');
+  (2, 2, '2026-09-06 12:00:00+00');
 
 -- Orders. Priya and Dan each buy "Three Weeknights in Japan" so that every reviewer below owns the product;
 -- Dan is a creator buying another creator's work, which the model allows. No order contains the buyer's own product.

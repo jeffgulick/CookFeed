@@ -659,7 +659,7 @@ window.COOKFEED_SEED = {
     ],
     "cartItems": [
         {
-            "userId": 1,
+            "userId": 2,
             "addedAt": "2026-09-06T12:00:00+00:00",
             "productId": 2
         }

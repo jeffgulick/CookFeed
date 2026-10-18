@@ -99,7 +99,8 @@ test("the buy button's state for each kind of viewer", () => {
     [KENJI, JAPAN, "yourOwn"],               // a creator cannot buy their own plan (3.1)
     [KENJI, ROMAN_PASTA, "buy"],             // but can buy another creator's
     [ALEX, JAPAN, "owned"],
-    [ALEX, BREAD_BOX, "inCart"],             // re-added after the cancelled order
+    [ALEX, BREAD_BOX, "buy"],                // his order for it was cancelled, so he may buy it again
+    [PRIYA, BREAD_BOX, "inCart"],
     [SAM, JAPAN, "buy"],
     [SAM, SUMMER_GRILLING, "notForSale"],    // retired
     [DAN, SUMMER_GRILLING, "yourOwn"],
