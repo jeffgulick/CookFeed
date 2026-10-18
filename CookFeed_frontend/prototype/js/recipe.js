@@ -132,7 +132,7 @@ function renderSaveState() {
   var user = currentUser();
   var area = document.getElementById("saveArea");
 
-  document.getElementById("saveCount").textContent = saveCount(currentRecipe.id);
+  document.getElementById("savedBy").textContent = savedByText(saveCount(currentRecipe.id));
 
   if (user === null) {
     area.innerHTML = signInLink("save");
