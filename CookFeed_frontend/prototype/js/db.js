@@ -754,7 +754,7 @@ function allOrders() {
 }
 
 /* ---------- the week: meal_plans and meal_plan_entries (design section 3.9) ----------
-   A cook's plan for one week: recipes on dates and meals, each optionally rescaled. Shop this week puts a
+   A cook's plan for one week: recipes on dates and meals, each optionally rescaled. Shop these meals puts a
    week on the shopping list (shopWeek below), which is what gets shopped. */
 
 var SLOT_ORDER = ["Breakfast", "Lunch", "Dinner", "Snack"];
@@ -795,14 +795,11 @@ function todayIso(today) {
   return today || isoDate(new Date());
 }
 
-/* A week named for the cook: "This week", "Next week", or "Week of Sept 21, 2026", marked "(past)" once it
-   is over, so an old week is never mistaken for the one being cooked. */
-function weekLabel(weekStart, today) {
-  var current = weekStartOf(parseIsoDate(todayIso(today)));
-  if (weekStart === current) { return "This week"; }
-  if (weekStart === addDays(current, 7)) { return "Next week"; }
-  var text = "Week of " + formatShortDate(weekStart) + ", " + parseIsoDate(weekStart).getFullYear();
-  return weekStart < current ? text + " (past)" : text;
+/* A week named by its dates: "Oct 12 \u2013 18", or "Sept 28 \u2013 Oct 4" when it runs into the next month. */
+function weekLabel(weekStart) {
+  var end = addDays(weekStart, 6);
+  var sameMonth = parseIsoDate(end).getMonth() === parseIsoDate(weekStart).getMonth();
+  return formatShortDate(weekStart) + " \u2013 " + (sameMonth ? String(parseIsoDate(end).getDate()) : formatShortDate(end));
 }
 
 /* When this week is empty, the week the cook did plan: the nearest one coming up, or else the latest past one.
@@ -1063,7 +1060,7 @@ function buildShoppingList(entries, people) {
    A shopping list (a row of shopping_trips) is what a cook buys on one visit to the store: the recipes they mean
    to cook, each for a number of people (shopping_trip_items), and where it is in its life: Building, Shopping
    (in the store), Sent (to Instacart or Favor, read-only from then on), or Done, which keeps it as history. A
-   cook has one list at a time: Shop this recipe, Shop this plan and Shop this week add straight to the list
+   cook has one list at a time: Shop this recipe, Shop this plan and Shop these meals add straight to the list
    being built or shopped, and make it when there is none. Saving a recipe or buying a plan puts nothing on a
    list. The lines are computed from the items (Q8's arithmetic), never stored; an ingredient the cook already
    has is skipped (shopping_trip_skips). */

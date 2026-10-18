@@ -1,5 +1,5 @@
 /* My kitchen and the shopping list (design section 3.9): the week first, opened on the current week; one
-   shopping list at a time, filled by Shop this week; the cook's plans and saved recipes; and past lists. A
+   shopping list at a time, filled by Shop these meals; the cook's plans and saved recipes; and past lists. A
    list's page shows only the buttons that fit where it is: building, shopping, sent, or done. The tests pin
    the date, because which week is "this week" depends on it: Sept 23, 2026 is in Alex's seeded week. */
 
@@ -24,12 +24,11 @@ test("the kitchen and a list are for signed-in shoppers only", async ({ page }) 
   await expect(page.locator("main")).toContainText("Admin accounts do not");
 });
 
-test("the kitchen opens on this week, then the shopping list, plans, saved recipes and past lists", async ({ page }) => {
+test("the kitchen opens on the current week, named by its dates, then the shopping list, plans, saved recipes and past lists", async ({ page }) => {
   await page.clock.setFixedTime(IN_ALEXS_WEEK);
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
-  await expect(page.locator("main h2")).toHaveText(["This week", "Your shopping list", "Your plans", "Saved recipes", "Past lists"]);
-  await expect(page.locator("#weekLabel")).toHaveText("This week");
+  await expect(page.locator("main h2")).toHaveText(["Sept 21 – 27", "Your shopping list", "Your plans", "Saved recipes", "Past lists"]);
   await expect(page.locator("#weekEntries .week-row")).toHaveCount(4);
   await expect(page.locator("#weekEntries .week-row", { hasText: "Chicken Teriyaki" }).locator("input")).toHaveValue("4");
   await expect(page.locator("#backToThisWeek")).toBeHidden();
@@ -39,29 +38,29 @@ test("the kitchen opens on this week, then the shopping list, plans, saved recip
   await expect(page.locator("#tripRows")).toContainText("No past lists yet");
 
   await page.click("#nextWeek");
-  await expect(page.locator("#weekLabel")).toHaveText("Next week");
+  await expect(page.locator("#weekLabel")).toHaveText("Sept 28 – Oct 4");
   await expect(page.locator("#backToThisWeek")).toBeVisible();
   await page.click("#backToThisWeek");
-  await expect(page.locator("#weekLabel")).toHaveText("This week");
+  await expect(page.locator("#weekLabel")).toHaveText("Sept 21 – 27");
   await page.click("#prevWeek");
-  await expect(page.locator("#weekLabel")).toHaveText("Week of Sept 14, 2026 (past)");
+  await expect(page.locator("#weekLabel")).toHaveText("Sept 14 – 20");
 });
 
 test("an empty week points to the week that has meals", async ({ page }) => {
   await page.clock.setFixedTime(LATER);
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
-  await expect(page.locator("#weekLabel")).toHaveText("This week");
+  await expect(page.locator("#weekLabel")).toHaveText("Oct 12 – 18");
   await expect(page.locator("#weekEntries .week-row")).toHaveCount(0);
   await expect(page.locator("#shopWeek")).toBeDisabled();
-  await expect(page.locator("#otherWeekLink")).toHaveText("Week of Sept 21, 2026 (past)");
+  await expect(page.locator("#otherWeekLink")).toHaveText("Sept 21 – 27");
   await page.click("#otherWeekLink");
-  await expect(page.locator("#weekLabel")).toHaveText("Week of Sept 21, 2026 (past)");
+  await expect(page.locator("#weekLabel")).toHaveText("Sept 21 – 27");
   await expect(page.locator("#weekEntries .week-row")).toHaveCount(4);
   await expect(page.locator("#otherWeekLink")).toBeHidden();
 });
 
-test("Shop this week adds the week to the one shopping list, with Undo and a link to the list", async ({ page }) => {
+test("Shop these meals adds the week to the one shopping list, with Undo and a link to the list", async ({ page }) => {
   await page.clock.setFixedTime(IN_ALEXS_WEEK);
   await signInAs(page, ALEX);
   await page.goto("kitchen.html");
@@ -106,7 +105,7 @@ test("Plan it puts one recipe on a day and meal of the week shown, for the peopl
   await page.locator("#planDialog .people-input").fill("3");
   await page.click("#planSubmit");
   await expect(page.locator("#planDialog")).toBeHidden();
-  await expect(page.locator(".toast")).toContainText("added to this week");
+  await expect(page.locator(".toast")).toContainText("added to the week of Sept 21 – 27");
   const row = page.locator("#weekEntries .week-row", { hasText: "Pancakes" });
   await expect(row).toContainText("Breakfast");
   await expect(row.locator(".people-input")).toHaveValue("3");

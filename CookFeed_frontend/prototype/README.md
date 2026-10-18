@@ -215,7 +215,9 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
 ## Project Deliverable 2: layout and accessibility
 
 - **One palette.** Every color in `css/styles.css` is a named variable at the top of the file.
-- **Phones.** Below 760px the nav folds into a Menu button (Escape closes it), and the shopping
+- **Phones.** Below 760px the nav folds into a hamburger button at the top left, before the brand (Escape
+  closes it); form fields keep 16px text so a phone never zooms in; a meal on the week and a recipe on a list
+  stack so the name gets the row; and the shopping
   tables move the aisle under each ingredient, so no page is wider than a 375px screen.
 - **Cookfeed's own confirmation dialog.** Removing from the cart, emptying it, placing an order,
   posting or removing a review, and resetting the data ask in a styled `<dialog>`
@@ -242,9 +244,8 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
 - **One list at a time.** Shop this recipe, Shop this plan (what you bought, not the plan as it is
   now) and Shop this week add straight to your shopping list, and start it if you have none. A message
   says what was added, with Undo and Open list, and stays until you close it.
-- **My kitchen** runs in the order a cook uses it: the week (opened on this week, named "This week",
-  "Next week" or "Week of Sept 21, 2026 (past)"), the shopping list, your plans, your saved recipes,
-  and past lists. Plan it puts one recipe on a day; Add to my week does the same from a recipe page,
+- **My kitchen** runs in the order a cook uses it: the week (opened on this week, named by its dates,
+  such as "Oct 12 – 18"), the shopping list, your plans, your saved recipes, and past lists. Plan it puts one recipe on a day; Add to my week does the same from a recipe page,
   or puts a whole owned plan on this week or next. Any meal on the week moves to another day, meal or
   number of people with Move, or by dragging its handle onto a spot for a day and meal (mouse or touch;
   Enter on the handle opens Move).

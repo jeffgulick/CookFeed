@@ -2,7 +2,7 @@
 
    In the order a cook uses it: the week they are cooking (opened on the current week), their one shopping
    list, the plans they bought, the recipes they saved, and their past lists. Saving a recipe or buying a plan
-   puts nothing on a list: Shop this week, or Shop this on a recipe or plan page, adds to the list, and the
+   puts nothing on a list: Shop these meals, or Shop this on a recipe or plan page, adds to the list, and the
    list opens on its own page (list.html), where it is ticked off, edited, sent, and marked done. */
 
 var kitchenUser = null;
@@ -16,8 +16,7 @@ function thisWeek() {
 
 function renderOwnedPlans() {
   var owned = ownedProductsFor(kitchenUser);
-  var label = weekLabel(currentWeek);
-  var week = label === "This week" || label === "Next week" ? label.toLowerCase() : "the week shown";
+  var week = weekLabel(currentWeek);
   document.getElementById("ownedPlans").innerHTML = owned.map(function (o) {
     return "<div class='card product-tile plan-card' data-product-id='" + o.product.id + "'>" +
       "<img src='" + escapeHtml(o.product.coverImageUrl || "") + "' alt=''>" +
@@ -63,14 +62,8 @@ function renderWeek() {
   var onThisWeek = currentWeek === thisWeek();
 
   document.getElementById("weekLabel").textContent = weekLabel(currentWeek);
-  document.getElementById("weekDates").textContent = formatShortDate(currentWeek) + " to " + formatShortDate(addDays(currentWeek, 6));
   document.getElementById("backRow").hidden = onThisWeek;
-  var shop = document.getElementById("shopWeek");
-  // The heading names the week, so the button needs no date: "Shop this week", "Shop next week", or, for any
-  // other week, "Shop these meals".
-  var label = weekLabel(currentWeek);
-  shop.textContent = label === "This week" || label === "Next week" ? "Shop " + label.toLowerCase() : "Shop these meals";
-  shop.disabled = entries.length === 0;
+  document.getElementById("shopWeek").disabled = entries.length === 0;
 
   // This week is empty but another week has meals: say where they are.
   var other = onThisWeek ? otherPlannedWeek(kitchenUser.id) : null;
@@ -213,7 +206,7 @@ function renderActiveList() {
   var area = document.getElementById("activeList");
   if (trip === null) {
     area.innerHTML = "<p><strong>No shopping list yet.</strong></p>" +
-      "<p class='meta'>Press <strong>Shop this week</strong> above, <strong>Shop this recipe</strong> on a recipe, or " +
+      "<p class='meta'>Press <strong>Shop these meals</strong> under your week, <strong>Shop this recipe</strong> on a recipe, or " +
       "<strong>Shop this plan</strong> on a plan you own, and it goes on your list.</p>" +
       "<button type='button' class='btn-secondary' id='startList'>Start a shopping list</button>";
     return;

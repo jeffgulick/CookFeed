@@ -564,7 +564,7 @@ function wirePeopleBoxes(container, onPeople, keepBad) {
 }
 
 /* ---------- the menu on small screens ----------
-   On a phone the nav's links fold into a Menu button (see "small screens" in styles.css). The button
+   On a phone the nav's links fold into a hamburger button at the top left (see "small screens" in styles.css). The button
    is hidden in the HTML and shown here, so without JavaScript the links simply stay visible. */
 
 function setUpMenu() {
@@ -577,7 +577,7 @@ function setUpMenu() {
   function setOpen(open) {
     nav.classList.toggle("open", open);
     button.setAttribute("aria-expanded", String(open));
-    button.textContent = open ? "Close" : "Menu";
+    button.setAttribute("aria-label", open ? "Close menu" : "Menu");
   }
 
   nav.classList.add("has-menu");
@@ -749,10 +749,9 @@ function tellShopped(result, onUndo) {
 
 /* ---------- 3.9: putting one recipe, or one owned plan, on a week ---------- */
 
-/* "this week", "next week", or "the week of Nov 2, 2026", for a sentence. */
+/* "the week of Oct 12 \u2013 18", for a sentence. */
 function weekPhrase(weekStart) {
-  var label = weekLabel(weekStart);
-  return label === "This week" || label === "Next week" ? label.toLowerCase() : "the " + label.charAt(0).toLowerCase() + label.slice(1);
+  return "the week of " + weekLabel(weekStart);
 }
 
 /* "Today, Sunday, Oct 18" or "Saturday, Sept 26". */
@@ -889,7 +888,7 @@ function openPlanProductDialog(user, product) {
   var chosen = defaultPlanWeek();
   document.getElementById("planWeekChoice").innerHTML = "<legend>Which week?</legend>" + [current, addDays(current, 7)].map(function (week) {
     return "<label class='radio'><input type='radio' name='planWeek' value='" + week + "'" + (week === chosen ? " checked" : "") + "> " +
-      weekLabel(week) + " <span class='meta'>(from " + formatShortDate(week) + ")</span></label>";
+      weekLabel(week) + "</label>";
   }).join("");
   dialog.showModal();
 }

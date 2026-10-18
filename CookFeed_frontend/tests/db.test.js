@@ -410,13 +410,13 @@ test("Shop this plan buys what the cook's purchase holds, not the plan as it is 
   assert.deepEqual(plain(p.tripItems(shopped.trip.id).map((i) => i.recipeId).sort()), [1, 2, 3, 4]);
 });
 
-test("weeks are named for the cook: this week, next week, or a dated week marked past (3.9)", () => {
+test("weeks are named by their dates, across a month too, and an empty week points to one with meals (3.9)", () => {
   const p = loadPrototype();
   const today = "2026-10-18";                                       // a Sunday, in the week of Oct 12
-  assert.equal(p.weekLabel("2026-10-12", today), "This week");
-  assert.equal(p.weekLabel("2026-10-19", today), "Next week");
-  assert.equal(p.weekLabel("2026-09-21", today), "Week of Sept 21, 2026 (past)");
-  assert.equal(p.weekLabel("2026-11-02", today), "Week of Nov 2, 2026");
+  assert.equal(p.weekLabel("2026-10-12"), "Oct 12 – 18");
+  assert.equal(p.weekLabel("2026-10-19"), "Oct 19 – 25");
+  assert.equal(p.weekLabel("2026-09-28"), "Sept 28 – Oct 4");
+  assert.equal(p.weekLabel("2026-12-28"), "Dec 28 – Jan 3");
   // This week is empty: point to the week that has meals, an upcoming one before a past one.
   assert.equal(p.otherPlannedWeek(ALEX, today), "2026-09-21");
   p.addPlanEntry(ALEX, "2026-10-26", TERIYAKI, "2026-10-27", "Dinner", null);

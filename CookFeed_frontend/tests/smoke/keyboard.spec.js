@@ -14,8 +14,11 @@ test.describe("the phone menu", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator("#navLinks")).toBeVisible();
     await expect(page.locator("#menuButton")).toHaveAttribute("aria-expanded", "true");
-    await page.keyboard.press("Tab");
-    await expect(page.locator(":focus")).toHaveText("Discover");
+    // The hamburger comes first, at the top left: Tab passes the brand and the cart, then reaches the links.
+    for (const stop of ["Cookfeed", /^Cart/, "Discover"]) {
+      await page.keyboard.press("Tab");
+      await expect(page.locator(":focus")).toHaveText(stop);
+    }
     await page.keyboard.press("Escape");
     await expect(page.locator("#navLinks")).toBeHidden();
     await expect(page.locator("#menuButton")).toBeFocused();

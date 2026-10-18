@@ -59,7 +59,7 @@ test("a plan put on the week twice, or double-clicked, adds its meals once", asy
   const card = page.locator("#ownedPlans .plan-card", { hasText: "Family Week" });
   await card.locator(".plan-product").dblclick();
   await expect(page.locator("#weekEntries .week-row")).toHaveCount(6);
-  await expect(card).toContainText("On next week");
+  await expect(card).toContainText("On Sept 28 – Oct 4");
   await expect(card.locator(".plan-product")).toHaveCount(0);
 });
 
