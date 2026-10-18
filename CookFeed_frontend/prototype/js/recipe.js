@@ -213,7 +213,7 @@ function renderHeader() {
   } else {
     crumb.innerHTML = "<a href='creator.html?handle=" + encodeURIComponent(creator.handle) + "'>" +
       escapeHtml(creator.displayName) + "</a> &rsaquo; Recipes";
-    pill.textContent = currentRecipe.isPublished ? "Recipe" : "Draft";
+    pill.textContent = currentRecipe.isPublished || !isMyRecipe(user) ? "Recipe" : "Draft";
     foot.innerHTML = "<p><strong>More from " + escapeHtml(creator.displayName) + "</strong></p>" +
       "<p><a href='creator.html?handle=" + encodeURIComponent(creator.handle) + "'>See every recipe from " +
       escapeHtml(creator.handle) + " &rarr;</a></p>";
@@ -221,16 +221,20 @@ function renderHeader() {
 
   var note = document.getElementById("ownedNote");
   var through = currentRecipe.visibility === "ProductOnly" ? ownedThrough(user, currentRecipe.id) : null;
-  if (!currentRecipe.isPublished) {
+  if (!currentRecipe.isPublished && isMyRecipe(user)) {
     note.textContent = "A draft. Only you can see it until you publish it.";
     note.hidden = false;
   } else if (through !== null) {
-    note.textContent = "Yours through " + through;
+    note.textContent = "Yours through " + through + (currentRecipe.isPublished ? "" : ". It is no longer in the store; you keep it.");
     note.hidden = false;
   } else if (currentRecipe.visibility === "ProductOnly" && user !== null && currentRecipe.creatorId === user.id) {
     note.textContent = "Only buyers of your plans can open this recipe.";
     note.hidden = false;
   }
+}
+
+function isMyRecipe(user) {
+  return user !== null && currentRecipe.creatorId === user.id;
 }
 
 /* The active products whose recipes include this one, for the locked notice. */

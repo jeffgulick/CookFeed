@@ -24,6 +24,8 @@ var REVIEW_GATES = {
   noShop: "Admin accounts do not write reviews. You can hide a review below, or restore one you hid; hidden reviews show only to admins.",
   yourOwn: "This is your own %noun%. Creators cannot review their own.",
   alreadyReviewed: "You have reviewed this %noun%. Thank you! You can remove your review above and write a new one.",
+  hiddenReview: "Cookfeed hid your review, so other cooks do not see it and it is not counted in the rating.",
+  refundedReview: "Your order for this %noun% was refunded, so your review is not counted. You can remove it above.",
   mustBuy: "Only cooks who bought this %noun% can review it, so every review comes from someone who cooked it."
 };
 
@@ -42,6 +44,11 @@ function renderFormGate() {
   if (state === "signIn") {
     gate.innerHTML = signInLink("write a review") + ". Only cooks who bought this " + productNoun(product) + " can review it.";
   } else if (state !== "canReview") {
+    // A review already written says what the cook can still do with it: nothing once Cookfeed hid it,
+    // and only remove it once the order was refunded (writing a new one needs a Paid order, 3.5).
+    var mine = state === "alreadyReviewed" ? reviewBy(currentUser().id, product.id) : null;
+    if (mine !== null && mine.hiddenAt !== null) { state = "hiddenReview"; }
+    else if (mine !== null && !ownsProduct(currentUser(), product.id)) { state = "refundedReview"; }
     gate.textContent = REVIEW_GATES[state].replace("%noun%", productNoun(product));
   } else {
     document.getElementById("postingAs").textContent = currentUser().displayName;
@@ -113,7 +120,7 @@ function renderReviews() {
     html = html + "<span class='review-date'>" + formatDate(review.createdAt) + "</span>";
     html = html + "</div>";
     html = html + "<p>" + escapeHtml(review.body) + "</p>";
-    if (isMine(review)) {
+    if (isMine(review) && !hidden) {
       html = html + "<button type='button' class='link-button remove-review' data-id='" +
                     review.id + "'>Remove my review</button>";
     }

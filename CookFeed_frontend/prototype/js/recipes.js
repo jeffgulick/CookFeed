@@ -41,12 +41,14 @@ function renderRecipes() {
     buttons[i].setAttribute("aria-pressed", String(active));
   }
 
+  // The cards are new on every search and sort, so their previews are wired again. The Save buttons are not:
+  // one listener on the grid serves every card, and wiring it again would answer one press more than once.
   wirePreviews(document.getElementById("freeRecipes"));
-  wireSaveButtons(document.getElementById("freeRecipes"), null);
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   renderRecipes();
+  wireSaveButtons(document.getElementById("freeRecipes"), null);
   document.getElementById("recipeSearch").addEventListener("input", renderRecipes);
   document.querySelector(".toolbar").addEventListener("click", function (event) {
     var button = event.target.closest("[data-sort]");

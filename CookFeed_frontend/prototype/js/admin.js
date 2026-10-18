@@ -237,8 +237,8 @@ function onConsoleClicked(event) {
     var recipe = rowById("recipes", id);
     var buyers = recipeBuyers(id);
     message = publish ? "Put \"" + recipe.title + "\" back for everyone?"
-                      : "Take \"" + recipe.title + "\" down? Only its creator will see it" +
-                        (buyers ? ", and the " + plural(buyers, "cook who bought it loses", "cooks who bought it lose") + " it too" : "") +
+                      : "Take \"" + recipe.title + "\" down? It leaves the store" +
+                        (buyers ? "; the " + plural(buyers, "cook who bought it keeps", "cooks who bought it keep") + " it" : "") +
                         ". Any plan it is in stops selling. Its creator cannot put it back.";
     label = publish ? "Put back" : "Take down";
     apply = function () {

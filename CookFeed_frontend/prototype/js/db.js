@@ -488,11 +488,13 @@ function addReview(userId, productId, rating, recommends, body) {
   return withReviewer(review);
 }
 
-/* Only the author removes a review. Returns whether one was removed. */
+/* Only the author removes a review, and not one the admin hid: removing it would free the author to post it
+   again, undoing the admin's decision (3.8). Returns whether one was removed. */
 function removeReview(userId, reviewId) {
   var tables = db();
   var before = tables.reviews.length;
-  tables.reviews = tables.reviews.filter(function (r) { return !(r.id === reviewId && r.userId === userId); });
+  tables.reviews = tables.reviews.filter(function (r) { return !(r.id === reviewId && r.userId === userId && r.hiddenAt === null); });
+  if (tables.reviews.length === before) { return false; }
   commit();
   return tables.reviews.length < before;
 }
@@ -718,8 +720,8 @@ function adminSetProductActive(adminId, productId, active) {
   return "";
 }
 
-/* The admin takes a recipe down, for everyone but its creator (buyers included: moderation), or puts back
-   one the admin took down. The admin never publishes a creator's draft. Returns "" when done, or why not. */
+/* The admin takes a recipe down, out of the store for everyone but its creator and the cooks who bought it
+   (3.3: buyers keep it through their snapshots), or puts back one the admin took down. The admin never publishes a creator's draft. Returns "" when done, or why not. */
 function adminSetRecipePublished(adminId, recipeId, published) {
   var recipe = rowById("recipes", recipeId);
   if (recipe === null || !isAdmin(userById(adminId))) { return "Only the admin can do that."; }

@@ -453,6 +453,25 @@ test("a cook owns one entry per plan bought, with the purchase snapshot (3.3)", 
   assert.equal(p.ownedProductsFor(null).length, 0);
 });
 
+test("moderation holds: a hidden review cannot be removed and posted again, and buyers keep a recipe the admin took down (3.3, 3.8)", () => {
+  const p = loadPrototype();
+  const alex = p.userById(ALEX);
+  const review = p.reviewBy(ALEX, JAPAN);
+  p.setReviewHidden(ADMIN, review.id, true);
+  assert.equal(p.removeReview(ALEX, review.id), false);
+  assert.equal(p.reviewState(alex, JAPAN), "alreadyReviewed");
+  assert.equal(p.addReview(ALEX, JAPAN, 5, true, "Trying to post it again after it was hidden."), null);
+
+  assert.equal(p.adminSetRecipePublished(ADMIN, TERIYAKI, false), "");
+  const teriyaki = p.rowById("recipes", TERIYAKI);
+  assert.equal(p.canOpenRecipe(alex, teriyaki), true);              // through his Three Weeknights snapshot
+  assert.equal(p.canPlan(alex, teriyaki), true);
+  assert.equal(p.canOpenRecipe(p.userById(SAM), teriyaki), false);
+  assert.equal(p.canSave(p.userById(SAM), teriyaki), false);
+  assert.equal(p.canOpenRecipe(null, teriyaki), false);
+  assert.equal(p.isForSale(p.rowById("products", JAPAN)), false);
+});
+
 test("data safety: a stale copy refuses to write, ids are never reused, and the writes refuse what the rules refuse", () => {
   // Two tabs read the data; the second saves first. The first tab's write is refused, not saved over it.
   const first = loadPrototype();

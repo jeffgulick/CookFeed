@@ -2,7 +2,7 @@
    cannot undo the admin, nothing goes on sale that a buyer could not open, and the rating counts only
    reviews by cooks who still own the plan. */
 
-const { test, expect, signInAs, ALEX, KENJI, ADMIN } = require("./support");
+const { test, expect, signInAs, textOf, ALEX, KENJI, ADMIN, SAM } = require("./support");
 const DAN = 5;
 
 const as = (page, id) => page.evaluate((userId) => localStorage.setItem("cookfeed.userId", String(userId)), id);
@@ -15,12 +15,12 @@ test("a recipe in a plan, or one cooks bought, stays published: the studio says 
   await expect(teriyaki.locator(".action-note")).toContainText("Three Weeknights in Japan");
 });
 
-test("the admin takes a recipe down for everyone; its plan stops selling and the creator cannot put it back", async ({ page }) => {
+test("the admin takes a recipe down for everyone but its buyers; its plan stops selling and the creator cannot put it back", async ({ page }) => {
   await signInAs(page, ADMIN);
   await page.goto("admin.html");
   const row = page.locator("#recipeRows tr", { hasText: "Chicken Teriyaki" });
   await row.locator("[data-action='recipe']").click();
-  await expect(page.locator("#confirmMessage")).toContainText("bought it lose");
+  await expect(page.locator("#confirmMessage")).toContainText("bought it keep");
   await page.click("#confirmOk");
   await expect(row.locator("[data-action='recipe']")).toHaveText("Put back");
   await expect(page.locator("#productRows tr", { hasText: "Three Weeknights" })).toContainText("Not for sale");
@@ -79,7 +79,7 @@ test("a refunded buyer's review stops counting; the author still sees it and can
   await expect(page.locator(".remove-review")).toHaveCount(1);
 });
 
-test("the author of a hidden review sees it, marked, and can remove it and write a new one", async ({ page }) => {
+test("the author of a hidden review sees it, marked, and cannot remove it and post it again", async ({ page }) => {
   await signInAs(page, ADMIN);
   await page.goto("admin.html");
   await page.locator("#reviewRows tr", { hasText: "Dan" }).filter({ hasText: "Three Weeknights" }).locator("[data-action='review']").click();
@@ -88,9 +88,10 @@ test("the author of a hidden review sees it, marked, and can remove it and write
   await as(page, DAN);
   await page.goto("reviews.html?product=3");
   await expect(page.locator("#reviewList")).toContainText("Hidden by Cookfeed");
-  await page.click(".remove-review");
-  await page.click("#confirmOk");
-  await expect(page.locator("#reviewList")).not.toContainText("Hidden by Cookfeed");
+  await expect(page.locator(".remove-review")).toHaveCount(0);
+  await expect(page.locator("#reviewForm")).toBeHidden();
+  await expect(page.locator("#reviewGate")).toContainText("Cookfeed hid your review");
+  await expect(page.locator("#reviewGate")).not.toContainText("write a new one");
 });
 
 test("making a saved recipe premium asks first and says who loses it", async ({ page }) => {
@@ -102,4 +103,33 @@ test("making a saved recipe premium asks first and says who loses it", async ({ 
   await expect(page.locator("#confirmMessage")).toContainText("who saved it lose it");
   await page.click("#confirmCancel");
   await expect(page.locator("#recipeRows tr", { hasText: "Tamagoyaki" })).toContainText("Free");
+});
+
+test("buyers keep a recipe the admin took down: it opens, their plan shows it, and nobody else finds it", async ({ page }) => {
+  await signInAs(page, ADMIN);
+  await page.evaluate(() => adminSetRecipePublished(6, 5, false));     // Chicken Teriyaki, in Three Weeknights in Japan
+  await as(page, ALEX);
+  await page.goto("recipe.html?id=5");
+  await expect(page.locator("main h1")).toHaveText("Chicken Teriyaki, the Real Way");
+  await expect(page.locator("#ownedNote")).toContainText("Yours through Three Weeknights in Japan");
+  await expect(page.locator("#ownedNote")).not.toContainText("draft");
+  await page.goto("product.html?id=3");
+  await expect(page.locator("#planRecipes .recipe-card.locked")).toHaveCount(0);
+  await page.goto("kitchen.html");
+  await page.locator("#savedRecipes .recipe-card", { hasText: "Chicken Teriyaki" }).locator("a", { hasText: "Cook it" }).click();
+  await expect(page.locator("main h1")).toHaveText("Chicken Teriyaki, the Real Way");
+  await as(page, SAM);
+  await page.goto("recipe.html?id=5");
+  expect(await textOf(page, "main h1")).toBe("Recipe not found");
+});
+
+test("after a refund, the review page offers only what the cook can still do", async ({ page }) => {
+  await signInAs(page, ADMIN);
+  await page.evaluate(() => setOrderStatus(6, 1, "Refunded", "test"));  // Alex's order with Three Weeknights in Japan
+  await as(page, ALEX);
+  await page.goto("reviews.html?product=3");
+  await expect(page.locator(".review", { hasText: "Not counted: order refunded" })).toHaveCount(1);
+  await expect(page.locator("#reviewGate")).toContainText("refunded");
+  await expect(page.locator("#reviewGate")).not.toContainText("write a new one");
+  await expect(page.locator(".remove-review")).toHaveCount(1);         // it is still his to take down
 });
