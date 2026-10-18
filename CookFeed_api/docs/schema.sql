@@ -143,7 +143,8 @@ CREATE TABLE meal_plans (
     user_id    integer NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     name       varchar(80) NOT NULL,
     week_start date NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now()
+    created_at timestamptz NOT NULL DEFAULT now(),
+    shopped_at timestamptz                                   -- when the cook marked the week's list shopped (§3.9)
 );
 CREATE UNIQUE INDEX ix_meal_plans_user_id_week_start ON meal_plans (user_id, week_start);
 

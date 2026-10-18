@@ -673,6 +673,7 @@ window.COOKFEED_SEED = {
             "name": "Week of Sept 21",
             "userId": 1,
             "createdAt": "2026-09-19T12:00:00+00:00",
+            "shoppedAt": null,
             "weekStart": "2026-09-21"
         }
     ],

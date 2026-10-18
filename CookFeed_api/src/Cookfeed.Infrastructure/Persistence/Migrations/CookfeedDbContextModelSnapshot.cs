@@ -210,6 +210,10 @@ namespace Cookfeed.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(80)")
                         .HasColumnName("name");
 
+                    b.Property<DateTimeOffset?>("ShoppedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("shopped_at");
+
                     b.Property<int>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("user_id");
