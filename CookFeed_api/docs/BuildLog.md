@@ -50,6 +50,7 @@ in the [README](../README.md#deliverable-2).
 | Browse pages, the kitchen split, the week and shopping trips (§3.9): `plans.html` (meal plans and collections, filtered and sorted) and `recipes.html` (free recipes, searched); My kitchen shows owned plans, saved recipes, the week planner and the trips apart; a trip (`shopping_trips`, `shopping_trip_items`, `shopping_trip_skips`, the `ShoppingTrips` migration) is built from any recipes and plans or from the week, edited, shopped or sent, and done. Saving builds no list. 258 API tests, 41 unit and 253 smoke tests | `docs/DesignDocument.md` §3.9, `CookFeed_frontend/prototype/js/{db,kitchen,list,plans,recipes}.js` |
 | Creator studio and Admin console (§3.8), in the prototype first: `reviews.hidden_at`, `creator_profiles.suspended_at` and the `admin_actions` audit table with its admin-only trigger (the `AdminModeration` migration, Q17h); `studio.html` (a creator's recipes, plans, sales and reviews) and `admin.html` (moderation, creators, catalog, orders, accounts, the log); the role rules in `rules.js`. 258 API tests, 33 unit and 222 smoke tests | `docs/DesignDocument.md` §3.8, `CookFeed_frontend/prototype/js/{db,rules,studio,admin}.js` |
 | Shop from the page (§3.9) and the Recipes page corrected (§3.3): `recipes.html` lists free recipes only, since a plan's recipes are what the plan sells; a recipe page offers Shop this recipe and an owned plan's page Shop this plan, each onto an open trip or a new one (`openShopDialog` in `common.js`). 41 unit and 255 smoke tests | `CookFeed_frontend/prototype/js/{common,recipe,product,recipes}.js`, `tests/smoke/shop.spec.js` |
+| Trip flow (§3.9): sending or finishing a trip returns to My kitchen, whose rows offer Trip complete / Items received, Shop again (`copyTrip`) and Delete; each recipe once per trip (`addTripItems` refuses a repeat and sums a plan's repeated recipe); the picker lights up a ticked plan's saved recipes without counting them twice and disables what is on the trip. 41 unit and 255 smoke tests | `CookFeed_frontend/prototype/js/{db,common,kitchen,list}.js`, `tests/smoke/{kitchen,shop}.spec.js` |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
 with reviewed SQL and justified indexes, the design document, and the API with tests.
@@ -406,7 +407,9 @@ Tick items off here as they merge.
       what Shop this recipe / Shop this plan call), `PUT …/{id}/items/{itemId}` (people), `DELETE …/{id}/items/{itemId}`;
     - `PUT …/{id}/skips/{ingredientId}` and `DELETE` (already have, put back);
     - `POST …/{id}/status` with `Shopping`, `Sent` (and the partner, which L2 wires to Instacart), or
-      `Done`; a done trip refuses every other write.
+      `Done`; a done trip refuses every other write. `POST …/{id}/copy` makes a fresh Building trip from a
+      sent or done one (Shop again). A recipe already on a trip is 409 from `…/items`; a plan's repeated
+      recipe is one item with its people summed.
     - *Decision:* the list is Q8 over the trip's items. `GET /api/me/shopping-list` stops counting saved
       recipes by themselves and takes `tripId` (or stays as the week's preview with `weekStart`); the
       §7 aggregator is unchanged. Saving a recipe or buying a plan puts nothing on a list.
