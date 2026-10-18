@@ -364,7 +364,7 @@ INSERT INTO products (id, creator_id, type, title, description, cover_image_url,
   (1, 3, 'RecipeCollection', 'Roman Pasta Collection', 'Carbonara, marinara, and the techniques behind them, with shopping lists built in.', 'images/products/1.svg', 799, 'USD', TRUE, '2026-07-18 12:00:00+00'),
   (2, 3, 'RecipeCollection', 'The Bread Box', 'Focaccia and friends.', 'images/products/2.svg', 499, 'USD', TRUE, '2026-07-21 12:00:00+00'),
   (3, 4, 'MealPlan', 'Three Weeknights in Japan', 'Monday, Tuesday, Wednesday dinners, each ready in 40 minutes or less.', 'images/products/3.svg', 1299, 'USD', TRUE, '2026-07-19 12:00:00+00'),
-  (4, 5, 'MealPlan', 'Family Week on a Budget', 'Seven dinners, two breakfasts, one grocery trip.', 'images/products/4.svg', 999, 'USD', TRUE, '2026-07-27 12:00:00+00'),
+  (4, 5, 'MealPlan', 'Family Week on a Budget', 'Six family meals: three breakfasts, a taco dinner and two snacks, from one grocery trip.', 'images/products/4.svg', 999, 'USD', TRUE, '2026-07-27 12:00:00+00'),
   (5, 5, 'RecipeCollection', 'Summer Grilling (retired)', NULL, 'images/products/5.svg', 599, 'USD', FALSE, '2026-06-22 12:00:00+00');
 
 -- Product contents (meal plans carry day_offset and slot). No explicit ids: the surrogate key is generated.
