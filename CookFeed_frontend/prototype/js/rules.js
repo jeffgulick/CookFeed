@@ -9,6 +9,56 @@ function hasRole(user, role) {
   return user !== null && user.roles.indexOf(role) !== -1;
 }
 
+/* 3.1 and 3.8: the admin holds Admin alone and runs the Admin console; a creator holds Creator (with
+   HomeCook) and runs their studio. */
+function isAdmin(user) {
+  return hasRole(user, "Admin");
+}
+
+function isCreator(user) {
+  return hasRole(user, "Creator");
+}
+
+/* 3.8: a creator manages only their own recipes and products. The admin manages everyone's from the
+   console, but never creates. */
+function canManageRecipe(user, recipe) {
+  return isCreator(user) && recipe !== null && recipe.creatorId === user.id;
+}
+
+function canManageProduct(user, product) {
+  return isCreator(user) && product !== null && product.creatorId === user.id;
+}
+
+/* 3.8: a suspended creator's products are not for sale. Buyers keep what they bought. */
+function isForSale(product) {
+  var creator = creatorFor(product.creatorId);
+  return product.isActive && creator !== null && creator.suspendedAt === null;
+}
+
+/* 3.3, as the database enforces it: a product sells only ProductOnly recipes (the
+   product_recipes_product_only trigger), and the studio also asks for a published one, so a buyer never
+   pays for a draft. "" means the recipe can go in a product. */
+function placementProblem(recipe) {
+  if (recipe === null) { return "There is no such recipe."; }
+  if (recipe.visibility === "Public") {
+    return "\"" + recipe.title + "\" is free to save, so it cannot go in a plan. Make it premium first.";
+  }
+  if (!recipe.isPublished) { return "\"" + recipe.title + "\" is a draft. Publish it first."; }
+  return "";
+}
+
+/* 3.3: a recipe in a product cannot be made free (the recipes_in_product_product_only trigger). */
+function visibilityProblem(recipe, visibility) {
+  if (visibility !== "Public") { return ""; }
+  var titles = [];
+  rowsWhere("productRecipes", function (pr) { return pr.recipeId === recipe.id; }).forEach(function (pr) {
+    var title = rowById("products", pr.productId).title;
+    if (titles.indexOf(title) === -1) { titles.push(title); }
+  });
+  if (titles.length === 0) { return ""; }
+  return "\"" + recipe.title + "\" is in " + titles.join(" and ") + ". Take it out first; buyers keep it either way.";
+}
+
 /* 3.1: saving, carts, orders and reviews belong to the HomeCook role. Every creator holds it too, so
    creators shop like anyone else; the admin holds no other role, so it never shops. */
 function canShop(user) {
@@ -56,7 +106,7 @@ function canSave(user, recipe) {
    noShop      the admin: no shop controls at all (3.1)
    yourOwn     the viewer created it; creators cannot buy their own products (3.1)
    owned       a Paid order holds it
-   notForSale  the product is retired
+   notForSale  the product is retired, or its creator is suspended (3.8)
    signIn      a signed-out visitor
    inCart      already in the cart, which holds one copy of each product
    buy         Add to cart */
@@ -64,7 +114,7 @@ function buyState(user, product) {
   if (user !== null && !canShop(user)) { return "noShop"; }
   if (user !== null && product.creatorId === user.id) { return "yourOwn"; }
   if (ownsProduct(user, product.id)) { return "owned"; }
-  if (!product.isActive) { return "notForSale"; }
+  if (!isForSale(product)) { return "notForSale"; }
   if (user === null) { return "signIn"; }
   if (isInCartOf(user.id, product.id)) { return "inCart"; }
   return "buy";

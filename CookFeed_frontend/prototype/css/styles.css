@@ -1108,3 +1108,12 @@ footer a { color: inherit; }
 .confirm-dialog::backdrop { background: var(--backdrop); }
 .confirm-dialog p { margin: 0 0 18px; font-size: 17px; }
 .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ---------- 3.8: what creators and the admin manage ---------- */
+.tag-muted { background: var(--paper-deep, #f1ebe2); color: var(--muted); }
+.review.hidden-review { border-style: dashed; background: var(--paper); }
+.notice-strip {
+  margin: 12px 0 0; padding: 10px 14px; border-radius: 10px;
+  background: var(--bad-soft); color: var(--bad); font-weight: 600;
+}
+.notice-strip[hidden] { display: none; }

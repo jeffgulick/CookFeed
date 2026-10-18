@@ -51,6 +51,12 @@ test.describe("a signed-out visitor", () => {
 test.describe("Alex, a home cook with seeded orders", () => {
   test.beforeEach(async ({ page }) => { await signInAs(page, ALEX); });
 
+  test("sees neither the studio nor the Admin link", async ({ page }) => {
+    await page.goto("index.html");
+    await expect(page.locator(".navlink[href='studio.html']")).toBeHidden();
+    await expect(page.locator(".navlink[href='admin.html']")).toBeHidden();
+  });
+
   test("starts with an empty cart, and may buy again the plan whose order was cancelled", async ({ page }) => {
     await page.goto("cart.html");
     await expect(page.locator("#cartCount")).toHaveText("0");
@@ -107,6 +113,12 @@ test.describe("Kenji, a creator", () => {
     await expect(page.locator("#buyArea .buy-button")).toHaveCount(1);
   });
 
+  test("sees My studio in the nav, and no Admin link", async ({ page }) => {
+    await page.goto("index.html");
+    await expect(page.locator(".navlink[href='studio.html']")).toBeVisible();
+    await expect(page.locator(".navlink[href='admin.html']")).toBeHidden();
+  });
+
   test("opens his own ProductOnly recipe and his draft, and sees his own storefront", async ({ page }) => {
     await page.goto("recipe.html?id=6");
     await expect(page.locator("main h1")).toHaveText("Onigiri Three Ways");
@@ -122,6 +134,8 @@ test.describe("the admin", () => {
 
   test("sees no shop links, cart, save, buy or review controls", async ({ page }) => {
     await page.goto("index.html");
+    await expect(page.locator(".navlink[href='admin.html']")).toBeVisible();
+    await expect(page.locator(".navlink[href='studio.html']")).toBeHidden();
     await expect(page.locator(".cart-chip")).toBeHidden();
     await expect(page.locator(".navlink[href='kitchen.html']")).toBeHidden();
     await expect(page.locator(".save-button, .sign-in-to")).toHaveCount(0);
@@ -129,6 +143,7 @@ test.describe("the admin", () => {
     await expect(page.locator("#buyArea")).toHaveText("");
     await page.goto("reviews.html?product=3");
     expect(await textOf(page, "#reviewGate")).toMatch(/^Admin accounts/);
+    await expect(page.locator(".moderate-review")).toHaveCount(3);
     await page.goto("cart.html");
     await expect(page.locator("#cartArea")).toContainText("Admin accounts do not shop");
   });

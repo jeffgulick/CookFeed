@@ -7,7 +7,8 @@
 var TRENDING_COUNT = 6;
 
 function renderProducts() {
-  var products = rowsWhere("products", function (p) { return p.isActive; })
+  // For sale: active, and the creator is not suspended (3.8).
+  var products = rowsWhere("products", isForSale)
     .map(function (p) { return productWithRecipes(p.id); });
 
   document.getElementById("discoverProducts").innerHTML = products.map(function (product) {
@@ -35,7 +36,7 @@ function renderTrending() {
 }
 
 function renderCreators() {
-  document.getElementById("discoverCreators").innerHTML = SEED.creatorProfiles.map(function (profile) {
+  document.getElementById("discoverCreators").innerHTML = rowsWhere("creatorProfiles", function () { return true; }).map(function (profile) {
     var creator = creatorFor(profile.userId);
     return "<a class='card creator-tile' href='creator.html?handle=" + encodeURIComponent(creator.handle) + "'>" +
       "<img src='" + escapeHtml(creator.avatarUrl || "") + "' alt=''>" +

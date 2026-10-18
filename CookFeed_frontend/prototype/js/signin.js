@@ -25,9 +25,11 @@ function accountCard(user, isCurrent) {
 function renderStatus() {
   var user = currentUser();
   var status = document.getElementById("signinStatus");
+  var next = isAdmin(user) ? '<a href="admin.html">Open the Admin console &rarr;</a>'
+    : isCreator(user) ? '<a href="studio.html">Open My studio &rarr;</a> &middot; <a href="index.html">Discover &rarr;</a>'
+    : '<a href="index.html">Continue to Discover &rarr;</a>';
   status.innerHTML = user
-    ? '<p>You are signed in as <strong>' + escapeHtml(user.displayName) + '</strong>. ' +
-      '<a href="index.html">Continue to Discover &rarr;</a></p>' +
+    ? '<p>You are signed in as <strong>' + escapeHtml(user.displayName) + '</strong>. ' + next + '</p>' +
       '<button type="button" class="btn-small btn-secondary" id="browseSignedOut">Sign out and browse as a guest</button>'
     : '<p>You are browsing as a guest. Pick an account below to sign in.</p>';
   var browse = document.getElementById("browseSignedOut");
@@ -57,6 +59,7 @@ function refresh() {
   renderAccounts();
   updateAccountArea();
   updateShopLinks();
+  updateRoleLinks();
   updateCartChip();
 }
 
