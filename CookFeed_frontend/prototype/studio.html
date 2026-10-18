@@ -36,6 +36,10 @@
       <p class="lede" id="studioLede">What you publish, what you sell, and what it has earned.
         <a id="storefrontLink" href="creator.html">See your storefront &rarr;</a></p>
 
+      <div class="card notice-card" id="suspendedBanner" hidden>
+        <p><strong>Your account is suspended.</strong> Your plans are off the store and you cannot put new ones on
+          sale. Cooks who bought your plans keep them. Contact Cookfeed support to sort it out.</p>
+      </div>
       <div class="stat-row card" id="studioStats"></div>
 
       <h2>My recipes</h2>
@@ -66,18 +70,19 @@
         <div class="field-grid">
           <div class="field">
             <label for="recipeServings">Serves</label>
-            <input type="number" id="recipeServings" min="1" max="20" value="4" inputmode="numeric">
+            <input type="number" id="recipeServings" min="1" max="50" value="4" inputmode="numeric">
             <p class="field-error" id="recipeServingsError"></p>
           </div>
           <div class="field">
             <label for="recipePrep">Prep minutes</label>
-            <input type="number" id="recipePrep" min="0" max="600" value="10" inputmode="numeric">
+            <input type="number" id="recipePrep" min="0" max="1440" value="10" inputmode="numeric">
           </div>
           <div class="field">
             <label for="recipeCook">Cook minutes</label>
-            <input type="number" id="recipeCook" min="0" max="600" value="20" inputmode="numeric">
+            <input type="number" id="recipeCook" min="0" max="1440" value="20" inputmode="numeric">
           </div>
         </div>
+        <p class="field-error" id="recipeTimeError"></p>
         <fieldset class="field">
           <legend>Access</legend>
           <label class="radio"><input type="radio" name="recipeVisibility" value="Public" checked> Free: anyone can open and save it</label>
@@ -132,13 +137,14 @@
         </div>
         <div class="field">
           <label for="productPrice">Price in dollars</label>
-          <input type="number" id="productPrice" min="0" max="500" step="0.01" value="9.99" inputmode="decimal">
+          <input type="number" id="productPrice" min="0.99" max="500" step="0.01" value="9.99" inputmode="decimal">
           <p class="field-error" id="productPriceError"></p>
         </div>
         <fieldset class="field">
           <legend>Recipes in it</legend>
-          <p class="meta">Only published premium recipes can be sold. For a meal plan, pick the day and meal of each.</p>
+          <p class="meta" id="placementHint"></p>
           <div id="placementList"></div>
+          <button type="button" class="btn-small" id="addPlacement">Add a meal</button>
           <p class="field-error" id="placementError"></p>
         </fieldset>
         <div class="sort-row">

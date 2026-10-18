@@ -96,7 +96,9 @@ test("the author of a hidden review sees it, marked, and can remove it and write
 test("making a saved recipe premium asks first and says who loses it", async ({ page }) => {
   await signInAs(page, KENJI);
   await page.goto("studio.html");
-  await page.locator("#recipeRows tr", { hasText: "Tamagoyaki" }).locator("button[data-action='visibility']").click();
+  await page.locator("#recipeRows tr", { hasText: "Tamagoyaki" }).locator("button[data-action='edit']").click();
+  await page.check("input[name='recipeVisibility'][value='ProductOnly']");
+  await page.click("#saveRecipe");
   await expect(page.locator("#confirmMessage")).toContainText("who saved it lose it");
   await page.click("#confirmCancel");
   await expect(page.locator("#recipeRows tr", { hasText: "Tamagoyaki" })).toContainText("Free");

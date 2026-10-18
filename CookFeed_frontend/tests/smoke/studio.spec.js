@@ -22,8 +22,10 @@ test("Kenji's studio shows his recipes, plan, sales and reviews from the seed", 
   await expect(page.locator("#recipeRows tr")).toHaveCount(6);
   await expect(page.locator("#recipeRows tr", { hasText: "Miso Soup" })).toContainText("Draft");
   await expect(page.locator("#recipeRows tr", { hasText: "Onigiri" })).toContainText("Three Weeknights in Japan");
-  // A recipe in a plan cannot be made free (3.3): the button says why and does nothing.
-  await expect(page.locator("#recipeRows tr", { hasText: "Chicken Teriyaki" }).locator("button[data-action='visibility']")).toBeDisabled();
+  // A recipe in a plan cannot be made free (3.3): in the editor, the one place access is set, Free is off.
+  await page.locator("#recipeRows tr", { hasText: "Chicken Teriyaki" }).locator("button[data-action='edit']").click();
+  await expect(page.locator("input[name='recipeVisibility'][value='Public']")).toBeDisabled();
+  await page.click("#cancelRecipe");
   await expect(page.locator("#productRows tr")).toHaveCount(1);
   await expect(page.locator("#productRows")).toContainText("For sale");
   await expect(page.locator("#salesRows tr")).toHaveCount(3);
@@ -59,19 +61,20 @@ test("a creator drafts, publishes and sells a recipe, then retires the plan", as
     await page.click("#newProduct");
     await page.fill("#productTitle", "Grill Night");
     await page.fill("#productPrice", "5.00");
-    // A free recipe cannot be sold: its box is disabled with the reason.
-    await expect(page.locator("#placementList .placement", { hasText: "Tamagoyaki" }).locator("input")).toBeDisabled();
-    await expect(page.locator("#placementList .placement", { hasText: "Tamagoyaki" })).toContainText("free to save");
-    const row = page.locator("#placementList .placement", { hasText: "Yakitori Skewers" });
-    await row.locator("input").check();
+    // Only published premium recipes are offered: a free one is not in the list, and the hint says why.
+    const row = page.locator("#placementList .meal-row").first();
+    await expect(row.locator(".place-recipe option", { hasText: "Tamagoyaki" })).toHaveCount(0);
+    await expect(page.locator("#placementHint")).toContainText("free or a draft");
+    await row.locator(".place-recipe").selectOption({ label: "Yakitori Skewers" });
     await row.locator(".place-day").selectOption("1");
     await row.locator(".place-slot").selectOption("Dinner");
     await page.click("#saveProduct");
     await expect(page.locator("#productRows tr", { hasText: "Grill Night" })).toContainText("For sale");
     await expect(page.locator("#productRows tr", { hasText: "Grill Night" })).toContainText("$5.00");
     await expect(page.locator("#statProducts")).toHaveText("2");
-    // Now that it is sold, it cannot be made free.
-    await expect(page.locator("#recipeRows tr", { hasText: "Yakitori Skewers" }).locator("button[data-action='visibility']")).toBeDisabled();
+    // Now that it is in a plan, it stays published, and the row says why.
+    await expect(page.locator("#recipeRows tr", { hasText: "Yakitori Skewers" }).locator("button[data-action='publish']")).toBeDisabled();
+    await expect(page.locator("#recipeRows tr", { hasText: "Yakitori Skewers" }).locator(".action-note")).toContainText("Grill Night");
   });
 
   await test.step("a home cook finds it on Discover and sees the locked recipe", async () => {
@@ -106,5 +109,84 @@ test("the form refuses an empty title and a plan with no recipes", async ({ page
   await page.click("#newProduct");
   await page.fill("#productTitle", "Empty");
   await page.click("#saveProduct");
+  expect(await textOf(page, "#placementError")).toMatch(/no recipe/);
+  await page.locator("#placementList .remove-placement").click();
+  await page.click("#saveProduct");
   expect(await textOf(page, "#placementError")).toMatch(/at least one recipe/);
+});
+
+test("saving a plan with no changes keeps every meal, repeats and order included", async ({ page }) => {
+  await signInAs(page, 5);                                              // Dan
+  await page.goto("studio.html");
+  const before = await page.evaluate(() => JSON.stringify(productWithRecipes(4).recipes.map((r) => [r.recipeId, r.dayOffset, r.slot])));
+  await page.locator("#productRows tr", { hasText: "Family Week" }).locator("button[data-action='edit']").click();
+  await expect(page.locator("#placementList .meal-row")).toHaveCount(6);   // the oats on Monday and Thursday
+  await page.fill("#productDescription", "A new description.");
+  await page.click("#saveProduct");
+  await expect(page.locator(".toast")).toContainText("updated");
+  const after = await page.evaluate(() => JSON.stringify(productWithRecipes(4).recipes.map((r) => [r.recipeId, r.dayOffset, r.slot])));
+  expect(after).toBe(before);
+});
+
+test("the plan form refuses a blank or huge price and two recipes on one meal, and says how to fix it", async ({ page }) => {
+  await signInAs(page, KENJI);
+  await page.goto("studio.html");
+  await page.click("#newProduct");
+  await page.fill("#productTitle", "Clash");
+  await page.fill("#productPrice", "");
+  await page.locator("#placementList .meal-row .place-recipe").selectOption({ label: "Onigiri Three Ways" });
+  await page.click("#addPlacement");
+  const second = page.locator("#placementList .meal-row").nth(1);
+  await second.locator(".place-recipe").selectOption({ label: "Chicken Teriyaki, the Real Way" });
+  await second.locator(".place-day").selectOption("0");
+  await second.locator(".place-slot").selectOption("Dinner");
+  await page.click("#saveProduct");
+  expect(await textOf(page, "#productPriceError")).toMatch(/\$0\.99 to \$500/);
+  expect(await textOf(page, "#placementError")).toMatch(/Monday dinner has two recipes/);
+  await page.fill("#productPrice", "99999.99");
+  await page.click("#saveProduct");
+  expect(await textOf(page, "#productPriceError")).toMatch(/\$0\.99 to \$500/);
+});
+
+test("saving a recipe with no changes keeps how each ingredient was written", async ({ page }) => {
+  await signInAs(page, KENJI);
+  await page.goto("studio.html");
+  const before = await page.evaluate(() => JSON.stringify(rowsWhere("recipeIngredients", (ri) => ri.recipeId === 5).map((ri) => [ri.displayText, ri.isOptional])));
+  await page.locator("#recipeRows tr", { hasText: "Chicken Teriyaki" }).locator("button[data-action='edit']").click();
+  await page.click("#saveRecipe");
+  await expect(page.locator(".toast")).toContainText("updated");
+  const after = await page.evaluate(() => JSON.stringify(rowsWhere("recipeIngredients", (ri) => ri.recipeId === 5).map((ri) => [ri.displayText, ri.isOptional])));
+  expect(after).toBe(before);
+});
+
+test("the recipe form refuses an amount of 0, impossible times, a duplicate title, and emptying a published recipe", async ({ page }) => {
+  await signInAs(page, KENJI);
+  await page.goto("studio.html");
+  await page.locator("#recipeRows tr", { hasText: "Tamagoyaki" }).locator("button[data-action='edit']").click();
+  await page.locator("#ingredientLines .line-quantity").first().fill("0");
+  await page.fill("#recipePrep", "-50");
+  await page.click("#saveRecipe");
+  expect(await textOf(page, "#recipeIngredientsError")).toMatch(/Line 1 needs an amount/);
+  expect(await textOf(page, "#recipeTimeError")).toMatch(/whole minutes/);
+  await page.locator("#ingredientLines .line-quantity").first().fill("3");
+  await page.fill("#recipePrep", "5");
+  await page.fill("#recipeTitle", "Onigiri Three Ways");
+  await page.click("#saveRecipe");
+  expect(await textOf(page, "#recipeTitleError")).toMatch(/already have a recipe called/);
+  await page.fill("#recipeTitle", "Tamagoyaki");
+  await page.fill("#recipeSteps", "");
+  await page.click("#saveRecipe");
+  expect(await textOf(page, "#recipeStepsError")).toMatch(/published recipe needs/);
+});
+
+test("a suspended creator sees why, and cannot put a new plan on sale", async ({ page }) => {
+  await signInAs(page, KENJI);
+  await page.evaluate(() => { setCreatorSuspended(6, 4, true); });
+  await page.goto("studio.html");
+  await expect(page.locator("#suspendedBanner")).toBeVisible();
+  await page.click("#newProduct");
+  await page.fill("#productTitle", "While suspended");
+  await page.locator("#placementList .meal-row .place-recipe").selectOption({ label: "Onigiri Three Ways" });
+  await page.click("#saveProduct");
+  expect(await textOf(page, "#placementError")).toMatch(/suspended/);
 });

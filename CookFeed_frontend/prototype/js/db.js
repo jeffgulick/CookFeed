@@ -510,8 +510,8 @@ function replaceRecipeLines(recipeId, lines, steps) {
   lines.forEach(function (line, index) {
     tables.recipeIngredients.push({
       id: nextId("recipeIngredients"), recipeId: recipeId, ingredientId: line.ingredientId, unitId: line.unitId,
-      quantity: line.quantity, displayText: null, preparation: line.preparation || null, sortOrder: index + 1,
-      isOptional: false
+      quantity: line.quantity, displayText: line.displayText || null, preparation: line.preparation || null, sortOrder: index + 1,
+      isOptional: line.isOptional === true
     });
   });
   steps.forEach(function (text, index) {
