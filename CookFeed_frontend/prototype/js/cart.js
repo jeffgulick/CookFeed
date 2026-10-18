@@ -41,8 +41,7 @@ function renderCart() {
     html = html + "<div class='line-body'>";
     html = html + "<span class='pill'>" + productTypeLabel(product) + "</span>";
     html = html + "<div class='recipe-title'><a href='" + productUrl(product.id) + "'>" + escapeHtml(product.title) + "</a></div>";
-    html = html + "<div class='meta'>by " + escapeHtml(creator.handle) + " &middot; " + productCounts(product) +
-                  ", 1 shopping list</div>";
+    html = html + "<div class='meta'>by " + escapeHtml(creator.handle) + " &middot; " + productCounts(product) + "</div>";
     html = html + "<div class='line-actions'><button class='btn-small remove-item'>Remove</button></div>";
     html = html + "</div>";
     html = html + "<div class='line-price'>" + formatPrice(product.priceCents) + "</div>";
@@ -59,8 +58,13 @@ function renderCart() {
 
   var isEmpty = products.length === 0;
   document.getElementById("emptyNote").innerHTML = isEmpty
-    ? "Your cart is empty. <a href='index.html'>Find a plan on Discover</a>."
+    ? "Your cart is empty. <a href='plans.html'>See the meal plans and collections</a>."
     : "";
+  // "Still deciding?" is for a cart with something in it; an empty cart already says where to look.
+  var foot = document.getElementById("cartFoot");
+  foot.hidden = isEmpty;
+  foot.innerHTML = isEmpty ? "" : "<p><strong>Still deciding?</strong></p>" +
+    "<p><a href='plans.html'>See more plans</a> &middot; <a href='orders.html'>Your orders</a></p>";
   document.getElementById("checkoutButton").disabled = isEmpty;
   document.getElementById("emptyCartButton").hidden = isEmpty;
   updateCartChip();
@@ -125,10 +129,13 @@ function checkout() {
 }
 
 /* The receipt replaces the cart. Focus moves to its heading, so a screen reader announces the order
-   and a keyboard user carries on from there rather than from a button that no longer exists. */
+   and a keyboard user carries on from there rather than from a button that no longer exists. Each plan
+   bought leads to its page and to the week; buying put nothing on a shopping list (3.9). */
 function showReceipt(order) {
-  var links = order.items.map(function (item) {
-    return "<li><a href='" + productUrl(item.productId) + "'>" + escapeHtml(item.productTitle) + "</a></li>";
+  var lines = order.items.map(function (item) {
+    return "<li data-product-id='" + item.productId + "'><strong>" + escapeHtml(item.productTitle) + "</strong> " +
+      "<a class='btn-small' href='" + productUrl(item.productId) + "'>Open your plan</a> " +
+      "<button type='button' class='btn-small receipt-week'>Add to my week</button></li>";
   }).join("");
 
   var html = "";
@@ -137,16 +144,25 @@ function showReceipt(order) {
   html = html + "<h2 style='margin:6px 0' id='receiptHeading' tabindex='-1'>Order confirmed</h2>";
   html = html + "<p class='meta'>Order " + orderNumber(order) + "</p>";
   html = html + "<p>You paid <strong>" + formatPrice(order.totalCents) + "</strong> for " +
-                plural(order.items.length, "plan", "plans") + ":</p><ul class='receipt-items'>" + links + "</ul>";
-  html = html + "<p>Every recipe in " + (order.items.length === 1 ? "it" : "them") +
-                " is yours to keep, and the shopping list is ready whenever you are.</p>";
-  html = html + "<p><a href='orders.html'>See your orders</a> &middot; <a href='index.html'>Back to Discover</a></p>";
+                plural(order.items.length, "plan", "plans") + ":</p><ul class='receipt-items'>" + lines + "</ul>";
+  html = html + "<p>Every recipe in " + (order.items.length === 1 ? "it" : "them") + " is yours to keep. " +
+                "Put " + (order.items.length === 1 ? "it" : "them") + " on your week, or shop " +
+                (order.items.length === 1 ? "it" : "them") + " from the plan's page.</p>";
+  html = html + "<p><a href='orders.html'>See your orders</a></p>";
   html = html + "</div>";
 
   document.getElementById("cartArea").innerHTML = html;
-  document.getElementById("itemCount").textContent = "0";
-  document.getElementById("itemWord").textContent = "items";
+  document.querySelector("main h1").textContent = "Thank you";
+  document.getElementById("cartByline").hidden = true;
+  document.getElementById("cartFoot").hidden = true;
+  document.getElementById("cartFoot").innerHTML = "";
   updateCartChip();
+  document.getElementById("cartArea").addEventListener("click", function (event) {
+    var week = event.target.closest(".receipt-week");
+    if (week !== null) {
+      openPlanProductDialog(currentUser(), rowById("products", Number(week.closest("li").getAttribute("data-product-id"))));
+    }
+  });
   document.getElementById("receiptHeading").focus();
   showToast("Thank you. Your order number is " + orderNumber(order) + ".");
 }
@@ -154,6 +170,7 @@ function showReceipt(order) {
 document.addEventListener("DOMContentLoaded", function () {
   var user = currentUser();
   if (user === null || !canShop(user)) {
+    document.getElementById("cartByline").hidden = true;
     document.getElementById("cartArea").innerHTML = "<div class='card notice-card'><p>" +
       (user === null ? signInLink("see your cart") + "." : "Admin accounts do not shop, so there is no cart.") +
       "</p></div>";

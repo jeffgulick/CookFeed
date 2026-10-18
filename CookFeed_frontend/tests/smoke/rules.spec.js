@@ -150,9 +150,11 @@ test.describe("the admin", () => {
 });
 
 test("Family Week counts 5 recipes and 6 meals, and buys the oats for both mornings", async ({ page }) => {
-  await signInAs(page, ALEX);   // he owns it, so the whole list shows
+  await signInAs(page, GUEST);  // the price note is for someone deciding to buy
   await page.goto("product.html?id=4");
   await expect(page.locator("#priceNote")).toContainText("5 recipes, 6 meals");
+  await signInAs(page, ALEX);   // he owns it, so the whole list shows
+  await page.goto("product.html?id=4");
   await expect(page.locator("#shoppingRows tr", { hasText: "rolled oats" })).toContainText("5 c");
 });
 

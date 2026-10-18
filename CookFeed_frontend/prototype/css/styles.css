@@ -999,7 +999,7 @@ tr.have td.aisle { text-decoration: none; }
 /* ---------- what you get ---------- */
 
 .what-you-get { margin-top: 18px; }
-.what-you-get h3 { margin: 0 0 8px; font-size: 18px; }
+.what-you-get h2 { margin: 0 0 8px; font-size: 18px; }
 .what-you-get ul { margin: 0; padding-left: 20px; }
 .what-you-get li { padding: 4px 0; }
 

@@ -99,9 +99,18 @@ function signOut() {
   removeStored(USER_KEY);
 }
 
-/* A link that sends a signed-out visitor to sign in, e.g. "Sign in to save". */
+/* A link that sends a signed-out visitor to sign in, e.g. "Sign in to save", and back to this page after
+   (signin.html?next=recipe.html%3Fid%3D18). */
 function signInLink(action) {
-  return "<a class='sign-in-to' href='signin.html'>Sign in to " + action + "</a>";
+  var here = window.location.pathname.split("/").pop() + window.location.search;
+  return "<a class='sign-in-to' href='signin.html?next=" + encodeURIComponent(here) + "'>Sign in to " + action + "</a>";
+}
+
+/* The page to go back to after signing in: only a page of this site (a file name and its query), never
+   another address someone put in the link. null when there is none. */
+function signInNext() {
+  var next = queryText("next");
+  return next !== null && /^[a-z]+\.html(\?[A-Za-z0-9=&%._-]*)?$/.test(next) && next.indexOf("signin.html") !== 0 ? next : null;
 }
 
 /* The nav's account area: "Sign in" when signed out, otherwise the account's name and a Sign out
@@ -261,6 +270,7 @@ function renderBuyArea(container, product, onChange) {
      productId  link to the recipe in the context of this product
      preview    include the hover preview of times, counts and the first step
      locked     the viewer cannot open it: no link, and a note instead of the save button
+     lockText   that note, when "Included when you buy the plan" does not apply (the admin, a plan off sale)
      foot       HTML for the card's foot, replacing the save count and Save button */
 
 /* Tooltip on every Save button, so a first-time visitor knows what saving does. */
@@ -319,8 +329,8 @@ function recipeCardHtml(recipe, options) {
   var user = currentUser();
   var through = recipe.visibility === "ProductOnly" ? ownedThrough(user, recipe.id) : null;
   if (options.locked) {
-    html = html + "<div class='lock-label'>&#128274; Included when you buy the " +
-      (options.productNoun || "plan") + "</div>";
+    html = html + "<div class='lock-label'>&#128274; " + (options.lockText ? escapeHtml(options.lockText)
+      : "Included when you buy the " + (options.productNoun || "plan")) + "</div>";
   } else if (through !== null) {
     html = html + "<div class='owned-label'>Yours through " + escapeHtml(through) + "</div>";
   }
