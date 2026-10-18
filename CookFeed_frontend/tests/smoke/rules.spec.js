@@ -118,6 +118,16 @@ test("Family Week counts 5 recipes and 6 meals, and buys the oats for both morni
   await expect(page.locator("#shoppingRows tr", { hasText: "rolled oats" })).toContainText("5 c");
 });
 
+test("save counts read naturally: 1 cook, 7 cooks", async ({ page }) => {
+  await signInAs(page, GUEST);
+  await page.goto("product.html?id=4");
+  await expect(page.locator(".recipe-card", { hasText: "Weeknight Beef Tacos" }).locator(".save-text")).toHaveText("saved by 1 cook");
+  await page.goto("product.html?id=3");
+  await expect(page.locator(".recipe-card", { hasText: "Chicken Teriyaki" }).locator(".save-text")).toHaveText("saved by 7 cooks");
+  await page.goto("recipe.html?id=10");
+  await expect(page.locator("#savedBy")).toHaveText("saved by 1 cook");
+});
+
 test("a storefront lists only the creator's public published recipes, with Q2's totals", async ({ page }) => {
   await signInAs(page, GUEST);
   await page.goto("creator.html?handle=kenji-kitchen");

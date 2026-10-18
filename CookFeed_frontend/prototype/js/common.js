@@ -252,6 +252,11 @@ function recipeHref(recipe, productId) {
   return recipe.pageUrl + (productId ? "&product=" + productId : "");
 }
 
+/* "saved by 1 cook" or "saved by 7 cooks": the wording first-time visitors understood best (Homework 3). */
+function savedByText(count) {
+  return "saved by " + plural(count, "cook", "cooks");
+}
+
 function saveButtonHtml(recipe) {
   var user = currentUser();
   if (user === null) {
@@ -306,7 +311,7 @@ function recipeCardHtml(recipe, options) {
     html = html + "<div class='recipe-foot'>" + options.foot + "</div>";
   } else if (!options.locked) {
     html = html + "<div class='recipe-foot'>";
-    html = html + "<span class='meta'>saved by <span class='save-count'>" + saveCount(recipe.id) + "</span> cooks</span>";
+    html = html + "<span class='meta save-text'>" + savedByText(saveCount(recipe.id)) + "</span>";
     html = html + saveButtonHtml(recipe);
     html = html + "</div>";
   }
@@ -328,9 +333,9 @@ function wireSaveButtons(grid, onChange) {
 
     button.innerHTML = nowSaved ? "Saved &#10003;" : "Save recipe";
     button.classList.toggle("saved", nowSaved);
-    var count = button.closest(".recipe-card").querySelector(".save-count");
+    var count = button.closest(".recipe-card").querySelector(".save-text");
     if (count !== null) {
-      count.textContent = saveCount(recipe.id);
+      count.textContent = savedByText(saveCount(recipe.id));
     }
     showToast(nowSaved ? recipe.title + " saved to My kitchen, with its ingredients on your shopping list."
                        : recipe.title + " removed from your saved recipes.");

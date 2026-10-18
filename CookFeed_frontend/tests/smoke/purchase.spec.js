@@ -50,6 +50,9 @@ test("Sam buys a plan, opens what it unlocks, reviews it, and Reset restores the
     await page.goto("signin.html");
     await page.click("#resetData");
     await page.click("#confirmOk");
+    // The reset runs when the dialog's close event fires, a moment after the click. Leaving the page before then
+    // would skip it, so wait for its confirmation first.
+    await expect(page.locator("#toast")).toContainText("back to the database's seed");
     await page.goto("orders.html");
     await expect(page.locator(".order-card")).toHaveCount(0);
     await page.goto("reviews.html?product=3");
