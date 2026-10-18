@@ -47,6 +47,7 @@ in the [README](../README.md#deliverable-2).
 | Roadmap item 2, OpenAPI: `/openapi/v1.json` describes every endpoint where `OpenApi:Enabled` is set (Development); `CallerHeaderTransformer` marks `X-User-Id` required under `/api/me` and optional elsewhere. 9 tests (203 in all) | `Program.cs`, `Api/OpenApi/`, `tests/*/Api/OpenApiTests.cs` |
 | Roadmap item 3, recipe detail: `RecipesController` → `RecipeDetailService` (applies `Domain/Access/RecipeAccess.CanOpen`) → `RecipeRepository.GetAccessFactsAsync` and `GetDetailAsync` (split query). A recipe the viewer may not open is a 404. 12 Domain, 4 service and 19 HTTP tests, against Q4 and Q14, and the route joins the caller-header and OpenAPI tests (251 in all) | `src/*/Recipes/`, `Domain/Access/`, `docs/Queries.md` §1b |
 | Premium-only products: a product sells only `ProductOnly` recipes, so nothing a buyer pays for is free to save. Two triggers in the `ProductOnlyRecipesInProducts` migration and `schema.sql` (Q17f, g). The seed's 12 in-product recipes became `ProductOnly`; each creator gained two free recipes; The Bread Box gained Rosemary Ciabatta; saves of `ProductOnly` recipes are only by their buyers. 4 trigger tests and 2 seed and recipe-detail tests (257 in all) | `docs/schema.sql`, `Persistence/Migrations/`, `docs/sql/seed.sql`, `DesignDocument.md` §3.3 |
+| Browse pages, the kitchen split, the week and shopping trips (§3.9): `plans.html` (meal plans and collections, filtered and sorted) and `recipes.html` (free and premium, searched); My kitchen shows owned plans, saved recipes, the week planner and the trips apart; a trip (`shopping_trips`, `shopping_trip_items`, `shopping_trip_skips`, the `ShoppingTrips` migration) is built from any recipes and plans or from the week, edited, shopped or sent, and done. Saving builds no list. 258 API tests, 41 unit and 253 smoke tests | `docs/DesignDocument.md` §3.9, `CookFeed_frontend/prototype/js/{db,kitchen,list,plans,recipes}.js` |
 | Creator studio and Admin console (§3.8), in the prototype first: `reviews.hidden_at`, `creator_profiles.suspended_at` and the `admin_actions` audit table with its admin-only trigger (the `AdminModeration` migration, Q17h); `studio.html` (a creator's recipes, plans, sales and reviews) and `admin.html` (moderation, creators, catalog, orders, accounts, the log); the role rules in `rules.js`. 258 API tests, 33 unit and 222 smoke tests | `docs/DesignDocument.md` §3.8, `CookFeed_frontend/prototype/js/{db,rules,studio,admin}.js` |
 
 Every Deliverable 2 item is in place: ER diagram and 3NF schema, seed data, the four core queries in LINQ
@@ -292,6 +293,8 @@ Tick items off here as they merge.
    the API.
    - *Rules:* an entry's date falls inside its week; the same recipe may appear on several days
      (DesignDocument.md §3.2); only a recipe the caller may open can be planned.
+   - *Also:* `POST …/products/{id}` puts a whole plan the caller owns on the week from their purchase
+     snapshot (§3.9), as the prototype does.
    - *Tests:* after adding entries, the shopping list changes the way Q8 says it should.
 9. **Cart.** `GET /api/me/cart`, `PUT /api/me/cart/{productId}`, `DELETE /api/me/cart/{productId}`.
    - *DTO:* the lines (product id, type, title, cover, creator handle, recipe count, price) and the total.
@@ -390,6 +393,27 @@ Tick items off here as they merge.
       creators' products; ownership keeps reading `Paid` orders only, so a refund locks the recipes again.
     - *Tests:* each route as a home cook or a creator is 403; each change leaves exactly one log row;
       the public reads change as §3.8 says.
+
+**F. Shopping trips and browsing** (DesignDocument.md §3.9; built in the prototype: `kitchen.html`,
+`list.html`, `plans.html`, `recipes.html`)
+
+16. **Shopping trips**, under `/api/me/trips`, `HomeCook` only, the caller's own rows:
+    - `GET /api/me/trips` (active first, done as history), `POST /api/me/trips` (name, items of recipe and
+      people, products to add whole, or `fromWeek`), `GET /api/me/trips/{id}` (the trip, its items, its
+      skips and its computed list), `DELETE`;
+    - `POST …/{id}/items`, `PUT …/{id}/items/{itemId}` (people), `DELETE …/{id}/items/{itemId}`;
+    - `PUT …/{id}/skips/{ingredientId}` and `DELETE` (already have, put back);
+    - `POST …/{id}/status` with `Shopping`, `Sent` (and the partner, which L2 wires to Instacart), or
+      `Done`; a done trip refuses every other write.
+    - *Decision:* the list is Q8 over the trip's items. `GET /api/me/shopping-list` stops counting saved
+      recipes by themselves and takes `tripId` (or stays as the week's preview with `weekStart`); the
+      §7 aggregator is unchanged. Saving a recipe or buying a plan puts nothing on a list.
+    - *Tests:* a trip from Alex's seeded week gives the teriyaki at 4 (thighs 1,000 g); a skip leaves a
+      line out; only a recipe the caller may open joins; a done trip is read-only; another caller's trip
+      is 404.
+17. **Browse**: `GET /api/products?type=&sort=` (for sale only, owned marked for the caller) and
+    `GET /api/recipes?q=&sort=&visibility=` (free, and premium with the plans selling each), as
+    `plans.html` and `recipes.html` show them.
 
 **Not planned:** followers and a Follow button (the prototype's follower count was removed). The database has no
 followers table, so the Angular storefront leaves them out. Adding them later is a new table, a count on
