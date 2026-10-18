@@ -120,6 +120,7 @@ function renderBuy() {
    none of the recipes yet gets a sentence about the list instead of an empty table. */
 function renderShoppingList() {
   var nothingOpen = shoppableRecipeIds().length === 0 && product.recipes.length > 0;
+  document.getElementById("shopPlan").hidden = !ownsProduct(currentUser(), product.id);
   document.getElementById("listBody").hidden = nothingOpen;
   document.querySelector(".stepper-row").hidden = nothingOpen;
   document.getElementById("hoverHint").hidden = nothingOpen;
@@ -357,9 +358,15 @@ var sendTargets = {
    will do rather than pretending the order went through. */
 function sendList(target) {
   var partner = sendTargets[target];
-  var remaining = countRemaining();
-  showToast("Send to " + partner.name + " is coming soon. Your " + remaining +
-            " remaining items are ready to hand over.");
+  showToast("Sending happens from a shopping trip. Press Shop this plan, then Send to " + partner.name + " on the trip.");
+}
+
+/* 3.9: every meal of the plan onto a shopping trip, each for the people the stepper says (or as written). */
+function shopThisPlan() {
+  var people = currentPeople === null ? 0 : currentPeople;
+  openShopDialog(currentUser(), product.recipes.map(function (placement) {
+    return { recipeId: placement.recipeId, servings: people };
+  }), product.title);
 }
 
 /* Printing is real: the print stylesheet leaves only the lines still to buy. */
@@ -401,4 +408,5 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("sendInstacart").addEventListener("click", function () { sendList("instacart"); });
   document.getElementById("sendFavor").addEventListener("click", function () { sendList("favor"); });
   document.getElementById("printButton").addEventListener("click", printList);
+  document.getElementById("shopPlan").addEventListener("click", shopThisPlan);
 });

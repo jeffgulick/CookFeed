@@ -601,3 +601,71 @@ function readPicker(root) {
   }
   return { productIds: productIds, items: items };
 }
+
+/* ---------- 3.9: "Shop this" from a recipe or a plan page ---------- */
+
+var shopPending = null;   // { user, items: [{ recipeId, servings }], name } while the dialog is open
+
+function pickedShopTripId() {
+  var picked = document.querySelector("#shopTrips input[name='shopTrip']:checked");
+  return picked === null ? 0 : Number(picked.value);
+}
+
+/* The cook puts a recipe, or a whole owned plan, on a shopping trip without going through My kitchen:
+   onto a trip they are still building or shopping, or onto a new one named after what they are shopping.
+   The trip then opens. Items are {recipeId, servings}; db.js addTripItems refuses a recipe the cook may
+   not open (rules.js canPlan), so a locked recipe never reaches a list. */
+function openShopDialog(user, items, suggestedName) {
+  var dialog = document.getElementById("shopDialog");
+  if (dialog === null) {
+    dialog = document.createElement("dialog");
+    dialog.id = "shopDialog";
+    dialog.className = "build-dialog shop-dialog";
+    dialog.setAttribute("aria-labelledby", "shopHeading");
+    dialog.innerHTML =
+      "<form method='dialog' id='shopForm' novalidate>" +
+      "<h3 id='shopHeading'>Add to a shopping trip</h3>" +
+      "<p class='meta' id='shopHint'></p>" +
+      "<fieldset class='field'><legend>Which trip?</legend><div id='shopTrips'></div></fieldset>" +
+      "<div class='field' id='shopNameField'><label for='shopName'>Name the new trip</label>" +
+      "<input type='text' id='shopName' maxlength='80'></div>" +
+      "<div class='dialog-actions'>" +
+      "<button type='button' class='btn-secondary' id='shopCancel'>Cancel</button>" +
+      "<button type='submit' class='btn-primary' id='shopSubmit'>Add and open the trip</button>" +
+      "</div></form>";
+    document.body.appendChild(dialog);
+    dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } });
+    document.getElementById("shopCancel").addEventListener("click", function () { dialog.close(); });
+    document.getElementById("shopTrips").addEventListener("change", function () {
+      document.getElementById("shopNameField").hidden = pickedShopTripId() !== 0;
+    });
+    document.getElementById("shopForm").addEventListener("submit", onShopSubmitted);
+  }
+
+  shopPending = { user: user, items: items, name: suggestedName };
+  var open = tripsFor(user.id).filter(function (t) { return t.status === "Building" || t.status === "Shopping"; });
+  document.getElementById("shopHint").textContent = plural(items.length, "recipe", "recipes") + " to add. " +
+    (open.length ? "Put them on a trip you are still shopping, or start a new one." : "This starts your first trip.");
+  document.getElementById("shopTrips").innerHTML = open.map(function (t, index) {
+    return "<label class='shop-trip-row'><input type='radio' name='shopTrip' value='" + t.id + "'" + (index === 0 ? " checked" : "") + "> " +
+      escapeHtml(t.name) + " <span class='meta'>" + t.status + ", " + plural(tripItems(t.id).length, "recipe", "recipes") + "</span></label>";
+  }).join("") + "<label class='shop-trip-row'><input type='radio' name='shopTrip' value='0'" + (open.length ? "" : " checked") + "> A new trip</label>";
+  document.getElementById("shopNameField").hidden = open.length > 0;
+  document.getElementById("shopName").value = suggestedName;
+  dialog.showModal();
+}
+
+function onShopSubmitted(event) {
+  event.preventDefault();
+  var tripId = pickedShopTripId();
+  var added;
+  if (tripId === 0) {
+    var name = document.getElementById("shopName").value.trim() || shopPending.name;
+    tripId = createTrip(shopPending.user.id, name, shopPending.items).id;
+    added = tripItems(tripId).length;
+  } else {
+    added = addTripItems(tripId, shopPending.items).length;
+  }
+  document.getElementById("shopDialog").close();
+  window.location.href = "list.html?trip=" + tripId + "&added=" + added;
+}
