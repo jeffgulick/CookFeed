@@ -144,8 +144,15 @@ function renderSaveState() {
   }
   var saved = isSavedBy(user.id, currentRecipe.id);
   area.innerHTML = "<button type='button' id='saveButton' class='" + (saved ? "btn-secondary" : "btn-primary") +
-    "' title='" + SAVE_HINT + "'>" + (saved ? "Saved &#10003;" : "Save recipe") + "</button>";
+    "' title='" + SAVE_HINT + "'>" + (saved ? "Saved &#10003;" : "Save recipe") + "</button> " +
+    "<button type='button' id='shopButton' class='btn-secondary' title='Put its ingredients on a shopping trip, for the people above'>Shop this recipe</button>";
   document.getElementById("saveButton").addEventListener("click", saveThisRecipe);
+  document.getElementById("shopButton").addEventListener("click", shopThisRecipe);
+}
+
+/* 3.9: straight onto a shopping trip, for the people the stepper says, without going through My kitchen. */
+function shopThisRecipe() {
+  openShopDialog(currentUser(), [{ recipeId: currentRecipe.id, servings: currentServings }], currentRecipe.title);
 }
 
 function saveThisRecipe() {

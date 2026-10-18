@@ -1,8 +1,8 @@
-/* Cookfeed prototype - Recipes (recipes.html): every published recipe, searched and sorted.
+/* Cookfeed prototype - Recipes (recipes.html): every free recipe, searched and sorted.
 
-   Free (Public) recipes open for anyone, with the same cards as Discover. Premium (ProductOnly) recipes
-   are listed too, each naming the plan it is sold in: locked for a viewer who does not own that plan,
-   open and "Yours through" for one who does (rules.js canOpenRecipe, design section 3.3). */
+   Only free (Public) recipes are listed, with the same cards as Discover. A premium (ProductOnly) recipe is
+   sold inside a plan or collection, so it is shown only on that plan's page, and in the kitchen of a cook who
+   bought it (design section 3.3). Listing it here, even locked, would give away what the plan sells. */
 
 var sortBy = "saves";
 
@@ -22,44 +22,17 @@ function sortRecipes(recipes) {
   });
 }
 
-/* The active plans that sell a premium recipe. */
-function plansSelling(recipeId) {
-  return rowsWhere("productRecipes", function (pr) { return pr.recipeId === recipeId; })
-    .map(function (pr) { return rowById("products", pr.productId); })
-    .filter(function (p, index, all) { return isForSale(p) && all.indexOf(p) === index; });
-}
-
 function renderRecipes() {
   var query = document.getElementById("recipeSearch").value.trim().toLowerCase();
-  var user = currentUser();
-  var published = rowsWhere("recipes", function (r) { return r.isPublished && matchesSearch(r, query); });
-  var free = sortRecipes(published.filter(function (r) { return r.visibility === "Public"; }));
-  var premium = sortRecipes(published.filter(function (r) { return r.visibility === "ProductOnly"; }));
+  var free = sortRecipes(rowsWhere("recipes", function (r) {
+    return r.isPublished && r.visibility === "Public" && matchesSearch(r, query);
+  }));
 
   document.getElementById("freeRecipes").innerHTML = free.map(function (r) {
     return recipeCardHtml(recipeWithDetails(r.id), { label: "by " + creatorFor(r.creatorId).handle, preview: true });
   }).join("");
   document.getElementById("noFree").hidden = free.length > 0;
-
-  document.getElementById("premiumRecipes").innerHTML = premium.map(function (r) {
-    var plans = plansSelling(r.id);
-    var links = plans.map(function (p) {
-      return "<a href='" + productUrl(p.id) + "'>" + escapeHtml(p.title) + "</a>";
-    });
-    var locked = !canOpenRecipe(user, r);
-    return recipeCardHtml(recipeWithDetails(r.id), {
-      label: "by " + creatorFor(r.creatorId).handle,
-      preview: !locked,
-      locked: locked,
-      productId: plans.length ? plans[0].id : undefined,
-      foot: "<span class='meta'>" + (links.length ? "In " + links.join(" and ") : "Not for sale right now") + "</span>" +
-        (locked ? "" : saveButtonHtml(r))
-    });
-  }).join("");
-  document.getElementById("noPremium").hidden = premium.length > 0;
-
-  document.getElementById("recipeShowing").textContent =
-    plural(free.length, "free recipe", "free recipes") + ", " + plural(premium.length, "premium", "premium");
+  document.getElementById("recipeShowing").textContent = plural(free.length, "free recipe", "free recipes");
 
   var buttons = document.querySelectorAll("[data-sort]");
   for (var i = 0; i < buttons.length; i = i + 1) {
@@ -69,9 +42,7 @@ function renderRecipes() {
   }
 
   wirePreviews(document.getElementById("freeRecipes"));
-  wirePreviews(document.getElementById("premiumRecipes"));
   wireSaveButtons(document.getElementById("freeRecipes"), null);
-  wireSaveButtons(document.getElementById("premiumRecipes"), null);
 }
 
 document.addEventListener("DOMContentLoaded", function () {

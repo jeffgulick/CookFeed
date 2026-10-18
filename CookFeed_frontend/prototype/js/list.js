@@ -200,6 +200,11 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   tripUser = user;
   renderTrip();
+  var added = queryNumber("added");
+  if (added !== null) {
+    showToast(plural(added, "recipe", "recipes") + " added. This is your trip: shop it or send it when you are ready.");
+    window.history.replaceState(null, "", "list.html?trip=" + trip.id);
+  }
 
   document.getElementById("tripArea").addEventListener("click", onTripClicked);
   // As the cook types a number, the list follows (input), not only when they leave the box (change).

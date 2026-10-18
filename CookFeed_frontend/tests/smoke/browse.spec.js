@@ -1,5 +1,5 @@
-/* The browse pages: Plans (every plan and collection for sale) and Recipes (every published recipe,
-   free and premium), with their filters, sort and search, and what an owner sees on them. */
+/* The browse pages: Plans (every plan and collection for sale) and Recipes (the free recipes only,
+   never a plan's), with their filters, sort and search, and what an owner sees on them. */
 
 const { test, expect, signInAs, GUEST, ALEX, SAM } = require("./support");
 
@@ -30,34 +30,34 @@ test.describe("Plans", () => {
 });
 
 test.describe("Recipes", () => {
-  test("lists six free and thirteen premium recipes, searches, and sorts", async ({ page }) => {
+  test("lists the six free recipes only, searches, and sorts", async ({ page }) => {
     await signInAs(page, GUEST);
     await page.goto("recipes.html");
     await expect(page.locator("#freeRecipes .recipe-card")).toHaveCount(6);
-    await expect(page.locator("#premiumRecipes .recipe-card")).toHaveCount(13);
-    await expect(page.locator("#premiumRecipes .recipe-card.locked")).toHaveCount(13);
-    await expect(page.locator("#premiumRecipes .recipe-card", { hasText: "Onigiri" })).toContainText("In Three Weeknights in Japan");
+    await expect(page.locator("#recipeShowing")).toHaveText("6 free recipes");
+    // A premium recipe is sold in a plan, so it is not on this page at all, not even locked.
+    await expect(page.locator("main .recipe-card.locked")).toHaveCount(0);
+    await expect(page.locator("main .recipe-card", { hasText: "Onigiri" })).toHaveCount(0);
+    await expect(page.locator("main a[href='plans.html']")).toHaveCount(1);
     await expect(page.locator("#freeRecipes .recipe-title").first()).toHaveText("Sheet-Pan Chicken and Vegetables");
     await page.click("[data-sort='newest']");
     await expect(page.locator("#freeRecipes .recipe-title").first()).toHaveText("Black Bean Quesadillas");
     await page.fill("#recipeSearch", "tamago");
     await expect(page.locator("#freeRecipes .recipe-card")).toHaveCount(1);
-    await expect(page.locator("#premiumRecipes .recipe-card")).toHaveCount(0);
-    await expect(page.locator("#noPremium")).toBeVisible();
+    await page.fill("#recipeSearch", "onigiri");
+    await expect(page.locator("#freeRecipes .recipe-card")).toHaveCount(0);
+    await expect(page.locator("#noFree")).toBeVisible();
     await page.fill("#recipeSearch", "kenji");
     await expect(page.locator("#freeRecipes .recipe-card")).toHaveCount(2);
-    await expect(page.locator("#premiumRecipes .recipe-card")).toHaveCount(3);
   });
 
-  test("a buyer opens the premium recipes they own; the rest stay locked", async ({ page }) => {
+  test("a buyer sees the same six free recipes; what they bought lives on the plan page and in their kitchen", async ({ page }) => {
     await signInAs(page, ALEX);
     await page.goto("recipes.html");
-    await expect(page.locator("#premiumRecipes .recipe-card.locked")).toHaveCount(1);   // Rosemary Ciabatta
-    await expect(page.locator("#premiumRecipes .recipe-card", { hasText: "Onigiri" })).toContainText("Yours through");
-    await expect(page.locator("#premiumRecipes .recipe-card", { hasText: "Onigiri" }).locator("a").first()).toHaveAttribute("href", /recipe\.html\?id=6/);
-    await signInAs(page, SAM);
-    await page.goto("recipes.html");
-    await expect(page.locator("#premiumRecipes .recipe-card.locked")).toHaveCount(13);
+    await expect(page.locator("#freeRecipes .recipe-card")).toHaveCount(6);
+    await expect(page.locator("main .recipe-card", { hasText: "Onigiri" })).toHaveCount(0);
+    await page.goto("product.html?id=3");
+    await expect(page.locator("#planRecipes .recipe-card", { hasText: "Onigiri" }).locator("a").first()).toHaveAttribute("href", /recipe\.html\?id=6/);
   });
 });
 

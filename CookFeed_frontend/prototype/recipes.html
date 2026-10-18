@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recipes | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=12">
+  <link rel="stylesheet" href="css/styles.css?v=13">
 </head>
 <body>
 
@@ -31,8 +31,9 @@
 
   <main class="wrap" id="main" tabindex="-1">
     <span class="pill">Recipes</span>
-    <h1>Every recipe on Cookfeed</h1>
-    <p class="lede">Free recipes are yours to open and save. Premium recipes come with the plan they are in.</p>
+    <h1>Free recipes</h1>
+    <p class="lede">Every free recipe on Cookfeed, yours to open and save. The premium recipes are inside the
+      <a href="plans.html">meal plans and collections</a> they come with, and open once you own one.</p>
 
     <div class="toolbar" role="group" aria-label="Search and sort">
       <label for="recipeSearch">Find</label>
@@ -43,22 +44,17 @@
       <span class="showing" id="recipeShowing"></span>
     </div>
 
-    <h2>Free to save</h2>
     <div class="grid" id="freeRecipes"></div>
     <p class="meta" id="noFree" hidden>No free recipe matches.</p>
 
-    <h2>Premium, inside plans</h2>
-    <p class="meta">Each of these opens once you own a plan that includes it. Point at one to see where it is sold.</p>
-    <div class="grid" id="premiumRecipes"></div>
-    <p class="meta" id="noPremium" hidden>No premium recipe matches.</p>
   </main>
 
   <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=12"></script>
-  <script src="js/db.js?v=12"></script>
-  <script src="js/rules.js?v=12"></script>
-  <script src="js/common.js?v=12"></script>
-  <script src="js/recipes.js?v=12"></script>
+  <script src="js/seed-data.js?v=13"></script>
+  <script src="js/db.js?v=13"></script>
+  <script src="js/rules.js?v=13"></script>
+  <script src="js/common.js?v=13"></script>
+  <script src="js/recipes.js?v=13"></script>
 </body>
 </html>
