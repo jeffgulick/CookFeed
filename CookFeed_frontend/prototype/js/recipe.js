@@ -76,6 +76,11 @@ function stepRecipeServings(change) {
 }
 
 function resetRecipeServings() {
+  // The mock player: Play starts at the first step that is marked in the video.
+  document.getElementById("playButton").addEventListener("click", function () {
+    var first = currentRecipe.steps.filter(function (step) { return step.videoTimestampSeconds !== null; })[0] || currentRecipe.steps[0];
+    if (first) { jumpToStep(first.videoTimestampSeconds || 0, first.stepNumber); }
+  });
   document.getElementById("servingsInput").value = currentRecipe.servings;
   applyRecipeServings();
 }
@@ -134,25 +139,41 @@ function renderSaveState() {
 
   document.getElementById("savedBy").textContent = savedByText(saveCount(currentRecipe.id));
 
+  // The note under the buttons says what they do, and only to someone who has them: a guest is told what
+  // signing in offers, and the admin, who never saves or shops, is told nothing.
+  var note = document.getElementById("saveNote");
+  note.hidden = true;
   if (user === null) {
     area.innerHTML = signInLink("save");
+    note.textContent = "Sign in to keep this recipe in My kitchen, put it on your week, and shop it.";
+    note.hidden = false;
     return;
   }
   if (!canSave(user, currentRecipe)) {
     area.innerHTML = "";
     return;
   }
+  note.innerHTML = "Saving keeps this recipe in <a href='kitchen.html'>My kitchen</a>. <strong>Shop this recipe</strong> puts its " +
+    "ingredients on your shopping list, and <strong>Add to my week</strong> puts it on a day, both for the people you set below.";
+  note.hidden = false;
   var saved = isSavedBy(user.id, currentRecipe.id);
   area.innerHTML = "<button type='button' id='saveButton' class='" + (saved ? "btn-secondary" : "btn-primary") +
     "' title='" + SAVE_HINT + "'>" + (saved ? "Saved &#10003;" : "Save recipe") + "</button> " +
-    "<button type='button' id='shopButton' class='btn-secondary' title='Put its ingredients on a shopping trip, for the people above'>Shop this recipe</button>";
+    "<button type='button' id='shopButton' class='btn-secondary'>Shop this recipe</button> " +
+    "<button type='button' id='planButton' class='btn-secondary'>Add to my week</button>";
   document.getElementById("saveButton").addEventListener("click", saveThisRecipe);
   document.getElementById("shopButton").addEventListener("click", shopThisRecipe);
+  document.getElementById("planButton").addEventListener("click", planThisRecipe);
 }
 
-/* 3.9: straight onto a shopping trip, for the people the stepper says, without going through My kitchen. */
+/* 3.9: straight onto the shopping list, for the people the stepper says, without going through My kitchen. */
 function shopThisRecipe() {
-  openShopDialog(currentUser(), [{ recipeId: currentRecipe.id, servings: currentServings }], currentRecipe.title);
+  tellShopped(shopRecipes(currentUser().id, [{ recipeId: currentRecipe.id, servings: currentServings }]));
+}
+
+/* 3.9: onto a day in the next two weeks, for the people the stepper says. */
+function planThisRecipe() {
+  openPlanDialog(currentUser(), currentRecipe, upcomingDays(null, 14), currentServings);
 }
 
 function saveThisRecipe() {
@@ -206,7 +227,7 @@ function renderHeader() {
   } else {
     crumb.innerHTML = "<a href='creator.html?handle=" + encodeURIComponent(creator.handle) + "'>" +
       escapeHtml(creator.displayName) + "</a> &rsaquo; Recipes";
-    pill.textContent = currentRecipe.isPublished ? "Recipe" : "Draft";
+    pill.textContent = currentRecipe.isPublished || !isMyRecipe(user) ? "Recipe" : "Draft";
     foot.innerHTML = "<p><strong>More from " + escapeHtml(creator.displayName) + "</strong></p>" +
       "<p><a href='creator.html?handle=" + encodeURIComponent(creator.handle) + "'>See every recipe from " +
       escapeHtml(creator.handle) + " &rarr;</a></p>";
@@ -214,16 +235,20 @@ function renderHeader() {
 
   var note = document.getElementById("ownedNote");
   var through = currentRecipe.visibility === "ProductOnly" ? ownedThrough(user, currentRecipe.id) : null;
-  if (!currentRecipe.isPublished) {
+  if (!currentRecipe.isPublished && isMyRecipe(user)) {
     note.textContent = "A draft. Only you can see it until you publish it.";
     note.hidden = false;
   } else if (through !== null) {
-    note.textContent = "Yours through " + through;
+    note.textContent = "Yours through " + through + (currentRecipe.isPublished ? "" : ". It is no longer in the store; you keep it.");
     note.hidden = false;
   } else if (currentRecipe.visibility === "ProductOnly" && user !== null && currentRecipe.creatorId === user.id) {
     note.textContent = "Only buyers of your plans can open this recipe.";
     note.hidden = false;
   }
+}
+
+function isMyRecipe(user) {
+  return user !== null && currentRecipe.creatorId === user.id;
 }
 
 /* The active products whose recipes include this one, for the locked notice. */
@@ -233,12 +258,20 @@ function productsWith(recipeId) {
     .filter(function (p, index, all) { return p.isActive && all.indexOf(p) === index; });
 }
 
-function showLocked(recipe) {
-  var links = productsWith(recipe.id).map(function (p) {
+/* A premium recipe the viewer cannot open says what applies to them: the admin, who never buys, is told who
+   can open it; anyone else where to get it, or, when no plan holding it is for sale, where to look instead. */
+function showLocked(recipe, user) {
+  if (isAdmin(user)) {
+    showMissing(recipe.title, "&#128274; A premium recipe. Only its creator and the cooks who own its plan can open it.");
+    return;
+  }
+  var links = productsWith(recipe.id).filter(isForSale).map(function (p) {
     return "<a href='" + productUrl(p.id) + "'>" + escapeHtml(p.title) + "</a>";
   });
-  var where = links.length ? " It comes with " + links.join(" and ") + "." : "";
-  showMissing(recipe.title, "&#128274; This recipe is only for cooks who bought the plan it is in." + where);
+  showMissing(recipe.title, links.length
+    ? "&#128274; This recipe comes with " + links.join(" and ") + ". Buy it to open the recipe."
+    : "&#128274; This recipe came with a plan that is no longer for sale. <a href='recipes.html'>Browse the free recipes</a> " +
+      "or <a href='plans.html'>see the plans</a>.");
 }
 
 /* ---------- start ---------- */
@@ -254,7 +287,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
   if (!canOpenRecipe(user, row)) {
-    showLocked(row);
+    showLocked(row, user);
     return;
   }
 
@@ -267,6 +300,11 @@ document.addEventListener("DOMContentLoaded", function () {
   renderIngredients(currentServings);
   renderSteps();
 
+  // The mock player: Play starts at the first step that is marked in the video.
+  document.getElementById("playButton").addEventListener("click", function () {
+    var first = currentRecipe.steps.filter(function (step) { return step.videoTimestampSeconds !== null; })[0] || currentRecipe.steps[0];
+    if (first) { jumpToStep(first.videoTimestampSeconds || 0, first.stepNumber); }
+  });
   document.getElementById("servingsInput").value = currentRecipe.servings;
   document.getElementById("servingsReset").textContent = "Reset to " + currentRecipe.servings + " as written";
   updateServingsButtons();

@@ -72,3 +72,19 @@ test("the nav reaches Plans and Recipes from every page", async ({ page }) => {
   await page.click("#seeAllRecipes");
   await expect(page).toHaveURL(/recipes\.html/);
 });
+
+test("on Recipes, Save works the same after searching and sorting: one press, one change", async ({ page }) => {
+  await signInAs(page, SAM);
+  await page.goto("recipes.html");
+  await page.fill("#recipeSearch", "c");
+  await page.fill("#recipeSearch", "");
+  await page.locator("[data-sort]").first().click();
+  const card = page.locator("#freeRecipes .recipe-card", { hasText: "Caprese" });
+  await expect(card.locator(".save-button")).toHaveText("Saved ✓");
+  await card.locator(".save-button").click();
+  await expect(card.locator(".save-button")).toHaveText("Save recipe");
+  await expect(page.locator(".toast")).toContainText("removed from your saved recipes");
+  expect(await page.evaluate(() => isSavedBy(7, 15))).toBe(false);
+  await card.locator(".save-button").click();
+  expect(await page.evaluate(() => isSavedBy(7, 15))).toBe(true);
+});

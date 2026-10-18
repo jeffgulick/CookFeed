@@ -156,18 +156,21 @@ function ownedThrough(user, recipeId) {
   return items.length ? items[0].productTitle : null;
 }
 
-/* 3.3 and Q14: a recipe opens when it is published and Public, or when the viewer's purchase snapshot
-   holds it. Its creator can always open it, drafts included. */
+/* 3.3 and Q14: a recipe opens when the viewer's purchase snapshot holds it, or when it is published and
+   Public. Buyers keep what they bought, so a recipe taken out of the store (unpublished by the admin, 3.8)
+   still opens for them. Its creator can always open it, drafts included. */
 function canOpenRecipe(user, recipe) {
   if (recipe === null) { return false; }
   if (user !== null && recipe.creatorId === user.id) { return true; }
-  if (!recipe.isPublished) { return false; }
-  return recipe.visibility === "Public" || ownedThrough(user, recipe.id) !== null;
+  if (ownedThrough(user, recipe.id) !== null) { return true; }
+  return recipe.isPublished && recipe.visibility === "Public";
 }
 
-/* 3.3: saving follows visibility, and only published recipes can be saved. */
+/* 3.3: saving follows visibility. A recipe out of the store can be saved only by a cook who bought it;
+   a creator's own draft is not saved. */
 function canSave(user, recipe) {
-  return canShop(user) && recipe !== null && recipe.isPublished && canOpenRecipe(user, recipe);
+  return canShop(user) && recipe !== null && canOpenRecipe(user, recipe) &&
+    (recipe.isPublished || ownedThrough(user, recipe.id) !== null);
 }
 
 /* 3.9: a recipe can be planned for the week only by a cook who could save it: a shopper who may open it. */

@@ -644,7 +644,7 @@ window.COOKFEED_SEED = {
             "createdAt": "2026-07-27T12:00:00+00:00",
             "creatorId": 5,
             "priceCents": 999,
-            "description": "Seven dinners, two breakfasts, one grocery trip.",
+            "description": "Six family meals: three breakfasts, a taco dinner and two snacks, from one grocery trip.",
             "coverImageUrl": "images/products/4.svg"
         },
         {

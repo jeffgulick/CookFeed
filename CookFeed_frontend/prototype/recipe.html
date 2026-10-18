@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recipe | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=16">
+  <link rel="stylesheet" href="css/styles.css?v=17">
 </head>
 <body>
 
@@ -41,7 +41,7 @@
     <div class="player">
       <img id="recipeImage" src="images/recipes/5.svg" alt="">
       <div class="player-bar">
-        <span class="play">&#9654;</span>
+        <button type="button" class="play" id="playButton" aria-label="Play the video">&#9654;</button>
         <div class="track"><div class="track-fill" id="videoProgress"></div></div>
         <span class="time" id="videoTime">0:00 / 0:00</span>
       </div>
@@ -53,7 +53,7 @@
         <span id="savedBy">saved by 0 cooks</span></span>
       <span id="saveArea"></span>
     </div>
-    <p class="price-note">Saving keeps this recipe in <a href="kitchen.html">My kitchen</a>, where you plan it into a week. <strong>Shop this recipe</strong> puts its ingredients on a shopping trip right now, for the people you set below.</p>
+    <p class="price-note" id="saveNote" hidden></p>
 
     <h2>Ingredients <span class="meta" style="font-weight:400">for <span id="servingsLabel"></span></span></h2>
     <div class="card">
@@ -77,12 +77,12 @@
     <div class="cta-foot" id="recipeFoot"></div>
   </main>
 
-  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+  <footer>Cookfeed prototype &middot; short-video recipes &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=16"></script>
-  <script src="js/db.js?v=16"></script>
-  <script src="js/rules.js?v=16"></script>
-  <script src="js/common.js?v=16"></script>
-  <script src="js/recipe.js?v=16"></script>
+  <script src="js/seed-data.js?v=17"></script>
+  <script src="js/db.js?v=17"></script>
+  <script src="js/rules.js?v=17"></script>
+  <script src="js/common.js?v=17"></script>
+  <script src="js/recipe.js?v=17"></script>
 </body>
 </html>

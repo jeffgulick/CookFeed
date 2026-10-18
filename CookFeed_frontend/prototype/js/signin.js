@@ -73,6 +73,12 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
     signIn(Number(button.getAttribute("data-user-id")));
+    // Sent here by "Sign in to save" and the like: go back to that page.
+    var next = signInNext();
+    if (next !== null) {
+      window.location.href = next;
+      return;
+    }
     refresh();
     showToast("Signed in as " + currentUser().displayName + ".");
   });

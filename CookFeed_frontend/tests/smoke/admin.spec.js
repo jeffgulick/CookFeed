@@ -104,7 +104,7 @@ test("a refund takes the plan back from the buyer", async ({ page }) => {
   await page.goto("orders.html");
   await expect(page.locator(".order-card", { hasText: "CF-00002" })).toContainText("refunded, so nothing in it is yours");
   await page.goto("recipe.html?id=9");
-  await expect(page.locator("main")).toContainText("only for cooks who bought the plan");
+  await expect(page.locator("main")).toContainText("This recipe comes with Family Week on a Budget");
   await page.goto("product.html?id=4");
   await expect(page.locator("#buyArea .buy-button")).toHaveCount(1);
 });

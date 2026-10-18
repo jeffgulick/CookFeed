@@ -319,8 +319,12 @@ test("a shopping trip is built from any recipes and plans, scaled, shopped, and 
   assert.equal(p.tripList(trip.id).skipped.length, 0);
   assert.equal(p.setTripStatus(trip.id, "Shopping").status, "Shopping");
   assert.equal(p.tripEditable(p.tripById(trip.id)), true);
-  assert.equal(p.setTripStatus(trip.id, "Sent", "Instacart").sentTo, "Instacart");
   p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, true);
+  assert.equal(p.setTripStatus(trip.id, "Sent", "Instacart").sentTo, "Instacart");
+  // A sent list is read-only: the partner is shopping it.
+  assert.equal(p.tripEditable(p.tripById(trip.id)), false);
+  assert.equal(p.setTripSkip(trip.id, list.find((l) => l.name === "ground beef").ingredientId, false), false);
+  assert.deepEqual(plain(p.addTripItems(trip.id, [{ recipeId: TAMAGOYAKI, servings: 2 }])), []);
   assert.notEqual(p.setTripStatus(trip.id, "Done").completedAt, null);
   // A done trip refuses every change to its items and skips.
   assert.equal(p.removeTripItem(p.tripItems(trip.id)[0].id), false);
@@ -332,14 +336,19 @@ test("a shopping trip is built from any recipes and plans, scaled, shopped, and 
   assert.equal(loadPrototype(p.localStorage).tripById(trip.id).status, "Done");
   assert.equal(p.setTripStatus(trip.id, "Lost"), null);
   // Shopped again: a fresh Building trip with the same recipes and people; the done one stays as history.
-  const again = p.copyTrip(trip.id);
+  const again = p.copyTrip(trip.id, "2026-10-18");
   assert.equal(again.status, "Building");
-  assert.equal(again.name, "Taco night again");
+  assert.equal(again.name, "Shopping list, Oct 18");               // named by date, never "again again"
+  // One list at a time: while one is still being built or shopped, nothing can be shopped again.
+  assert.equal(p.canShopAgain(p.tripById(trip.id)), false);
+  assert.equal(p.copyTrip(trip.id, "2026-10-18"), null);
   assert.equal(p.tripItems(again.id).length, 6);
   assert.equal(p.tripItems(again.id).find((i) => i.recipeId === TACOS).servings, 8);
   assert.equal(p.tripList(again.id).skipped.length, 1);
   assert.equal(p.tripById(trip.id).status, "Done");
   assert.equal(p.tripsFor(ALEX).length, 2);
+  p.setTripStatus(again.id, "Sent", "Favor");
+  assert.equal(p.canShopAgain(p.tripById(trip.id)), true);
   p.deleteTrip(again.id);
   p.removeTripItem(p.tripItems(again.id)[0] ? p.tripItems(again.id)[0].id : 0);
   p.deleteTrip(trip.id);
@@ -347,16 +356,82 @@ test("a shopping trip is built from any recipes and plans, scaled, shopped, and 
   assert.equal(p.tripItems(trip.id).length, 0);
 });
 
-test("a planned week becomes a trip for the people each meal was planned for; nothing the cook may not open joins (3.9)", () => {
+test("a planned week goes on the shopping list for the people each meal was planned for; nothing the cook may not open joins (3.9)", () => {
   const p = loadPrototype();
-  const trip = p.tripFromWeek(ALEX, "2026-09-21");
-  assert.equal(trip.name, "Week of Sept 21");
+  const shopped = p.shopWeek(ALEX, "2026-09-21", "2026-09-23");
+  const trip = shopped.trip;
+  assert.equal(trip.name, "Shopping list, Sept 23");
+  assert.equal(shopped.added.length, 4);
   assert.equal(p.tripItems(trip.id).find((i) => i.recipeId === TERIYAKI).servings, 4);
   assert.equal(p.buildShoppingList(p.tripRecipeLines(trip.id), null).find((l) => l.name === "boneless chicken thigh").amount, 1000);
-  assert.equal(p.tripFromWeek(SAM, "2026-09-21"), null);
+  assert.equal(p.shopWeek(SAM, "2026-09-21", "2026-09-23"), null);
   const sams = p.createTrip(SAM, "Try", [{ recipeId: ONIGIRI, servings: 2 }, { recipeId: TAMAGOYAKI, servings: 2 }]);
   assert.equal(p.tripItems(sams.id).length, 1);
   assert.equal(p.addProductToTrip(sams.id, JAPAN).length, 0);
+});
+
+test("one shopping list at a time: Shop this adds straight to it, makes it when there is none, and can be undone (3.9)", () => {
+  const p = loadPrototype();
+  assert.equal(p.activeListFor(ALEX), null);
+  const first = p.shopRecipes(ALEX, [{ recipeId: TACOS, servings: 8 }], "2026-10-18");
+  assert.equal(first.created, true);
+  assert.equal(first.trip.name, "Shopping list, Oct 18");
+  assert.equal(first.added.length, 1);
+  assert.equal(p.activeListFor(ALEX).id, first.trip.id);
+  // A plan joins the same list; its tacos are on it already, and its oats on two mornings become one item.
+  const plan = p.shopProduct(ALEX, FAMILY_WEEK, "2026-10-18");
+  assert.equal(plan.trip.id, first.trip.id);
+  assert.equal(plan.created, false);
+  assert.equal(plan.added.length, 4);
+  assert.equal(p.tripItems(first.trip.id).find((i) => i.recipeId === OATS).servings, 2 * p.recipeWithDetails(OATS).servings);
+  assert.equal(p.shopProduct(ALEX, FAMILY_WEEK, "2026-10-18").added.length, 0);
+  // Undo takes off exactly what that press added; undoing the press that made the list deletes it.
+  p.undoShop(plan);
+  assert.deepEqual(plain(p.tripItems(first.trip.id).map((i) => i.recipeId)), [TACOS]);
+  p.undoShop(first);
+  assert.equal(p.tripsFor(ALEX).length, 0);
+  // Nothing the cook may not open is shopped, and no empty list is left behind.
+  assert.equal(p.shopRecipes(SAM, [{ recipeId: ONIGIRI, servings: 2 }], "2026-10-18"), null);
+  assert.equal(p.shopProduct(SAM, JAPAN, "2026-10-18"), null);
+  assert.equal(p.tripsFor(SAM).length, 0);
+  // A sent list is no longer the one being built: the next Shop this starts a new list.
+  p.shopRecipes(ALEX, [{ recipeId: TACOS, servings: 4 }], "2026-10-18");
+  p.setTripStatus(p.activeListFor(ALEX).id, "Sent", "Instacart");
+  assert.equal(p.activeListFor(ALEX), null);
+  assert.equal(p.shopRecipes(ALEX, [{ recipeId: TACOS, servings: 4 }], "2026-10-19").trip.name, "Shopping list, Oct 19");
+  assert.equal(p.tripsFor(ALEX).length, 2);
+});
+
+test("Shop this plan buys what the cook's purchase holds, not the plan as it is now (3.3)", () => {
+  const p = loadPrototype();
+  // Maria took the focaccia out of Roman Pasta after Alex bought it; it is still his, and still on his list.
+  assert.equal(p.productWithRecipes(ROMAN_PASTA).recipes.length, 3);
+  const shopped = p.shopProduct(ALEX, ROMAN_PASTA, "2026-10-18");
+  assert.deepEqual(plain(p.tripItems(shopped.trip.id).map((i) => i.recipeId).sort()), [1, 2, 3, 4]);
+});
+
+test("weeks are named for the cook: this week, next week, or a dated week marked past (3.9)", () => {
+  const p = loadPrototype();
+  const today = "2026-10-18";                                       // a Sunday, in the week of Oct 12
+  assert.equal(p.weekLabel("2026-10-12", today), "This week");
+  assert.equal(p.weekLabel("2026-10-19", today), "Next week");
+  assert.equal(p.weekLabel("2026-09-21", today), "Week of Sept 21, 2026 (past)");
+  assert.equal(p.weekLabel("2026-11-02", today), "Week of Nov 2, 2026");
+  // This week is empty: point to the week that has meals, an upcoming one before a past one.
+  assert.equal(p.otherPlannedWeek(ALEX, today), "2026-09-21");
+  p.addPlanEntry(ALEX, "2026-10-26", TERIYAKI, "2026-10-27", "Dinner", null);
+  assert.equal(p.otherPlannedWeek(ALEX, today), "2026-10-26");
+  assert.equal(p.otherPlannedWeek(ALEX, "2026-09-23"), null);         // this week already has meals
+  assert.equal(p.otherPlannedWeek(SAM, today), null);
+  // A whole plan goes on this week early in the week, and on next week from Friday on.
+  assert.equal(p.defaultPlanWeek("2026-10-14"), "2026-10-12");      // Wednesday
+  assert.equal(p.defaultPlanWeek("2026-10-16"), "2026-10-19");      // Friday
+  assert.equal(p.defaultPlanWeek(today), "2026-10-19");
+  // The days a single recipe can go on: from today, two weeks ahead.
+  const days = p.upcomingDays(today, 14);
+  assert.equal(days.length, 14);
+  assert.equal(days[0], "2026-10-18");
+  assert.equal(days[13], "2026-10-31");
 });
 
 test("only a recipe the cook may open can be planned, and a plan they did not buy cannot be added (3.3)", () => {
@@ -376,6 +451,25 @@ test("a cook owns one entry per plan bought, with the purchase snapshot (3.3)", 
   assert.equal(owned.find((o) => o.product.id === FAMILY_WEEK).mealCount, 6);
   assert.equal(p.ownedProductsFor(p.userById(SAM)).length, 0);
   assert.equal(p.ownedProductsFor(null).length, 0);
+});
+
+test("moderation holds: a hidden review cannot be removed and posted again, and buyers keep a recipe the admin took down (3.3, 3.8)", () => {
+  const p = loadPrototype();
+  const alex = p.userById(ALEX);
+  const review = p.reviewBy(ALEX, JAPAN);
+  p.setReviewHidden(ADMIN, review.id, true);
+  assert.equal(p.removeReview(ALEX, review.id), false);
+  assert.equal(p.reviewState(alex, JAPAN), "alreadyReviewed");
+  assert.equal(p.addReview(ALEX, JAPAN, 5, true, "Trying to post it again after it was hidden."), null);
+
+  assert.equal(p.adminSetRecipePublished(ADMIN, TERIYAKI, false), "");
+  const teriyaki = p.rowById("recipes", TERIYAKI);
+  assert.equal(p.canOpenRecipe(alex, teriyaki), true);              // through his Three Weeknights snapshot
+  assert.equal(p.canPlan(alex, teriyaki), true);
+  assert.equal(p.canOpenRecipe(p.userById(SAM), teriyaki), false);
+  assert.equal(p.canSave(p.userById(SAM), teriyaki), false);
+  assert.equal(p.canOpenRecipe(null, teriyaki), false);
+  assert.equal(p.isForSale(p.rowById("products", JAPAN)), false);
 });
 
 test("data safety: a stale copy refuses to write, ids are never reused, and the writes refuse what the rules refuse", () => {

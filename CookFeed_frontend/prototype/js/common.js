@@ -99,9 +99,18 @@ function signOut() {
   removeStored(USER_KEY);
 }
 
-/* A link that sends a signed-out visitor to sign in, e.g. "Sign in to save". */
+/* A link that sends a signed-out visitor to sign in, e.g. "Sign in to save", and back to this page after
+   (signin.html?next=recipe.html%3Fid%3D18). */
 function signInLink(action) {
-  return "<a class='sign-in-to' href='signin.html'>Sign in to " + action + "</a>";
+  var here = window.location.pathname.split("/").pop() + window.location.search;
+  return "<a class='sign-in-to' href='signin.html?next=" + encodeURIComponent(here) + "'>Sign in to " + action + "</a>";
+}
+
+/* The page to go back to after signing in: only a page of this site (a file name and its query), never
+   another address someone put in the link. null when there is none. */
+function signInNext() {
+  var next = queryText("next");
+  return next !== null && /^[a-z]+\.html(\?[A-Za-z0-9=&%._-]*)?$/.test(next) && next.indexOf("signin.html") !== 0 ? next : null;
 }
 
 /* The nav's account area: "Sign in" when signed out, otherwise the account's name and a Sign out
@@ -261,6 +270,7 @@ function renderBuyArea(container, product, onChange) {
      productId  link to the recipe in the context of this product
      preview    include the hover preview of times, counts and the first step
      locked     the viewer cannot open it: no link, and a note instead of the save button
+     lockText   that note, when "Included when you buy the plan" does not apply (the admin, a plan off sale)
      foot       HTML for the card's foot, replacing the save count and Save button */
 
 /* Tooltip on every Save button, so a first-time visitor knows what saving does. */
@@ -319,8 +329,8 @@ function recipeCardHtml(recipe, options) {
   var user = currentUser();
   var through = recipe.visibility === "ProductOnly" ? ownedThrough(user, recipe.id) : null;
   if (options.locked) {
-    html = html + "<div class='lock-label'>&#128274; Included when you buy the " +
-      (options.productNoun || "plan") + "</div>";
+    html = html + "<div class='lock-label'>&#128274; " + (options.lockText ? escapeHtml(options.lockText)
+      : "Included when you buy the " + (options.productNoun || "plan")) + "</div>";
   } else if (through !== null) {
     html = html + "<div class='owned-label'>Yours through " + escapeHtml(through) + "</div>";
   }
@@ -400,11 +410,15 @@ function servingsProblem(text) {
 /* ---------- feedback ----------
    A small message that slides up at the bottom of the screen and fades away on
    its own. It replaces most of the alert() boxes from Homework 1, which stopped
-   the shopper and made them click OK before they could carry on. */
+   the shopper and made them click OK before they could carry on.
+   actions (optional) adds buttons and links to it, such as Undo and Open list:
+   [{ label, className, onClick }] for a button, [{ label, className, href }] for a link. A toast with
+   actions does not fade on its own (no time limit on using Undo, WCAG 2.2.1): it stays until the cook closes
+   it, or the next message replaces it. */
 
 var toastTimer = null;
 
-function showToast(message, kind) {
+function showToast(message, kind, actions) {
   var toast = document.getElementById("toast");
 
   if (toast === null) {
@@ -416,15 +430,40 @@ function showToast(message, kind) {
     document.body.appendChild(toast);
   }
 
-  toast.textContent = message;
-  toast.className = "toast show" + (kind === "error" ? " error" : "");
-
-  if (toastTimer !== null) {
-    window.clearTimeout(toastTimer);
+  toast.textContent = "";
+  var text = document.createElement("span");
+  text.className = "toast-text";
+  text.textContent = message;
+  toast.appendChild(text);
+  (actions || []).forEach(function (action) {
+    var control = document.createElement(action.href ? "a" : "button");
+    control.className = "toast-action " + (action.className || "");
+    control.textContent = action.label;
+    if (action.href) {
+      control.href = action.href;
+    } else {
+      control.type = "button";
+      control.addEventListener("click", action.onClick);
+    }
+    toast.appendChild(control);
+  });
+  var lasting = actions !== undefined && actions.length > 0;
+  if (lasting) {
+    var close = document.createElement("button");
+    close.type = "button";
+    close.className = "toast-action toast-close";
+    close.textContent = "Close";
+    close.addEventListener("click", function () { hideToast(); });
+    toast.appendChild(close);
   }
-  toastTimer = window.setTimeout(function () {
-    toast.className = "toast";
-  }, 3200);
+  toast.className = "toast show" + (kind === "error" ? " error" : "") + (lasting ? " has-actions" : "");
+  if (toastTimer !== null) { window.clearTimeout(toastTimer); toastTimer = null; }
+  if (!lasting) { toastTimer = window.setTimeout(hideToast, 3200); }
+}
+
+function hideToast() {
+  var toast = document.getElementById("toast");
+  if (toast !== null) { toast.className = "toast"; }
 }
 
 /* ---------- confirmation dialog ----------
@@ -610,12 +649,10 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 /* ---------- the picker: what to cook ----------
-   Used by the Build dialog on My kitchen and the Add recipes dialog on a trip page: the plans the cook owns
-   (each goes on as a whole) and the recipes they saved, each with the people to cook for. With withDays,
-   each recipe also gets a day and meal, for putting it on a week. */
-/* The picker, used by My kitchen (a new trip, or the week) and by a trip's Add more. tripId is the trip being
-   added to, or null. A plan box carries the distinct recipes it brings (data-recipe-ids). A recipe or plan
-   already on the trip is drawn ticked and disabled, marked so, and readPicker leaves it out. */
+   The Add recipes dialog on a list's page: the plans the cook owns (each goes on as a whole) and the recipes
+   they saved, each with the people to cook for. tripId is the list being added to. A plan box carries the
+   distinct recipes it brings (data-recipe-ids). A recipe or plan already on the list is drawn ticked and
+   disabled, marked so, and readPicker leaves it out. */
 function pickerPlansHtml(user, tripId) {
   return ownedProductsFor(user).map(function (o) {
     var ids = [];
@@ -623,26 +660,20 @@ function pickerPlansHtml(user, tripId) {
     var onTrip = tripId !== null && ids.every(function (id) { return tripHasRecipe(tripId, id); });
     return "<label class='radio pick-row" + (onTrip ? " on-trip" : "") + "'><input type='checkbox' class='pick-plan' value='" + o.product.id +
       "' data-recipe-ids='" + ids.join(",") + "'" + (onTrip ? " checked disabled" : "") + "> " +
-      escapeHtml(o.productTitle) + " <span class='meta'>(" + productCounts(o) + (onTrip ? ", already on this trip" : "") + ")</span></label>";
+      escapeHtml(o.productTitle) + " <span class='meta'>(" + productCounts(o) + (onTrip ? ", already on this list" : "") + ")</span></label>";
   }).join("") || "<p class='meta'>You have not bought a plan yet.</p>";
 }
 
 function pickerRecipesHtml(user, options) {
   var tripId = options.tripId === undefined ? null : options.tripId;
-  var dayOptions = DAY_NAMES.map(function (day, i) { return "<option value='" + i + "'>" + day + "</option>"; }).join("");
-  var slotOptions = SLOT_ORDER.map(function (slot) {
-    return "<option value='" + slot + "'" + (slot === "Dinner" ? " selected" : "") + ">" + slot + "</option>";
-  }).join("");
   return savesFor(user.id).map(function (save) {
     var recipe = rowById("recipes", save.recipeId);
     var onTrip = tripId !== null && tripHasRecipe(tripId, recipe.id);
     return "<div class='placement" + (onTrip ? " on-trip" : "") + "' data-recipe-id='" + recipe.id + "'>" +
       "<label><input type='checkbox' class='pick-recipe' value='" + recipe.id + "'" +
       (recipe.id === options.preRecipeId || onTrip ? " checked" : "") + (onTrip ? " disabled" : "") + "> " + escapeHtml(recipe.title) +
-      "<span class='pick-tag'>" + (onTrip ? "already on this trip" : "") + "</span></label>" +
-      (onTrip ? "<span class='pick-people meta'>on the trip</span>" : "<span class='pick-people'>for " + peopleBoxHtml(recipe.servings, recipe.title) + "</span>") +
-      (options.withDays ? "<span class='pick-when'><select aria-label='Day for " + escapeHtml(recipe.title) + "' class='pick-day'>" + dayOptions +
-        "</select> <select aria-label='Meal for " + escapeHtml(recipe.title) + "' class='pick-slot'>" + slotOptions + "</select></span>" : "") +
+      "<span class='pick-tag'>" + (onTrip ? "already on this list" : "") + "</span></label>" +
+      (onTrip ? "<span class='pick-people meta'>on the list</span>" : "<span class='pick-people'>for " + peopleBoxHtml(recipe.servings, recipe.title) + "</span>") +
       "</div>";
   }).join("") || "<p class='meta'>Save a recipe first, and it appears here.</p>";
 }
@@ -654,10 +685,10 @@ function wirePicker(root) {
   wirePeopleBoxes(root, function () { return true; }, true);
 }
 
-/* What was ticked: the plan ids, and the recipes with people (and day and meal when asked). A disabled box
-   (already on the trip) is left out. A recipe ticked on its own and also in a ticked plan is added once, for
-   the people the cook chose for it (the caller adds the recipes before the plans, and a trip or a day never
-   takes a recipe twice). problem names the first box whose number of people is not allowed. */
+/* What was ticked: the plan ids, and the recipes with people. A disabled box (already on the list) is left
+   out. A recipe ticked on its own and also in a ticked plan is added once, for the people the cook chose for
+   it (the caller adds the recipes before the plans, and a list never takes a recipe twice). problem names the
+   first box whose number of people is not allowed. */
 function readPicker(root) {
   var productIds = [];
   var plans = root.querySelectorAll(".pick-plan:checked:not(:disabled)");
@@ -671,20 +702,19 @@ function readPicker(root) {
     if (!isPeople(input.value)) {
       return { productIds: [], items: [], problem: input.getAttribute("aria-label") + ": " + peopleProblem(input.value) };
     }
-    var day = rows[k].querySelector(".pick-day");
-    items.push({ recipeId: Number(box.value), servings: Number(input.value),
-      dayOffset: day ? Number(day.value) : null, slot: day ? rows[k].querySelector(".pick-slot").value : null });
+    items.push({ recipeId: Number(box.value), servings: Number(input.value) });
   }
   return { productIds: productIds, items: items, problem: "" };
 }
 
-/* ---------- 3.9: finishing a trip, from its page or from the kitchen ---------- */
+/* ---------- 3.9: finishing a list, from its page or from the kitchen ---------- */
 
-/* Confirm, then mark the trip done and clear its ticks. Resolves true when it was done. */
+/* Confirm, then mark the list done and clear its ticks. Resolves true when it was done. */
 function finishTrip(trip) {
-  var message = trip.status === "Sent" ? "Did everything arrive? The trip is marked done and kept in your trips as a record."
-    : "Trip complete? It is marked done and kept in your trips as a record.";
-  return confirmDialog(message, trip.status === "Sent" ? "Items received" : "Trip complete").then(function (ok) {
+  var sent = trip.status === "Sent";
+  var message = sent ? "Did everything arrive? The list is marked done and kept in your past lists."
+    : "Done shopping? The list is marked done and kept in your past lists.";
+  return confirmDialog(message, sent ? "Items arrived" : "Done shopping").then(function (ok) {
     if (!ok) { return false; }
     setTripStatus(trip.id, "Done");
     removeStored(tripHaveKey(trip.id));
@@ -692,70 +722,169 @@ function finishTrip(trip) {
   });
 }
 
-/* ---------- 3.9: "Shop this" from a recipe or a plan page ---------- */
+/* ---------- 3.9: "Shop this", from a recipe, a plan or the week ----------
+   There is one shopping list at a time, so nothing asks which one: db.js shopRecipes, shopProduct and shopWeek
+   add straight to it (and make it when there is none). The toast says what happened, with Undo and a link
+   to open the list. onUndo lets the page redraw what depends on the list. */
 
-var shopPending = null;   // { user, items: [{ recipeId, servings }], name } while the dialog is open
-
-function pickedShopTripId() {
-  var picked = document.querySelector("#shopTrips input[name='shopTrip']:checked");
-  return picked === null ? 0 : Number(picked.value);
+function tellShopped(result, onUndo) {
+  if (result === null) {
+    showToast("There is nothing here you can shop.", "error");
+    return;
+  }
+  var open = { label: "Open list", className: "toast-open", href: "list.html?trip=" + result.trip.id };
+  if (result.added.length === 0) {
+    showToast("That is already on your shopping list.", null, [open]);
+    return;
+  }
+  showToast(plural(result.added.length, "recipe", "recipes") + " added to your shopping list.", null, [
+    { label: "Undo", className: "toast-undo", onClick: function () {
+      undoShop(result);
+      showToast("Taken off your shopping list.");
+      if (onUndo) { onUndo(); }
+    } },
+    open
+  ]);
 }
 
-/* The cook puts a recipe, or a whole owned plan, on a shopping trip without going through My kitchen:
-   onto a trip they are still building or shopping, or onto a new one named after what they are shopping.
-   The trip then opens. Items are {recipeId, servings}; db.js addTripItems refuses a recipe the cook may
-   not open (rules.js canPlan), so a locked recipe never reaches a list. */
-function openShopDialog(user, items, suggestedName) {
-  var dialog = document.getElementById("shopDialog");
-  if (dialog === null) {
-    dialog = document.createElement("dialog");
-    dialog.id = "shopDialog";
-    dialog.className = "build-dialog shop-dialog";
-    dialog.setAttribute("aria-labelledby", "shopHeading");
-    dialog.innerHTML =
-      "<form method='dialog' id='shopForm' novalidate>" +
-      "<h3 id='shopHeading'>Add to a shopping trip</h3>" +
-      "<p class='meta' id='shopHint'></p>" +
-      "<fieldset class='field'><legend>Which trip?</legend><div id='shopTrips'></div></fieldset>" +
-      "<div class='field' id='shopNameField'><label for='shopName'>Name the new trip</label>" +
-      "<input type='text' id='shopName' maxlength='80'></div>" +
-      "<div class='dialog-actions'>" +
-      "<button type='button' class='btn-secondary' id='shopCancel'>Cancel</button>" +
-      "<button type='submit' class='btn-primary' id='shopSubmit'>Add and open the trip</button>" +
-      "</div></form>";
-    document.body.appendChild(dialog);
-    dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } });
-    document.getElementById("shopCancel").addEventListener("click", function () { dialog.close(); });
-    document.getElementById("shopTrips").addEventListener("change", function () {
-      document.getElementById("shopNameField").hidden = pickedShopTripId() !== 0;
-    });
-    document.getElementById("shopForm").addEventListener("submit", onShopSubmitted);
+/* ---------- 3.9: putting one recipe, or one owned plan, on a week ---------- */
+
+/* "this week", "next week", or "the week of Nov 2, 2026", for a sentence. */
+function weekPhrase(weekStart) {
+  var label = weekLabel(weekStart);
+  return label === "This week" || label === "Next week" ? label.toLowerCase() : "the " + label.charAt(0).toLowerCase() + label.slice(1);
+}
+
+/* "Today, Sunday, Oct 18" or "Saturday, Sept 26". */
+function dayOptionLabel(iso) {
+  var name = DAY_NAMES[(parseIsoDate(iso).getDay() + 6) % 7] + ", " + formatShortDate(iso);
+  return iso === todayIso() ? "Today, " + name : name;
+}
+
+/* A modal made once per page and kept, like confirmDialog's. Focus goes back to the opener when it closes. */
+function smallDialog(id, headingId, formHtml) {
+  var dialog = document.getElementById(id);
+  if (dialog !== null) { return dialog; }
+  dialog = document.createElement("dialog");
+  dialog.id = id;
+  dialog.className = "build-dialog plan-dialog";
+  dialog.setAttribute("aria-labelledby", headingId);
+  dialog.innerHTML = formHtml;
+  document.body.appendChild(dialog);
+  dialog.addEventListener("click", function (event) { if (event.target === dialog) { dialog.close(); } });
+  dialog.addEventListener("close", function () {
+    var opener = dialog.opener;
+    if (opener && document.contains(opener)) { opener.focus(); }
+  });
+  dialog.querySelector(".dialog-cancel").addEventListener("click", function () { dialog.close(); });
+  return dialog;
+}
+
+var planPending = null;   // { user, recipe, onDone } while the recipe's dialog is open
+
+/* Plan it: one recipe on a day and meal, for a number of people. days are the dates offered (a week shown in
+   the kitchen, or the next two weeks from a recipe page); people starts as given. onDone(entry) runs after it
+   is planned; without it, the toast links to the week in My kitchen. */
+function openPlanDialog(user, recipe, days, people, onDone) {
+  var dialog = smallDialog("planDialog", "planHeading",
+    "<form method='dialog' id='planForm' novalidate>" +
+    "<h3 id='planHeading'>Add to my week</h3>" +
+    "<p class='meta' id='planWhat'></p>" +
+    "<div class='field'><label for='planDay'>Day</label><select id='planDay'></select></div>" +
+    "<div class='field'><label for='planSlot'>Meal</label><select id='planSlot'>" +
+    SLOT_ORDER.map(function (slot) { return "<option value='" + slot + "'>" + slot + "</option>"; }).join("") + "</select></div>" +
+    "<div class='field'><span class='field-label' id='planPeopleLabel'>People</span><div id='planPeople'></div></div>" +
+    "<p class='field-error' id='planError' aria-live='polite'></p>" +
+    "<div class='dialog-actions'>" +
+    "<button type='button' class='btn-secondary dialog-cancel'>Cancel</button>" +
+    "<button type='submit' class='btn-primary' id='planSubmit'>Add to my week</button>" +
+    "</div></form>");
+  if (dialog.getAttribute("data-wired") !== "yes") {
+    dialog.setAttribute("data-wired", "yes");
+    wirePeopleBoxes(document.getElementById("planPeople"), function () { return true; }, true);
+    document.getElementById("planForm").addEventListener("submit", onPlanSubmitted);
   }
 
-  shopPending = { user: user, items: items, name: suggestedName };
-  var open = tripsFor(user.id).filter(function (t) { return t.status === "Building" || t.status === "Shopping"; });
-  document.getElementById("shopHint").textContent = plural(items.length, "recipe", "recipes") + " to add. " +
-    (open.length ? "Put them on a trip you are still shopping, or start a new one." : "This starts your first trip.");
-  document.getElementById("shopTrips").innerHTML = open.map(function (t, index) {
-    return "<label class='shop-trip-row'><input type='radio' name='shopTrip' value='" + t.id + "'" + (index === 0 ? " checked" : "") + "> " +
-      escapeHtml(t.name) + " <span class='meta'>" + t.status + ", " + plural(tripItems(t.id).length, "recipe", "recipes") + "</span></label>";
-  }).join("") + "<label class='shop-trip-row'><input type='radio' name='shopTrip' value='0'" + (open.length ? "" : " checked") + "> A new trip</label>";
-  document.getElementById("shopNameField").hidden = open.length > 0;
-  document.getElementById("shopName").value = suggestedName;
+  planPending = { user: user, recipe: recipe, onDone: onDone };
+  dialog.opener = document.activeElement;
+  document.getElementById("planWhat").textContent = recipe.title;
+  var today = todayIso();
+  var first = days.filter(function (d) { return d >= today; })[0] || days[0];
+  document.getElementById("planDay").innerHTML = days.map(function (d) {
+    return "<option value='" + d + "'" + (d === first ? " selected" : "") + ">" + dayOptionLabel(d) + "</option>";
+  }).join("");
+  document.getElementById("planSlot").value = "Dinner";
+  document.getElementById("planPeople").innerHTML = peopleBoxHtml(people, recipe.title);
+  document.getElementById("planError").textContent = "";
   dialog.showModal();
 }
 
-function onShopSubmitted(event) {
+function onPlanSubmitted(event) {
   event.preventDefault();
-  var tripId = pickedShopTripId();
-  var added;
-  if (tripId === 0) {
-    var name = document.getElementById("shopName").value.trim() || shopPending.name;
-    tripId = createTrip(shopPending.user.id, name, shopPending.items).id;
-    added = tripItems(tripId).length;
-  } else {
-    added = addTripItems(tripId, shopPending.items).length;
+  var input = document.querySelector("#planPeople .people-input");
+  var error = document.getElementById("planError");
+  if (!isPeople(input.value)) {
+    error.textContent = peopleProblem(input.value);
+    return;
   }
-  document.getElementById("shopDialog").close();
-  window.location.href = "list.html?trip=" + tripId + "&added=" + added;
+  var recipe = planPending.recipe;
+  var day = document.getElementById("planDay").value;
+  var slot = document.getElementById("planSlot").value;
+  var week = weekStartOf(parseIsoDate(day));
+  var people = Number(input.value);
+  if (entryOn(planPending.user.id, week, recipe.id, day, slot) !== null) {
+    error.textContent = "It is already on that day's " + slot.toLowerCase() + ". Pick another day or meal.";
+    return;
+  }
+  var entry = addPlanEntry(planPending.user.id, week, recipe.id, day, slot, people === recipe.servings ? null : people);
+  if (entry === null) {
+    error.textContent = "This recipe cannot be planned.";
+    return;
+  }
+  document.getElementById("planDialog").close();
+  var message = recipe.title + " added to " + weekPhrase(week) + ".";
+  if (planPending.onDone) {
+    planPending.onDone(entry);
+    showToast(message);
+  } else {
+    showToast(message, null, [{ label: "See my week", className: "toast-week", href: "kitchen.html?week=" + week }]);
+  }
+}
+
+var planProductPending = null;   // { user, product } while the plan's dialog is open
+
+/* Add to my week, for a whole plan the cook owns: this week or next, every meal on its own day. */
+function openPlanProductDialog(user, product) {
+  var dialog = smallDialog("planProductDialog", "planProductHeading",
+    "<form method='dialog' id='planProductForm' novalidate>" +
+    "<h3 id='planProductHeading'>Add to my week</h3>" +
+    "<fieldset class='field' id='planWeekChoice'><legend>Which week?</legend></fieldset>" +
+    "<div class='dialog-actions'>" +
+    "<button type='button' class='btn-secondary dialog-cancel'>Cancel</button>" +
+    "<button type='submit' class='btn-primary' id='planPlanSubmit'>Add to my week</button>" +
+    "</div></form>");
+  if (dialog.getAttribute("data-wired") !== "yes") {
+    dialog.setAttribute("data-wired", "yes");
+    document.getElementById("planProductForm").addEventListener("submit", onPlanProductSubmitted);
+  }
+
+  planProductPending = { user: user, product: product };
+  dialog.opener = document.activeElement;
+  var current = weekStartOf(parseIsoDate(todayIso()));
+  var chosen = defaultPlanWeek();
+  document.getElementById("planWeekChoice").innerHTML = "<legend>Which week?</legend>" + [current, addDays(current, 7)].map(function (week) {
+    return "<label class='radio'><input type='radio' name='planWeek' value='" + week + "'" + (week === chosen ? " checked" : "") + "> " +
+      weekLabel(week) + " <span class='meta'>(from " + formatShortDate(week) + ")</span></label>";
+  }).join("");
+  dialog.showModal();
+}
+
+function onPlanProductSubmitted(event) {
+  event.preventDefault();
+  var week = document.querySelector("#planWeekChoice input:checked").value;
+  var added = addProductToPlan(planProductPending.user.id, week, planProductPending.product.id) || [];
+  document.getElementById("planProductDialog").close();
+  var link = [{ label: "See my week", className: "toast-week", href: "kitchen.html?week=" + week }];
+  showToast(added.length === 0 ? "Every meal of this plan is already on " + weekPhrase(week) + "."
+    : plural(added.length, "meal", "meals") + " added to " + weekPhrase(week) + ".", null, link);
 }

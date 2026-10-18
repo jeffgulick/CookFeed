@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your cart | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=16">
+  <link rel="stylesheet" href="css/styles.css?v=17">
 </head>
 <body>
 
@@ -32,7 +32,7 @@
   <main class="wrap" id="main" tabindex="-1">
     <span class="pill">Checkout</span>
     <h1>Your cart</h1>
-    <p class="byline"><span id="itemCount">0</span> <span id="itemWord">items</span> &middot; digital plans, yours to keep</p>
+    <p class="byline" id="cartByline"><span id="itemCount">0</span> <span id="itemWord">items</span> &middot; digital plans, yours to keep</p>
 
     <div id="cartArea">
       <div id="cartLines"></div>
@@ -46,24 +46,21 @@
         <button class="btn-primary" id="checkoutButton" disabled>Place order</button>
         <button type="button" class="link-button empty-cart" id="emptyCartButton" hidden>Empty cart</button>
         <p class="meta" style="margin:10px 0 0">
-          One copy of each plan: a plan is yours once you own it. This prototype does not take payment;
+          You buy each plan once, and it stays yours. This prototype does not take payment;
           placing an order shows the confirmation a real checkout would produce.
         </p>
       </div>
     </div>
 
-    <div class="cta-foot">
-      <p><strong>Still deciding?</strong></p>
-      <p><a href="index.html">Back to Discover</a> &middot; <a href="orders.html">your orders</a></p>
-    </div>
+    <div class="cta-foot" id="cartFoot" hidden></div>
   </main>
 
-  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+  <footer>Cookfeed prototype &middot; short-video recipes &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=16"></script>
-  <script src="js/db.js?v=16"></script>
-  <script src="js/rules.js?v=16"></script>
-  <script src="js/common.js?v=16"></script>
-  <script src="js/cart.js?v=16"></script>
+  <script src="js/seed-data.js?v=17"></script>
+  <script src="js/db.js?v=17"></script>
+  <script src="js/rules.js?v=17"></script>
+  <script src="js/common.js?v=17"></script>
+  <script src="js/cart.js?v=17"></script>
 </body>
 </html>

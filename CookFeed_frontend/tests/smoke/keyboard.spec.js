@@ -32,7 +32,7 @@ test("the first Tab reaches a visible skip link that moves focus to the content"
 });
 
 test("the focus ring is at least 3px and 3:1 against the page and a card", async ({ page }) => {
-  await page.goto("product.html?id=3");
+  await page.goto("recipe.html?id=16");
   const ring = await page.evaluate(() => {
     const button = document.getElementById("servingsUp");
     button.focus();

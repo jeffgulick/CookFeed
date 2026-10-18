@@ -10,6 +10,7 @@
   --accent-soft: #fff0e6;
   --good: #166534;              /* 4.5:1 or better on --good-soft, --card and --paper */
   --star: #e0a012;
+  --star-text: #8a5a00;         /* --star as text: 4.5:1 on white and on the page */
   --radius: 14px;
   --shadow: 0 1px 2px rgba(36, 29, 22, .05), 0 8px 24px rgba(36, 29, 22, .06);
 
@@ -272,7 +273,7 @@ a.btn-primary, a.btn-secondary { display: inline-block; text-decoration: none; }
 .btn-primary:hover { background: var(--accent-dark); }
 .btn-primary.done { background: var(--good); }
 
-.btn-secondary {
+.btn-secondary, a.btn-secondary {
   background: var(--card);
   color: var(--ink);
   border-color: var(--line);
@@ -373,7 +374,7 @@ tr:last-child td { border-bottom: none; }
 }
 
 .big-num { font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
-.stars { color: var(--star); letter-spacing: 2px; }
+.stars { color: var(--star-text); letter-spacing: 2px; }   /* text: 4.5:1, where --star is too light */
 .summary .stars { font-size: 20px; }
 
 .review {
@@ -607,7 +608,8 @@ a.cart-chip:hover { background: var(--accent-tint); }
   background: var(--player-bar);
 }
 
-.play { color: var(--on-dark); font-size: 15px; }
+.play { color: var(--on-dark); font-size: 15px; background: none; border: 1px solid var(--on-dark); border-radius: 999px; padding: 4px 10px; min-width: 32px; min-height: 32px; }
+.play:focus-visible { outline: 3px solid var(--on-dark); outline-offset: 2px; }
 
 .track {
   flex: 1;
@@ -746,6 +748,14 @@ a.cart-chip:hover { background: var(--accent-tint); }
 
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.error { background: var(--bad); }
+/* A toast with Undo or a link can be used: it takes the pointer, and once faded it leaves the tab order. */
+.toast { visibility: hidden; transition: opacity .2s ease, transform .2s ease, visibility 0s linear .2s; }
+.toast.show { visibility: visible; transition: opacity .2s ease, transform .2s ease; }
+.toast.has-actions { pointer-events: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.toast-action { background: none; border: 1px solid var(--on-dark); border-radius: 999px; color: var(--on-dark);
+  font: inherit; font-size: 14px; font-weight: 700; padding: 6px 14px; min-height: 32px; cursor: pointer; text-decoration: none; }
+.toast-action:hover { background: rgba(255, 255, 255, .12); }
+.toast-action:focus-visible { outline: 3px solid var(--on-dark); outline-offset: 2px; }
 
 /* ---------- servings stepper ---------- */
 
@@ -991,7 +1001,7 @@ tr.have td.aisle { text-decoration: none; }
 /* ---------- what you get ---------- */
 
 .what-you-get { margin-top: 18px; }
-.what-you-get h3 { margin: 0 0 8px; font-size: 18px; }
+.what-you-get h2 { margin: 0 0 8px; font-size: 18px; }
 .what-you-get ul { margin: 0; padding-left: 20px; }
 .what-you-get li { padding: 4px 0; }
 
@@ -1085,8 +1095,8 @@ p.owned-label { margin: 0 0 12px; }
 .order-items .line-price { margin-left: auto; font-weight: 700; }
 .receipt-items { text-align: left; display: inline-block; }
 
-.faq h3 { margin: 18px 0 4px; }
-.faq h3:first-child { margin-top: 0; }
+.faq h2 { margin: 18px 0 4px; font-size: 17px; }
+.faq h2:first-child { margin-top: 0; }
 .faq p { margin: 0; color: var(--ink-soft); }
 
 footer a { color: inherit; }
@@ -1113,7 +1123,7 @@ footer a { color: inherit; }
 .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 
 /* ---------- 3.8: what creators and the admin manage ---------- */
-.tag-muted { background: var(--paper-deep, #f1ebe2); color: var(--muted); }
+.tag-muted { background: var(--paper-deep, #f1ebe2); color: var(--ink-soft); }   /* --muted on it is 4.37:1 */
 .review.hidden-review { border-style: dashed; background: var(--paper); }
 .notice-strip {
   margin: 12px 0 0; padding: 10px 14px; border-radius: 10px;
@@ -1158,7 +1168,7 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 
 /* ---------- 3.9: the week and shopping trips ---------- */
 .week-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.week-head h3 { margin: 0; flex: 1; }
+.week-head h2 { margin: 0; flex: 1; font-size: 20px; }
 .week-day { margin: 16px 0 6px; font-size: 15px; color: var(--muted); }
 .week-row { display: grid; grid-template-columns: 90px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
 .week-slot { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -1173,16 +1183,13 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 .people-error:empty { display: none; }
 /* Why a studio or console button is off, written out under the buttons. */
 .action-note { display: block; font-size: 13px; color: var(--ink-soft); margin-top: 6px; white-space: normal; max-width: 34ch; }
-.pick-people, .pick-when { display: flex; gap: 6px; align-items: center; }
+.pick-people { display: flex; gap: 6px; align-items: center; }
 .tile-actions { display: block; margin: 8px 16px 14px; }
 .plan-card { cursor: default; }
 .build-dialog { box-sizing: border-box; border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; width: min(640px, 92vw); max-height: 85vh; overflow: auto; background: var(--card); color: var(--ink); }
 .build-dialog .dialog-actions { position: sticky; bottom: -20px; padding: 12px 0; margin-bottom: -20px; background: var(--card); }
 .build-dialog::backdrop { background: rgba(38, 33, 28, .45); }
 .build-dialog h3 { margin-top: 0; }
-.shop-dialog { width: min(460px, 92vw); }
-.shop-trip-row { display: flex; gap: 8px; align-items: center; padding: 6px 0; }
-.shop-trip-row input { margin: 0; }
 .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
 .trip-item { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
 .store-wrap { max-width: 720px; }
@@ -1197,4 +1204,25 @@ input[type="number"] { width: 100%; max-width: 160px; padding: 8px 10px; border:
 @media (max-width: 640px) {
   .week-row { grid-template-columns: 1fr auto; }
   .week-row .week-slot { grid-column: 1 / -1; }
+}
+
+/* ---------- 3.9: one shopping list, the week, and past lists ---------- */
+
+.list-head-actions { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.plan-dialog { width: min(440px, 92vw); }
+.plan-dialog select { width: 100%; }
+.field-label { display: block; font-weight: 700; margin-bottom: 6px; }
+#backRow { margin: 6px 0 0; }
+#otherWeek { margin-top: 10px; }
+#activeList p { margin: 0 0 8px; }
+
+/* Past lists fold into stacked cards on a phone, each cell on its own line with its column's name, so every
+   button stays on the screen. */
+@media (max-width: 640px) {
+  .stack-table table { min-width: 0; }
+  .stack-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .stack-table tr { display: block; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; background: var(--card); }
+  .stack-table td { display: block; border: none; padding: 4px 0; }
+  .stack-table td[data-label]::before { content: attr(data-label) ": "; font-weight: 700; color: var(--ink-soft); }
+  .stack-table td.actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; }
 }

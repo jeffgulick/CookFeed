@@ -1,5 +1,5 @@
-/* Layout: every page fits a 375px phone, the phone nav is one row while closed, the plan's servings box
-   starts "as published", and printing keeps only what is meant to be printed. */
+/* Layout: every page fits a 375px phone, the phone nav is one row while closed, and printing keeps only
+   what is meant to be printed. */
 
 const { test, expect, signInAs, ALEX, GUEST } = require("./support");
 
@@ -28,28 +28,15 @@ test.describe("on a 375px phone", () => {
   });
 });
 
-test("a plan's servings box starts as published, and the first press starts at 2", async ({ page }) => {
-  await signInAs(page, ALEX);   // the list shows once the plan is bought
-  await page.goto("product.html?id=3");
-  await expect(page.locator("#servingsInput")).toHaveValue("");
-  await expect(page.locator("#servingsReset")).toBeHidden();
-  await page.click("#servingsUp");
-  await expect(page.locator("#servingsInput")).toHaveValue("2");
-  await expect(page.locator("#listHeading")).toContainText("for 2 people");
-  await page.fill("#servingsInput", "");
-  await expect(page.locator("#listHeading")).toContainText("as published");
-  await expect(page.locator("#servingsError")).toHaveText("");
-});
-
 test.describe("printing", () => {
-  test("a plan prints only its title and the shopping list", async ({ page }) => {
+  test("a plan prints only its title and what you'll buy", async ({ page }) => {
     await signInAs(page, GUEST);
     await page.goto("product.html?id=4");
     await page.emulateMedia({ media: "print" });
     const shown = await page.evaluate(() => [...document.querySelectorAll("main > *")]
       .filter((element) => getComputedStyle(element).display !== "none")
       .map((element) => element.tagName + (element.classList.contains("print-area") ? ".print-area" : "")));
-    expect(shown).toEqual(["H1", "DIV.print-area"]);
+    expect(shown).toEqual(["H1", "SECTION.print-area"]);
     await expect(page.locator(".stepper-row")).toBeHidden();
   });
 

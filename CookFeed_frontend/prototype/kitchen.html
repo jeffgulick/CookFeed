@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My kitchen | Cookfeed</title>
-  <link rel="stylesheet" href="css/styles.css?v=16">
+  <link rel="stylesheet" href="css/styles.css?v=17">
 </head>
 <body>
 
@@ -32,8 +32,26 @@
   <main class="wrap" id="main" tabindex="-1">
     <span class="pill">My kitchen</span>
     <h1>Your kitchen</h1>
-    <p class="byline" id="kitchenSummary">The plans you bought, the recipes you saved, the week you are cooking, and
-      your shopping trips.</p>
+    <p class="byline" id="kitchenSummary">The week you are cooking, your shopping list, the plans you bought and the
+      recipes you saved.</p>
+
+    <div class="card week-card">
+      <div class="week-head">
+        <button type="button" class="btn-small" id="prevWeek">&lsaquo; Week before</button>
+        <h2 id="weekLabel">This week</h2>
+        <button type="button" class="btn-small" id="nextWeek">Week after &rsaquo;</button>
+      </div>
+      <p class="meta" id="weekDates"></p>
+      <p id="backRow" hidden><button type="button" class="btn-small" id="backToThisWeek">Back to this week</button></p>
+      <div id="weekEntries"></div>
+      <p class="meta" id="otherWeek" hidden>Your planned meals are on <a id="otherWeekLink" href="kitchen.html"></a>.</p>
+      <div class="sort-row">
+        <button type="button" class="btn-secondary" id="shopWeek">Shop this week</button>
+      </div>
+    </div>
+
+    <h2>Your shopping list</h2>
+    <div class="card" id="activeList"></div>
 
     <h2>Your plans</h2>
     <div class="tile-grid" id="ownedPlans"></div>
@@ -46,71 +64,25 @@
     <div class="grid" id="savedRecipes"></div>
     <div class="card empty-kitchen" id="emptyKitchen" hidden>
       <p><strong>You have not saved any recipes yet.</strong></p>
-      <p class="meta">Press <strong>Save recipe</strong> on any recipe and it will appear here, ready for a week or a shopping trip.</p>
+      <p class="meta">Press <strong>Save recipe</strong> on any recipe and it will appear here, ready to plan into a week.</p>
       <p><a href="recipes.html">Browse the recipes &rarr;</a></p>
     </div>
 
-    <h2>This week</h2>
-    <div class="card week-card">
-      <div class="week-head">
-        <button type="button" class="btn-small" id="prevWeek">&lsaquo; Week before</button>
-        <h3 id="weekLabel">Week of</h3>
-        <button type="button" class="btn-small" id="nextWeek">Week after &rsaquo;</button>
-      </div>
-      <p class="meta">Put the recipes and plans you want to cook on days. When you are ready to shop, turn the week
-        into a trip. Nothing goes on a list until you put it there.</p>
-      <div class="sort-row">
-        <button type="button" class="btn-secondary" id="planWeek">Add to this week</button>
-        <button type="button" class="btn-primary" id="tripFromWeek">Make a shopping trip from this week</button>
-      </div>
-      <div id="weekEntries"></div>
-    </div>
-
-    <h2>Shopping trips</h2>
-    <p class="meta">A trip is one list for one visit to the store, built from any recipes and plans you choose, for
-      however many people, each recipe once. Open it on your phone at the store and tick things off. Send it or
-      mark it complete and you come back here; shop any trip again with one click.</p>
-    <div class="sort-row">
-      <button type="button" class="btn-primary" id="newTrip">New shopping trip</button>
-    </div>
-    <div class="table-scroll">
+    <h2>Past lists</h2>
+    <div class="table-scroll stack-table">
       <table>
-        <thead><tr><th>Trip</th><th>Made</th><th>Recipes</th><th>Status</th><th>Actions</th></tr></thead>
+        <thead><tr><th>List</th><th>Made</th><th>Recipes</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody id="tripRows"></tbody>
       </table>
     </div>
-
-    <dialog class="build-dialog" id="buildDialog" aria-labelledby="buildHeading">
-      <form method="dialog" id="buildForm" novalidate>
-        <h3 id="buildHeading">Build</h3>
-        <div class="field" id="tripNameField">
-          <label for="tripName">Name the trip</label>
-          <input type="text" id="tripName" maxlength="80" placeholder="Saturday big shop">
-        </div>
-        <p class="meta" id="buildHint"></p>
-        <fieldset class="field">
-          <legend>Plans you own</legend>
-          <div id="buildPlans"></div>
-        </fieldset>
-        <fieldset class="field">
-          <legend>Saved recipes</legend>
-          <div id="buildRecipes"></div>
-        </fieldset>
-        <p class="field-error" id="buildError"></p>
-        <div class="dialog-actions">
-          <button type="button" class="btn-secondary" id="buildCancel">Cancel</button>
-          <button type="submit" class="btn-primary" id="buildSubmit">Add</button>
-        </div>
-      </form>
-    </dialog>
   </main>
 
-  <footer>Cookfeed prototype &middot; short-video recipes, one shopping list &middot; <a href="help.html">Help</a></footer>
+  <footer>Cookfeed prototype &middot; short-video recipes &middot; <a href="help.html">Help</a></footer>
 
-  <script src="js/seed-data.js?v=16"></script>
-  <script src="js/db.js?v=16"></script>
-  <script src="js/rules.js?v=16"></script>
-  <script src="js/common.js?v=16"></script>
-  <script src="js/kitchen.js?v=16"></script>
+  <script src="js/seed-data.js?v=17"></script>
+  <script src="js/db.js?v=17"></script>
+  <script src="js/rules.js?v=17"></script>
+  <script src="js/common.js?v=17"></script>
+  <script src="js/kitchen.js?v=17"></script>
 </body>
 </html>
