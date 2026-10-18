@@ -6,22 +6,32 @@ const { test, expect, signInAs, textOf, GUEST, ALEX, KENJI, ADMIN } = require(".
 test.describe("a signed-out visitor", () => {
   test.beforeEach(async ({ page }) => { await signInAs(page, GUEST); });
 
-  test("Discover lists the four products for sale and six public trending recipes", async ({ page }) => {
+  test("Discover lists the four products for sale and the six free recipes, none of them from a plan", async ({ page }) => {
     await page.goto("index.html");
     await expect(page.locator(".product-tile")).toHaveCount(4);
     await expect(page.locator("#trendingRecipes .recipe-card")).toHaveCount(6);
     await expect(page.locator("#trendingRecipes")).not.toContainText("Onigiri");
-    await expect(page.locator("#trendingRecipes .recipe-title").first()).toHaveText("Brown Butter Chocolate Chip Cookies");
+    await expect(page.locator("#trendingRecipes")).not.toContainText("No-Knead Focaccia");
+    await expect(page.locator("#trendingRecipes .recipe-title").first()).toHaveText("Sheet-Pan Chicken and Vegetables");
   });
 
-  test("a plan offers sign-in links, and its ProductOnly recipe is locked and off the list", async ({ page }) => {
+  test("every recipe in a plan is locked until it is bought, and the list waits for the purchase", async ({ page }) => {
     await page.goto("product.html?id=3");
     await expect(page.locator("#buyArea")).toHaveText("Sign in to buy");
-    await expect(page.locator("#planRecipes .sign-in-to")).toHaveCount(2);
-    await expect(page.locator(".recipe-card.locked")).toHaveCount(1);
+    await expect(page.locator(".recipe-card")).toHaveCount(3);
+    await expect(page.locator(".recipe-card.locked")).toHaveCount(3);
     await expect(page.locator(".recipe-card.locked a")).toHaveCount(0);
-    await expect(page.locator("#lockedNote")).toContainText("Onigiri Three Ways");
-    await expect(page.locator("#shoppingRows")).not.toContainText("salmon");
+    await expect(page.locator("#valueList")).toContainText("Every recipe in this plan is premium");
+    await expect(page.locator("#listPreview")).toContainText("every ingredient for all 3 meals");
+    await expect(page.locator("#shoppingRows tr")).toHaveCount(0);
+    await expect(page.locator("#listBody")).toBeHidden();
+    await expect(page.locator("#hoverHint")).toBeHidden();
+  });
+
+  test("a free recipe opens and offers a sign-in link to save it", async ({ page }) => {
+    await page.goto("recipe.html?id=16");
+    await expect(page.locator("main h1")).toHaveText("Tamagoyaki");
+    await expect(page.locator("#saveArea .sign-in-to")).toHaveCount(1);
   });
 
   test("a ProductOnly recipe's page says which plan it comes with", async ({ page }) => {
@@ -112,27 +122,26 @@ test.describe("the admin", () => {
 });
 
 test("Family Week counts 5 recipes and 6 meals, and buys the oats for both mornings", async ({ page }) => {
-  await signInAs(page, GUEST);
+  await signInAs(page, ALEX);   // he owns it, so the whole list shows
   await page.goto("product.html?id=4");
   await expect(page.locator("#priceNote")).toContainText("5 recipes, 6 meals");
   await expect(page.locator("#shoppingRows tr", { hasText: "rolled oats" })).toContainText("5 c");
 });
 
-test("save counts read naturally: 1 cook, 7 cooks", async ({ page }) => {
-  await signInAs(page, GUEST);
+test("save counts read naturally: 1 cook, 3 cooks", async ({ page }) => {
+  await signInAs(page, ALEX);
   await page.goto("product.html?id=4");
-  await expect(page.locator(".recipe-card", { hasText: "Weeknight Beef Tacos" }).locator(".save-text")).toHaveText("saved by 1 cook");
+  await expect(page.locator(".recipe-card", { hasText: "Five-Day Overnight Oats" }).first().locator(".save-text")).toHaveText("saved by 1 cook");
   await page.goto("product.html?id=3");
-  await expect(page.locator(".recipe-card", { hasText: "Chicken Teriyaki" }).locator(".save-text")).toHaveText("saved by 7 cooks");
-  await page.goto("recipe.html?id=10");
+  await expect(page.locator(".recipe-card", { hasText: "Chicken Teriyaki" }).locator(".save-text")).toHaveText("saved by 3 cooks");
+  await page.goto("recipe.html?id=9");
   await expect(page.locator("#savedBy")).toHaveText("saved by 1 cook");
 });
 
 test("a storefront lists only the creator's public published recipes, with Q2's totals", async ({ page }) => {
   await signInAs(page, GUEST);
   await page.goto("creator.html?handle=kenji-kitchen");
-  await expect(page.locator("#creatorRecipes .recipe-title")).toHaveText(
-    ["Chicken Teriyaki, the Real Way", "10-Minute Ginger Garlic Stir-Fry"]);
+  await expect(page.locator("#creatorRecipes .recipe-title")).toHaveText(["Tamagoyaki", "Cucumber Sunomono"]);   // most saved first
   await expect(page.locator("#recipeCount")).toHaveText("2");
-  await expect(page.locator("#totalSaves")).toHaveText("9");
+  await expect(page.locator("#totalSaves")).toHaveText("7");
 });

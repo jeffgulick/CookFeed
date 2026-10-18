@@ -184,8 +184,10 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
   Each page asks it and shows or hides its controls from the answer:
   - creators cannot buy or review their own plans, but buy other creators' like anyone else;
   - the admin account sees no cart, Save or review controls;
-  - a ProductOnly recipe shows without a link, and stays off the shopping list, until you buy the
-    plan it is in; after that it reads "Yours through" the plan;
+  - every recipe in a plan is ProductOnly, so nothing you pay for is also free to save; it shows
+    without a link, and stays off the shopping list, until you buy the plan it is in; after that it
+    reads "Yours through" the plan. Before you own any of a plan, its list says what buying adds
+    instead of showing an empty table;
   - only buyers review, once per plan, under their account name;
   - the cart holds one copy of each plan, and a storefront lists only Public recipes.
 - **Checkout writes what the API will write:** a Paid order, one line per plan with the title, price

@@ -8,7 +8,7 @@ const { loadPrototype } = require("./load-prototype");
 // Seeded accounts and products, by id.
 const ALEX = 1, PRIYA = 2, MARIA = 3, KENJI = 4, DAN = 5, ADMIN = 6, SAM = 7;
 const ROMAN_PASTA = 1, BREAD_BOX = 2, JAPAN = 3, FAMILY_WEEK = 4, SUMMER_GRILLING = 5;
-const CHICKEN_PARM = 4, TERIYAKI = 5, ONIGIRI = 6, MISO_DRAFT = 13;
+const CHICKEN_PARM = 4, TERIYAKI = 5, ONIGIRI = 6, MISO_DRAFT = 13, TAMAGOYAKI = 16;
 
 function setup() {
   const p = loadPrototype();
@@ -49,10 +49,25 @@ test("a ProductOnly recipe opens exactly for the users Q14 allows, plus its crea
   }
 });
 
+test("a product sells only ProductOnly recipes, so nothing a buyer pays for is free to save (3.3)", () => {
+  const { p } = setup();
+  const seed = p.COOKFEED_SEED;
+  for (const pr of seed.productRecipes) {
+    assert.equal(p.rowById("recipes", pr.recipeId).visibility, "ProductOnly", `recipe ${pr.recipeId} in product ${pr.productId}`);
+  }
+  // Each creator still has free recipes for the feed.
+  for (const creator of seed.creatorProfiles) {
+    assert.ok(seed.recipes.some((r) => r.creatorId === creator.userId && r.isPublished && r.visibility === "Public"),
+      `${creator.handle} has a free recipe`);
+  }
+});
+
 test("recipe access in the cases the pages show", () => {
   const { p, user } = setup();
   const recipe = (id) => p.rowById("recipes", id);
-  assert.equal(p.canOpenRecipe(null, recipe(TERIYAKI)), true);       // Public: anyone
+  assert.equal(p.canOpenRecipe(null, recipe(TAMAGOYAKI)), true);     // Public: anyone
+  assert.equal(p.canOpenRecipe(null, recipe(TERIYAKI)), false);      // in a plan, so ProductOnly
+  assert.equal(p.canOpenRecipe(user(DAN), recipe(TERIYAKI)), true);  // Dan bought Three Weeknights
   assert.equal(p.canOpenRecipe(null, recipe(ONIGIRI)), false);
   assert.equal(p.canOpenRecipe(user(SAM), recipe(ONIGIRI)), false);
   assert.equal(p.canOpenRecipe(user(ALEX), recipe(ONIGIRI)), true);
@@ -66,9 +81,10 @@ test("recipe access in the cases the pages show", () => {
 test("saving needs a shopper who can open the recipe, and a published recipe (3.3)", () => {
   const { p, user } = setup();
   const recipe = (id) => p.rowById("recipes", id);
-  assert.equal(p.canSave(null, recipe(TERIYAKI)), false);
-  assert.equal(p.canSave(user(ADMIN), recipe(TERIYAKI)), false);
-  assert.equal(p.canSave(user(SAM), recipe(TERIYAKI)), true);
+  assert.equal(p.canSave(null, recipe(TAMAGOYAKI)), false);
+  assert.equal(p.canSave(user(ADMIN), recipe(TAMAGOYAKI)), false);
+  assert.equal(p.canSave(user(SAM), recipe(TAMAGOYAKI)), true);
+  assert.equal(p.canSave(user(SAM), recipe(TERIYAKI)), false);
   assert.equal(p.canSave(user(SAM), recipe(ONIGIRI)), false);
   assert.equal(p.canSave(user(ALEX), recipe(ONIGIRI)), true);
   assert.equal(p.canSave(user(KENJI), recipe(MISO_DRAFT)), false);

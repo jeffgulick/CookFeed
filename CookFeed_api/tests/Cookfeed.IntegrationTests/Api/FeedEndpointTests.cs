@@ -74,25 +74,26 @@ public sealed class FeedEndpointTests(DatabaseFixture databases) : IAsyncDisposa
     }
 
     [Fact]
-    public async Task Pages_of_four_join_up_to_the_whole_feed_and_only_the_last_says_no_more()
+    public async Task Pages_of_two_join_up_to_the_whole_feed_and_only_the_last_says_no_more()
     {
         var q1 = await Sql.QueryAsync(await ConnectionStringAsync(), SqlFiles.Query(1));
         var pages = new List<FeedPageDto>();
         do
         {
-            pages.Add(await GetFeedAsync($"/api/feed?page={pages.Count + 1}&pageSize=4"));
+            pages.Add(await GetFeedAsync($"/api/feed?page={pages.Count + 1}&pageSize=2"));
         }
         while (pages[^1].HasMore && pages.Count < 10);
 
         Assert.Equal(q1.Select(row => int.Parse(row[0]!)), pages.SelectMany(p => p.Items).Select(i => i.Id));
-        Assert.All(pages[..^1], p => Assert.Equal(4, p.Items.Count));
+        Assert.All(pages[..^1], p => Assert.Equal(2, p.Items.Count));
         Assert.Equal([1, 2, 3], pages.Select(p => p.Page).Take(3));
     }
 
     [Fact]
     public async Task A_named_viewer_sees_exactly_their_own_saves_marked()
     {
-        const int viewer = 1;
+        // Sam has bought nothing, so every recipe he saved is a free one, and the feed holds them all.
+        const int viewer = 7;
         var saved = await Sql.QueryAsync(await ConnectionStringAsync(),
             $"SELECT recipe_id FROM saved_recipes WHERE user_id = {viewer}");
 

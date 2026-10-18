@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A sheet pan of roasted chicken pieces with broccoli and red and yellow peppers">
+  <rect width="400" height="300" fill="#fdf2e4"/>
+  <circle cx="200" cy="140" r="108" fill="#f9e2c6"/>
+  <ellipse cx="200" cy="248" rx="150" ry="12" fill="#e6caa4"/>
+  <rect x="56" y="116" width="288" height="128" rx="8" fill="#8d959c"/>
+  <rect x="66" y="124" width="268" height="112" rx="6" fill="#b4bcc2"/>
+  <g fill="#c98a3c">
+    <rect x="86" y="140" width="40" height="28" rx="10"/><rect x="176" y="186" width="42" height="28" rx="10"/>
+    <rect x="262" y="146" width="40" height="28" rx="10"/><rect x="118" y="196" width="38" height="26" rx="10"/>
+  </g>
+  <g fill="#a96a26"><rect x="94" y="146" width="10" height="6" rx="3"/><rect x="186" y="192" width="10" height="6" rx="3"/><rect x="272" y="152" width="10" height="6" rx="3"/></g>
+  <g fill="#3f7a35">
+    <circle cx="150" cy="150" r="13"/><circle cx="162" cy="140" r="10"/><circle cx="236" cy="200" r="13"/><circle cx="248" cy="190" r="10"/>
+    <circle cx="300" cy="206" r="12"/><circle cx="210" cy="146" r="12"/>
+  </g>
+  <g><rect x="228" y="140" width="26" height="10" rx="5" fill="#d94a3a"/><rect x="88" y="186" width="26" height="10" rx="5" fill="#f2c94c"/>
+    <rect x="270" y="186" width="26" height="10" rx="5" fill="#d94a3a"/><rect x="180" y="160" width="26" height="10" rx="5" fill="#f2c94c"/></g>
+</svg>

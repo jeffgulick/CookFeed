@@ -37,6 +37,11 @@ function shoppableRecipeIds() {
     .filter(viewerCanOpen);
 }
 
+/* "A", "A and B", "A, B and C". */
+function joinWithAnd(items) {
+  return items.length > 1 ? items.slice(0, -1).join(", ") + " and " + items[items.length - 1] : items.join("");
+}
+
 /* The titles of the recipes the viewer cannot open yet. */
 function lockedTitles() {
   var titles = [];
@@ -58,7 +63,7 @@ function planDays() {
     var day = DAY_NAMES[placement.dayOffset];
     if (days.indexOf(day) === -1) { days.push(day); }
   });
-  return days.length > 1 ? days.slice(0, -1).join(", ") + " and " + days[days.length - 1] : days.join("");
+  return joinWithAnd(days);
 }
 
 function renderHeader() {
@@ -93,13 +98,10 @@ function renderHeader() {
       "sorted by aisle, and ready to print.");
     items.push("<strong>Chosen by " + escapeHtml(creator.displayName) + ",</strong> in the order they would cook them.");
   }
-  var exclusive = product.recipes
-    .map(function (placement) { return rowById("recipes", placement.recipeId); })
-    .filter(function (recipe, index, all) { return recipe.visibility === "ProductOnly" && all.indexOf(recipe) === index; });
-  if (exclusive.length > 0) {
-    items.push("<strong>Recipes you will not find in the feed.</strong> " +
-      exclusive.map(function (r) { return escapeHtml(r.title); }).join(" and ") +
-      (exclusive.length === 1 ? " is" : " are") + " only in this " + noun + ".");
+  // A product sells only ProductOnly recipes (design section 3.3; the database refuses anything else).
+  if (product.recipes.length > 0) {
+    items.push("<strong>Recipes you will not find in the feed.</strong> Every recipe in this " + noun +
+      " is premium: none of them is free to save.");
   }
   items.push("<strong>Yours to keep.</strong> Pay once. No subscription, and the " + noun + " stays in your account.");
 
@@ -114,8 +116,25 @@ function renderBuy() {
 
 /* ---------- 1. shopping list and servings stepper ---------- */
 
-/* Draw the shopping list, keeping any "have it" ticks the shopper already made. */
+/* Draw the shopping list, keeping any "have it" ticks the shopper already made. A viewer who can open
+   none of the recipes yet gets a sentence about the list instead of an empty table. */
 function renderShoppingList() {
+  var nothingOpen = shoppableRecipeIds().length === 0 && product.recipes.length > 0;
+  document.getElementById("listBody").hidden = nothingOpen;
+  document.querySelector(".stepper-row").hidden = nothingOpen;
+  document.getElementById("hoverHint").hidden = nothingOpen;
+  document.getElementById("listPreview").hidden = !nothingOpen;
+  if (nothingOpen) {
+    document.getElementById("listHeading").textContent = "Your shopping list comes with the " + productNoun(product);
+    document.getElementById("listNote").textContent = "";
+    document.getElementById("lockedNote").textContent = "";
+    document.getElementById("listPreview").textContent = "Buy it and every ingredient for " +
+      (product.type === "MealPlan" ? "all " + plural(product.mealCount, "meal", "meals")
+                                   : "all " + plural(product.recipeCount, "recipe", "recipes")) +
+      " appears here, combined into one list, sorted by aisle and scaled to however many people you cook for.";
+    return;
+  }
+
   var list = buildShoppingList(shoppableRecipeIds(), currentPeople);
   var html = "";
 
@@ -153,7 +172,7 @@ function renderShoppingList() {
 
   var locked = lockedTitles();
   document.getElementById("lockedNote").textContent = locked.length === 0 ? ""
-    : "Not on this list yet: " + locked.join(" and ") + ". " + (locked.length === 1 ? "Its" : "Their") +
+    : "Not on this list yet: " + joinWithAnd(locked) + ". " + (locked.length === 1 ? "Its" : "Their") +
       " ingredients are added when you buy the " + productNoun(product) + ".";
 
   updateProgress();

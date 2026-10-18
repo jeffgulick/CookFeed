@@ -7,7 +7,9 @@
 --   * every reviewer holds a Paid order for the product they review; no creator reviews or buys their own work.
 --   * a creator (Dan) buys another creator's (Kenji's) product.
 --   * a meal plan repeats a recipe (overnight oats, Monday and Thursday in "Family Week on a Budget").
---   * two recipes are ProductOnly and absent from the feed; buyers reach them through order_item_recipes.
+--   * every recipe in a product is ProductOnly, so nothing a buyer pays for is also free to save (the
+--     product_recipes_product_only trigger refuses anything else); buyers reach them through order_item_recipes.
+--     Each creator also publishes two free (Public) recipes, which are the feed.
 --   * Alex's snapshot of "Roman Pasta Collection" still contains the focaccia Maria later removed from it.
 BEGIN;
 
@@ -129,28 +131,43 @@ INSERT INTO ingredients (id, name, category, density_g_per_ml, preferred_shoppin
   (52, 'umeboshi', 'Pantry', NULL, 11),
   (53, 'canned tuna', 'Pantry', NULL, 13),
   (54, 'mayonnaise', 'Pantry', 0.91, 7),
-  (55, 'nori', 'Pantry', NULL, 11);
+  (55, 'nori', 'Pantry', NULL, 11),
+  -- The free recipes added so that no product sells a recipe that is also free to save, and the Rosemary Ciabatta.
+  (56, 'pecorino romano', 'Dairy', 0.45, 7),
+  (57, 'tomato', 'Produce', NULL, 11),
+  (58, 'cucumber', 'Produce', NULL, 11),
+  (59, 'black beans', 'Pantry', NULL, 13),
+  (60, 'cheddar cheese', 'Dairy', NULL, 7),
+  (61, 'fresh rosemary', 'Produce', NULL, 14),
+  (62, 'instant yeast', 'Pantry', 0.6, 7);
 
--- Recipes (12 published + 1 draft). created_at shown equal to published_at for brevity.
+-- Recipes (19 published + 1 draft). created_at shown equal to published_at for brevity.
 -- save_count is deliberately absent: the saved_recipes trigger computes it from the saves inserted below.
--- Recipes 4 (Chicken Parm) and 6 (Onigiri) are ProductOnly: published, but reachable only by buying the
--- product that contains them (Roman Pasta Collection / Three Weeknights in Japan).
+-- Recipes 1-12 and 20 are sold in products, so they are ProductOnly: published, but reachable only by buying a
+-- product that contains them. Recipes 14-19 are each creator's free recipes, the ones anyone can open and save.
 -- Thumbnails are app-relative images (images/recipes/{id}.svg); the draft has none yet. Videos stay on the
 -- CDN placeholder, because the player is a mock.
 INSERT INTO recipes (id, creator_id, title, description, video_url, thumbnail_url, servings, prep_minutes, cook_minutes, is_published, visibility, created_at, published_at) VALUES
-  (1, 3, '15-Minute Spaghetti Carbonara', 'No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.', 'https://cdn.cookfeed.app/videos/001.mp4', 'images/recipes/1.svg', 4, 5, 12, TRUE, 'Public', '2026-07-12 12:00:00+00', '2026-07-12 12:00:00+00'),
-  (2, 3, 'Sunday Marinara from Scratch', 'One can of tomatoes, one onion, one hour. Freezes beautifully.', 'https://cdn.cookfeed.app/videos/002.mp4', 'images/recipes/2.svg', 6, 10, 60, TRUE, 'Public', '2026-07-14 12:00:00+00', '2026-07-14 12:00:00+00'),
-  (3, 3, 'No-Knead Focaccia', 'Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.', 'https://cdn.cookfeed.app/videos/003.mp4', 'images/recipes/3.svg', 8, 15, 25, TRUE, 'Public', '2026-07-20 12:00:00+00', '2026-07-20 12:00:00+00'),
+  (1, 3, '15-Minute Spaghetti Carbonara', 'No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.', 'https://cdn.cookfeed.app/videos/001.mp4', 'images/recipes/1.svg', 4, 5, 12, TRUE, 'ProductOnly', '2026-07-12 12:00:00+00', '2026-07-12 12:00:00+00'),
+  (2, 3, 'Sunday Marinara from Scratch', 'One can of tomatoes, one onion, one hour. Freezes beautifully.', 'https://cdn.cookfeed.app/videos/002.mp4', 'images/recipes/2.svg', 6, 10, 60, TRUE, 'ProductOnly', '2026-07-14 12:00:00+00', '2026-07-14 12:00:00+00'),
+  (3, 3, 'No-Knead Focaccia', 'Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.', 'https://cdn.cookfeed.app/videos/003.mp4', 'images/recipes/3.svg', 8, 15, 25, TRUE, 'ProductOnly', '2026-07-20 12:00:00+00', '2026-07-20 12:00:00+00'),
   (4, 3, 'Weeknight Chicken Parm', 'Thin cutlets, quick fry, broiled with marinara and mozzarella.', 'https://cdn.cookfeed.app/videos/004.mp4', 'images/recipes/4.svg', 4, 15, 20, TRUE, 'ProductOnly', '2026-07-26 12:00:00+00', '2026-07-26 12:00:00+00'),
-  (5, 4, 'Chicken Teriyaki, the Real Way', 'Four ingredients in the sauce. Skin-on thighs. That''s the whole secret.', 'https://cdn.cookfeed.app/videos/005.mp4', 'images/recipes/5.svg', 2, 5, 15, TRUE, 'Public', '2026-07-13 12:00:00+00', '2026-07-13 12:00:00+00'),
+  (5, 4, 'Chicken Teriyaki, the Real Way', 'Four ingredients in the sauce. Skin-on thighs. That''s the whole secret.', 'https://cdn.cookfeed.app/videos/005.mp4', 'images/recipes/5.svg', 2, 5, 15, TRUE, 'ProductOnly', '2026-07-13 12:00:00+00', '2026-07-13 12:00:00+00'),
   (6, 4, 'Onigiri Three Ways', 'Salmon, umeboshi, and tuna-mayo. Rice, salt, and a wet hand.', 'https://cdn.cookfeed.app/videos/006.mp4', 'images/recipes/6.svg', 4, 20, 20, TRUE, 'ProductOnly', '2026-07-17 12:00:00+00', '2026-07-17 12:00:00+00'),
-  (7, 4, '10-Minute Ginger Garlic Stir-Fry', 'The one-pan dinner I make when I have nothing planned.', 'https://cdn.cookfeed.app/videos/007.mp4', 'images/recipes/7.svg', 2, 5, 8, TRUE, 'Public', '2026-07-23 12:00:00+00', '2026-07-23 12:00:00+00'),
-  (8, 5, 'Saturday Buttermilk-Style Pancakes', 'Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.', 'https://cdn.cookfeed.app/videos/008.mp4', 'images/recipes/8.svg', 4, 10, 15, TRUE, 'Public', '2026-07-24 12:00:00+00', '2026-07-24 12:00:00+00'),
-  (9, 5, 'Five-Day Overnight Oats', 'One mixing bowl on Sunday, five breakfasts done.', 'https://cdn.cookfeed.app/videos/009.mp4', 'images/recipes/9.svg', 5, 10, 0, TRUE, 'Public', '2026-07-25 12:00:00+00', '2026-07-25 12:00:00+00'),
-  (10, 5, 'Weeknight Beef Tacos', 'Skip the packet. Cumin, chili powder, and a squeeze of lime.', 'https://cdn.cookfeed.app/videos/010.mp4', 'images/recipes/10.svg', 4, 10, 15, TRUE, 'Public', '2026-07-28 12:00:00+00', '2026-07-28 12:00:00+00'),
-  (11, 5, 'Smooth Hummus', 'Peel the chickpeas. Yes, really. It''s worth it.', 'https://cdn.cookfeed.app/videos/011.mp4', 'images/recipes/11.svg', 6, 15, 0, TRUE, 'Public', '2026-07-29 12:00:00+00', '2026-07-29 12:00:00+00'),
-  (12, 5, 'Brown Butter Chocolate Chip Cookies', 'Brown the butter. Chill the dough. Thank me later.', 'https://cdn.cookfeed.app/videos/012.mp4', 'images/recipes/12.svg', 24, 20, 12, TRUE, 'Public', '2026-07-30 12:00:00+00', '2026-07-30 12:00:00+00'),
-  (13, 4, 'Miso Soup (draft)', NULL, 'https://cdn.cookfeed.app/videos/draft-miso.mp4', NULL, 2, NULL, NULL, FALSE, 'Public', '2026-07-31 12:00:00+00', NULL);
+  (7, 4, '10-Minute Ginger Garlic Stir-Fry', 'The one-pan dinner I make when I have nothing planned.', 'https://cdn.cookfeed.app/videos/007.mp4', 'images/recipes/7.svg', 2, 5, 8, TRUE, 'ProductOnly', '2026-07-23 12:00:00+00', '2026-07-23 12:00:00+00'),
+  (8, 5, 'Saturday Buttermilk-Style Pancakes', 'Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.', 'https://cdn.cookfeed.app/videos/008.mp4', 'images/recipes/8.svg', 4, 10, 15, TRUE, 'ProductOnly', '2026-07-24 12:00:00+00', '2026-07-24 12:00:00+00'),
+  (9, 5, 'Five-Day Overnight Oats', 'One mixing bowl on Sunday, five breakfasts done.', 'https://cdn.cookfeed.app/videos/009.mp4', 'images/recipes/9.svg', 5, 10, 0, TRUE, 'ProductOnly', '2026-07-25 12:00:00+00', '2026-07-25 12:00:00+00'),
+  (10, 5, 'Weeknight Beef Tacos', 'Skip the packet. Cumin, chili powder, and a squeeze of lime.', 'https://cdn.cookfeed.app/videos/010.mp4', 'images/recipes/10.svg', 4, 10, 15, TRUE, 'ProductOnly', '2026-07-28 12:00:00+00', '2026-07-28 12:00:00+00'),
+  (11, 5, 'Smooth Hummus', 'Peel the chickpeas. Yes, really. It''s worth it.', 'https://cdn.cookfeed.app/videos/011.mp4', 'images/recipes/11.svg', 6, 15, 0, TRUE, 'ProductOnly', '2026-07-29 12:00:00+00', '2026-07-29 12:00:00+00'),
+  (12, 5, 'Brown Butter Chocolate Chip Cookies', 'Brown the butter. Chill the dough. Thank me later.', 'https://cdn.cookfeed.app/videos/012.mp4', 'images/recipes/12.svg', 24, 20, 12, TRUE, 'ProductOnly', '2026-07-30 12:00:00+00', '2026-07-30 12:00:00+00'),
+  (13, 4, 'Miso Soup (draft)', NULL, 'https://cdn.cookfeed.app/videos/draft-miso.mp4', NULL, 2, NULL, NULL, FALSE, 'Public', '2026-07-31 12:00:00+00', NULL),
+  (14, 3, 'Cacio e Pepe', 'Pecorino, black pepper and starchy pasta water. Three ingredients, all technique.', 'https://cdn.cookfeed.app/videos/014.mp4', 'images/recipes/14.svg', 2, 5, 10, TRUE, 'Public', '2026-07-15 12:00:00+00', '2026-07-15 12:00:00+00'),
+  (15, 3, 'Caprese Salad', 'Ripe tomatoes, fresh mozzarella and basil. Only worth making in tomato season, and then it is the best thing on the table.', 'https://cdn.cookfeed.app/videos/015.mp4', 'images/recipes/15.svg', 4, 10, 0, TRUE, 'Public', '2026-07-16 12:00:00+00', '2026-07-16 12:00:00+00'),
+  (16, 4, 'Tamagoyaki', 'The rolled Japanese omelet, a little sweet. A square pan helps; a round one works.', 'https://cdn.cookfeed.app/videos/016.mp4', 'images/recipes/16.svg', 2, 5, 10, TRUE, 'Public', '2026-07-18 12:00:00+00', '2026-07-18 12:00:00+00'),
+  (17, 4, 'Cucumber Sunomono', 'A sweet-sour cucumber salad that goes with any dinner. Ready in ten minutes.', 'https://cdn.cookfeed.app/videos/017.mp4', 'images/recipes/17.svg', 2, 10, 0, TRUE, 'Public', '2026-07-22 12:00:00+00', '2026-07-22 12:00:00+00'),
+  (18, 5, 'Sheet-Pan Chicken and Vegetables', 'One pan in the oven, one pan to wash. Dinner while you help with homework.', 'https://cdn.cookfeed.app/videos/018.mp4', 'images/recipes/18.svg', 4, 10, 25, TRUE, 'Public', '2026-07-27 12:00:00+00', '2026-07-27 12:00:00+00'),
+  (19, 5, 'Black Bean Quesadillas', 'A pantry dinner. The kids fold their own.', 'https://cdn.cookfeed.app/videos/019.mp4', 'images/recipes/19.svg', 4, 5, 15, TRUE, 'Public', '2026-07-31 12:00:00+00', '2026-07-31 12:00:00+00'),
+  (20, 3, 'Rosemary Ciabatta', 'A wet dough, a long rest and big holes. Mix it the night before.', 'https://cdn.cookfeed.app/videos/020.mp4', 'images/recipes/20.svg', 8, 20, 25, TRUE, 'ProductOnly', '2026-07-21 12:00:00+00', '2026-07-21 12:00:00+00');
 
 -- Recipe steps
 INSERT INTO recipe_steps (id, recipe_id, step_number, instruction, video_timestamp_seconds) VALUES
@@ -193,7 +210,25 @@ INSERT INTO recipe_steps (id, recipe_id, step_number, instruction, video_timesta
   (37, 12, 2, 'Beat the butter with both sugars, then the eggs and vanilla.', 16),
   (38, 12, 3, 'Fold in flour, baking powder, salt, and chocolate chips. Chill the dough at least 1 hour.', 24),
   (39, 12, 4, 'Bake at 180°C for 11–12 minutes until the edges are set and the centers look underdone.', 32),
-  (40, 13, 1, 'TODO', NULL);
+  (40, 13, 1, 'TODO', NULL),
+  (41, 14, 1, 'Boil the spaghetti in less water than usual, so the water left behind is starchy.', 8),
+  (42, 14, 2, 'Toast the pepper in a dry pan for a minute, then add a ladle of the pasta water.', 16),
+  (43, 14, 3, 'Off the heat, add the pasta and the pecorino and toss hard, adding pasta water until the sauce is creamy.', 24),
+  (44, 15, 1, 'Slice the tomatoes and the mozzarella and lay them on a platter, alternating.', 8),
+  (45, 15, 2, 'Tuck the basil in between, drizzle with olive oil, and season with salt and pepper just before serving.', 16),
+  (46, 16, 1, 'Beat the eggs with the soy sauce, mirin and sugar, mixing gently so you do not whip in air.', 8),
+  (47, 16, 2, 'Pour a thin layer into the oiled pan and, as soon as it is just set, roll it up from the far side.', 16),
+  (48, 16, 3, 'Push the roll back, pour in another thin layer, lift the roll so the egg runs under it, and roll again until the egg is used up.', 24),
+  (49, 17, 1, 'Toss the cucumber with the salt, leave it 5 minutes, then squeeze out the water.', 8),
+  (50, 17, 2, 'Stir the vinegar, sugar and soy sauce until the sugar dissolves, and toss with the cucumber.', 16),
+  (51, 18, 1, 'Heat the oven to 220°C. Toss the chicken and vegetables with the oil, garlic, salt and pepper on a sheet pan.', 8),
+  (52, 18, 2, 'Roast for 25 minutes, stirring halfway, until the chicken is cooked through and the edges brown.', 16),
+  (53, 19, 1, 'Mash the black beans with the cumin.', 8),
+  (54, 19, 2, 'Spread the beans and the cheese over half of each tortilla and fold it over.', 16),
+  (55, 19, 3, 'Cook in a dry pan for 2–3 minutes a side, until crisp and melted. Serve with lime wedges.', 24),
+  (56, 20, 1, 'Mix the flour, yeast, salt, rosemary and 400 ml of water into a sticky dough. Cover and leave it for 12 hours.', 8),
+  (57, 20, 2, 'Turn it out onto a floured board, cut it into two loaves, and let them rest for 1 hour.', 16),
+  (58, 20, 3, 'Drizzle with the olive oil and bake at 230°C for 25 minutes, until deep golden.', 24);
 
 -- Recipe ingredients — note flour appears as 500 g (recipe 3), 1 cup (4), 2 cups (8) and 2.25 cups (12)
 INSERT INTO recipe_ingredients (id, recipe_id, ingredient_id, unit_id, quantity, display_text, preparation, sort_order, is_optional) VALUES
@@ -285,7 +320,44 @@ INSERT INTO recipe_ingredients (id, recipe_id, ingredient_id, unit_id, quantity,
   (86, 6, 52, 11, 4, NULL, 'pitted', 5, FALSE),
   (87, 6, 53, 13, 1, '5 oz can tuna', 'drained', 6, FALSE),
   (88, 6, 54, 2, 2, 'Japanese mayonnaise', 'mixed into the tuna', 7, FALSE),
-  (89, 6, 55, 11, 4, 'nori sheets', 'cut into strips', 8, FALSE);
+  (89, 6, 55, 11, 4, 'nori sheets', 'cut into strips', 8, FALSE),
+  (90, 14, 17, 7, 200, NULL, NULL, 1, FALSE),
+  (91, 14, 56, 3, 1, 'Pecorino Romano', 'finely grated', 2, FALSE),
+  (92, 14, 12, 1, 2, NULL, 'coarsely cracked', 3, FALSE),
+  (93, 14, 11, 2, 1, NULL, 'for the pasta water', 4, FALSE),
+  (94, 15, 57, 11, 4, 'ripe tomatoes', 'sliced thick', 1, FALSE),
+  (95, 15, 8, 7, 250, 'fresh mozzarella', 'sliced', 2, FALSE),
+  (96, 15, 16, 14, 1, NULL, 'leaves picked', 3, FALSE),
+  (97, 15, 10, 2, 2, 'extra-virgin olive oil', NULL, 4, FALSE),
+  (98, 15, 11, 1, 0.5, NULL, NULL, 5, FALSE),
+  (99, 15, 12, 1, 0.5, NULL, NULL, 6, FALSE),
+  (100, 16, 5, 11, 4, NULL, NULL, 1, FALSE),
+  (101, 16, 22, 1, 1, NULL, NULL, 2, FALSE),
+  (102, 16, 23, 2, 1, NULL, NULL, 3, FALSE),
+  (103, 16, 2, 1, 2, NULL, NULL, 4, FALSE),
+  (104, 16, 30, 1, 1, NULL, 'for the pan', 5, FALSE),
+  (105, 17, 58, 11, 2, NULL, 'sliced paper-thin', 1, FALSE),
+  (106, 17, 11, 1, 0.5, NULL, NULL, 2, FALSE),
+  (107, 17, 28, 2, 3, NULL, NULL, 3, FALSE),
+  (108, 17, 2, 2, 1, NULL, NULL, 4, FALSE),
+  (109, 17, 22, 1, 1, NULL, NULL, 5, FALSE),
+  (110, 18, 20, 7, 700, NULL, 'cut into chunks', 1, FALSE),
+  (111, 18, 49, 11, 1, 'head of broccoli', 'cut into florets', 2, FALSE),
+  (112, 18, 48, 11, 2, NULL, 'cut into strips', 3, FALSE),
+  (113, 18, 10, 2, 3, NULL, NULL, 4, FALSE),
+  (114, 18, 13, 12, 3, NULL, 'minced', 5, FALSE),
+  (115, 18, 11, 1, 1, NULL, NULL, 6, FALSE),
+  (116, 18, 12, 1, 0.5, NULL, NULL, 7, FALSE),
+  (117, 19, 33, 11, 8, NULL, NULL, 1, FALSE),
+  (118, 19, 59, 13, 1, '15 oz can black beans', 'drained and mashed', 2, FALSE),
+  (119, 19, 60, 7, 200, NULL, 'grated', 3, FALSE),
+  (120, 19, 37, 1, 1, NULL, NULL, 4, FALSE),
+  (121, 19, 31, 11, 1, NULL, 'cut in wedges', 5, FALSE),
+  (122, 20, 1, 7, 500, 'bread or all-purpose flour', NULL, 1, FALSE),
+  (123, 20, 62, 1, 1, NULL, NULL, 2, FALSE),
+  (124, 20, 11, 1, 2, NULL, NULL, 3, FALSE),
+  (125, 20, 10, 2, 2, NULL, 'plus more for the board', 4, FALSE),
+  (126, 20, 61, 14, 1, NULL, 'leaves chopped', 5, FALSE);
 
 -- Products (collections and meal plans)
 INSERT INTO products (id, creator_id, type, title, description, cover_image_url, price_cents, currency, is_active, created_at) VALUES
@@ -304,6 +376,7 @@ INSERT INTO product_recipes (product_id, recipe_id, sort_order, day_offset, slot
   (1, 2, 2, NULL, NULL),
   (1, 4, 3, NULL, NULL),
   (2, 3, 1, NULL, NULL),
+  (2, 20, 2, NULL, NULL),
   (3, 5, 1, 0, 'Dinner'),
   (3, 7, 2, 1, 'Dinner'),
   (3, 6, 3, 2, 'Dinner'),
@@ -315,8 +388,10 @@ INSERT INTO product_recipes (product_id, recipe_id, sort_order, day_offset, slot
   (4, 12, 6, 6, 'Snack');
 
 -- Saved recipes. Nobody saves their own recipe, nobody saves a ProductOnly recipe they have not bought,
--- and the admin saves nothing. Resulting save_count (via trigger): cookies 8, teriyaki 7, focaccia 6,
--- carbonara 4, oats 3, pancakes 3, marinara 3, stir-fry 2, tacos 1, hummus 1, chicken parm 0, onigiri 0.
+-- and the admin saves nothing: the ProductOnly saves are Alex's, Priya's and Dan's, of recipes their Paid orders
+-- hold. Resulting save_count (via trigger): sheet-pan chicken 7, cacio e pepe 6, caprese 5, tamagoyaki 4,
+-- teriyaki 3, sunomono 3, quesadillas 3, cookies 2, and 1 each for carbonara, focaccia, stir-fry, pancakes and
+-- oats. Alex's focaccia is the one his Roman Pasta Collection snapshot still holds.
 INSERT INTO saved_recipes (user_id, recipe_id, saved_at) VALUES
   (1, 1, '2026-08-02 12:00:00+00'),
   (1, 3, '2026-08-03 12:00:00+00'),
@@ -326,36 +401,36 @@ INSERT INTO saved_recipes (user_id, recipe_id, saved_at) VALUES
   (1, 7, '2026-08-07 12:00:00+00'),
   (2, 12, '2026-08-05 12:00:00+00'),
   (2, 5, '2026-08-09 12:00:00+00'),
-  (2, 3, '2026-08-10 12:00:00+00'),
+  (2, 18, '2026-08-10 12:00:00+00'),
   (2, 9, '2026-08-22 12:00:00+00'),
-  (3, 5, '2026-08-03 12:00:00+00'),
-  (3, 12, '2026-08-14 12:00:00+00'),
-  (3, 7, '2026-08-15 12:00:00+00'),
-  (4, 12, '2026-08-04 12:00:00+00'),
-  (4, 3, '2026-08-11 12:00:00+00'),
-  (4, 1, '2026-08-12 12:00:00+00'),
+  (3, 16, '2026-08-03 12:00:00+00'),
+  (3, 18, '2026-08-14 12:00:00+00'),
+  (3, 19, '2026-08-15 12:00:00+00'),
+  (4, 18, '2026-08-04 12:00:00+00'),
+  (4, 14, '2026-08-11 12:00:00+00'),
+  (4, 15, '2026-08-12 12:00:00+00'),
   (5, 5, '2026-08-01 12:00:00+00'),
-  (5, 1, '2026-08-13 12:00:00+00'),
-  (5, 3, '2026-08-13 12:00:00+00'),
-  (5, 2, '2026-08-20 12:00:00+00'),
-  (7, 12, '2026-08-07 12:00:00+00'),
-  (7, 5, '2026-08-07 12:00:00+00'),
-  (7, 3, '2026-08-08 12:00:00+00'),
-  (7, 9, '2026-08-16 12:00:00+00'),
-  (7, 1, '2026-08-17 12:00:00+00'),
-  (8, 12, '2026-08-09 12:00:00+00'),
-  (8, 5, '2026-08-09 12:00:00+00'),
-  (8, 8, '2026-08-18 12:00:00+00'),
-  (8, 2, '2026-08-19 12:00:00+00'),
-  (9, 12, '2026-08-11 12:00:00+00'),
-  (9, 5, '2026-08-11 12:00:00+00'),
-  (9, 3, '2026-08-12 12:00:00+00'),
-  (9, 10, '2026-08-23 12:00:00+00'),
-  (9, 11, '2026-08-24 12:00:00+00'),
-  (10, 12, '2026-08-13 12:00:00+00'),
-  (10, 9, '2026-08-13 12:00:00+00'),
-  (10, 2, '2026-08-25 12:00:00+00'),
-  (10, 8, '2026-08-26 12:00:00+00');
+  (5, 14, '2026-08-13 12:00:00+00'),
+  (5, 15, '2026-08-13 12:00:00+00'),
+  (5, 16, '2026-08-20 12:00:00+00'),
+  (7, 18, '2026-08-07 12:00:00+00'),
+  (7, 16, '2026-08-07 12:00:00+00'),
+  (7, 14, '2026-08-08 12:00:00+00'),
+  (7, 19, '2026-08-16 12:00:00+00'),
+  (7, 15, '2026-08-17 12:00:00+00'),
+  (8, 18, '2026-08-09 12:00:00+00'),
+  (8, 14, '2026-08-09 12:00:00+00'),
+  (8, 17, '2026-08-18 12:00:00+00'),
+  (8, 15, '2026-08-19 12:00:00+00'),
+  (9, 18, '2026-08-11 12:00:00+00'),
+  (9, 16, '2026-08-11 12:00:00+00'),
+  (9, 14, '2026-08-12 12:00:00+00'),
+  (9, 17, '2026-08-23 12:00:00+00'),
+  (9, 19, '2026-08-24 12:00:00+00'),
+  (10, 18, '2026-08-13 12:00:00+00'),
+  (10, 14, '2026-08-13 12:00:00+00'),
+  (10, 15, '2026-08-25 12:00:00+00'),
+  (10, 17, '2026-08-26 12:00:00+00');
 
 -- Meal plans
 INSERT INTO meal_plans (id, user_id, name, week_start, created_at) VALUES

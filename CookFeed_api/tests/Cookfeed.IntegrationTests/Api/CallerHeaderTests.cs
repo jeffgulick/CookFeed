@@ -15,7 +15,7 @@ public sealed class CallerHeaderTests(DatabaseFixture databases) : IAsyncDisposa
     private CookfeedApiFactory? _api;
 
     public static TheoryData<string> Routes =>
-        ["/api/feed", "/api/creators/maria-cooks", "/api/recipes/5", "/api/me/orders", "/api/me/shopping-list"];
+        ["/api/feed", "/api/creators/maria-cooks", "/api/recipes/14", "/api/me/orders", "/api/me/shopping-list"];
 
     public static TheoryData<string, string> BadValues
     {
@@ -72,7 +72,7 @@ public sealed class CallerHeaderTests(DatabaseFixture databases) : IAsyncDisposa
     [Theory]
     [InlineData("/api/feed", HttpStatusCode.OK)]
     [InlineData("/api/creators/maria-cooks", HttpStatusCode.OK)]
-    [InlineData("/api/recipes/5", HttpStatusCode.OK)]
+    [InlineData("/api/recipes/14", HttpStatusCode.OK)]
     [InlineData("/api/me/orders", HttpStatusCode.BadRequest)]
     [InlineData("/api/me/shopping-list", HttpStatusCode.BadRequest)]
     public async Task Without_the_header_public_routes_serve_an_anonymous_viewer_and_me_routes_refuse(

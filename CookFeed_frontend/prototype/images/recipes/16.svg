@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Slices of tamagoyaki, a rolled Japanese omelet, on a rectangular plate">
+  <rect width="400" height="300" fill="#fdf7e6"/>
+  <circle cx="200" cy="140" r="108" fill="#f9ecc4"/>
+  <ellipse cx="200" cy="240" rx="140" ry="14" fill="#e6d6a8"/>
+  <rect x="70" y="170" width="260" height="62" rx="10" fill="#465764"/>
+  <rect x="78" y="164" width="244" height="58" rx="10" fill="#f6f1e7"/>
+  <g>
+    <rect x="98" y="136" width="58" height="72" rx="12" fill="#f2c94c"/>
+    <rect x="171" y="136" width="58" height="72" rx="12" fill="#f5d061"/>
+    <rect x="244" y="136" width="58" height="72" rx="12" fill="#f2c94c"/>
+  </g>
+  <g fill="none" stroke="#e0a92e" stroke-width="3">
+    <path d="M110 150 q17 -8 34 0 M110 166 q17 -8 34 0 M110 182 q17 -8 34 0"/>
+    <path d="M183 150 q17 -8 34 0 M183 166 q17 -8 34 0 M183 182 q17 -8 34 0"/>
+    <path d="M256 150 q17 -8 34 0 M256 166 q17 -8 34 0 M256 182 q17 -8 34 0"/>
+  </g>
+  <circle cx="318" cy="150" r="7" fill="#77a94b"/><circle cx="330" cy="160" r="6" fill="#5f8f3a"/>
+</svg>

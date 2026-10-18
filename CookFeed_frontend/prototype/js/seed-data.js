@@ -252,8 +252,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/001.mp4",
             "createdAt": "2026-07-12T12:00:00+00:00",
             "creatorId": 3,
-            "saveCount": 4,
-            "visibility": "Public",
+            "saveCount": 1,
+            "visibility": "ProductOnly",
             "cookMinutes": 12,
             "description": "No cream. Ever. Eggs, cheese, pancetta, pepper, and the pasta water does the rest.",
             "isPublished": true,
@@ -268,8 +268,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/002.mp4",
             "createdAt": "2026-07-14T12:00:00+00:00",
             "creatorId": 3,
-            "saveCount": 3,
-            "visibility": "Public",
+            "saveCount": 0,
+            "visibility": "ProductOnly",
             "cookMinutes": 60,
             "description": "One can of tomatoes, one onion, one hour. Freezes beautifully.",
             "isPublished": true,
@@ -284,8 +284,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/003.mp4",
             "createdAt": "2026-07-20T12:00:00+00:00",
             "creatorId": 3,
-            "saveCount": 6,
-            "visibility": "Public",
+            "saveCount": 1,
+            "visibility": "ProductOnly",
             "cookMinutes": 25,
             "description": "Mix tonight, bake tomorrow. Dimples optional but strongly encouraged.",
             "isPublished": true,
@@ -316,8 +316,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/005.mp4",
             "createdAt": "2026-07-13T12:00:00+00:00",
             "creatorId": 4,
-            "saveCount": 7,
-            "visibility": "Public",
+            "saveCount": 3,
+            "visibility": "ProductOnly",
             "cookMinutes": 15,
             "description": "Four ingredients in the sauce. Skin-on thighs. That's the whole secret.",
             "isPublished": true,
@@ -348,8 +348,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/007.mp4",
             "createdAt": "2026-07-23T12:00:00+00:00",
             "creatorId": 4,
-            "saveCount": 2,
-            "visibility": "Public",
+            "saveCount": 1,
+            "visibility": "ProductOnly",
             "cookMinutes": 8,
             "description": "The one-pan dinner I make when I have nothing planned.",
             "isPublished": true,
@@ -364,8 +364,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/008.mp4",
             "createdAt": "2026-07-24T12:00:00+00:00",
             "creatorId": 5,
-            "saveCount": 3,
-            "visibility": "Public",
+            "saveCount": 1,
+            "visibility": "ProductOnly",
             "cookMinutes": 15,
             "description": "Fluffy, forgiving, and the kids can help. Milk plus a little vinegar stands in for buttermilk.",
             "isPublished": true,
@@ -380,8 +380,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/009.mp4",
             "createdAt": "2026-07-25T12:00:00+00:00",
             "creatorId": 5,
-            "saveCount": 3,
-            "visibility": "Public",
+            "saveCount": 1,
+            "visibility": "ProductOnly",
             "cookMinutes": 0,
             "description": "One mixing bowl on Sunday, five breakfasts done.",
             "isPublished": true,
@@ -396,8 +396,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/010.mp4",
             "createdAt": "2026-07-28T12:00:00+00:00",
             "creatorId": 5,
-            "saveCount": 1,
-            "visibility": "Public",
+            "saveCount": 0,
+            "visibility": "ProductOnly",
             "cookMinutes": 15,
             "description": "Skip the packet. Cumin, chili powder, and a squeeze of lime.",
             "isPublished": true,
@@ -412,8 +412,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/011.mp4",
             "createdAt": "2026-07-29T12:00:00+00:00",
             "creatorId": 5,
-            "saveCount": 1,
-            "visibility": "Public",
+            "saveCount": 0,
+            "visibility": "ProductOnly",
             "cookMinutes": 0,
             "description": "Peel the chickpeas. Yes, really. It's worth it.",
             "isPublished": true,
@@ -428,8 +428,8 @@ window.COOKFEED_SEED = {
             "videoUrl": "https://cdn.cookfeed.app/videos/012.mp4",
             "createdAt": "2026-07-30T12:00:00+00:00",
             "creatorId": 5,
-            "saveCount": 8,
-            "visibility": "Public",
+            "saveCount": 2,
+            "visibility": "ProductOnly",
             "cookMinutes": 12,
             "description": "Brown the butter. Chill the dough. Thank me later.",
             "isPublished": true,
@@ -452,6 +452,118 @@ window.COOKFEED_SEED = {
             "prepMinutes": null,
             "publishedAt": null,
             "thumbnailUrl": null
+        },
+        {
+            "id": 14,
+            "title": "Cacio e Pepe",
+            "servings": 2,
+            "videoUrl": "https://cdn.cookfeed.app/videos/014.mp4",
+            "createdAt": "2026-07-15T12:00:00+00:00",
+            "creatorId": 3,
+            "saveCount": 6,
+            "visibility": "Public",
+            "cookMinutes": 10,
+            "description": "Pecorino, black pepper and starchy pasta water. Three ingredients, all technique.",
+            "isPublished": true,
+            "prepMinutes": 5,
+            "publishedAt": "2026-07-15T12:00:00+00:00",
+            "thumbnailUrl": "images/recipes/14.svg"
+        },
+        {
+            "id": 15,
+            "title": "Caprese Salad",
+            "servings": 4,
+            "videoUrl": "https://cdn.cookfeed.app/videos/015.mp4",
+            "createdAt": "2026-07-16T12:00:00+00:00",
+            "creatorId": 3,
+            "saveCount": 5,
+            "visibility": "Public",
+            "cookMinutes": 0,
+            "description": "Ripe tomatoes, fresh mozzarella and basil. Only worth making in tomato season, and then it is the best thing on the table.",
+            "isPublished": true,
+            "prepMinutes": 10,
+            "publishedAt": "2026-07-16T12:00:00+00:00",
+            "thumbnailUrl": "images/recipes/15.svg"
+        },
+        {
+            "id": 16,
+            "title": "Tamagoyaki",
+            "servings": 2,
+            "videoUrl": "https://cdn.cookfeed.app/videos/016.mp4",
+            "createdAt": "2026-07-18T12:00:00+00:00",
+            "creatorId": 4,
+            "saveCount": 4,
+            "visibility": "Public",
+            "cookMinutes": 10,
+            "description": "The rolled Japanese omelet, a little sweet. A square pan helps; a round one works.",
+            "isPublished": true,
+            "prepMinutes": 5,
+            "publishedAt": "2026-07-18T12:00:00+00:00",
+            "thumbnailUrl": "images/recipes/16.svg"
+        },
+        {
+            "id": 17,
+            "title": "Cucumber Sunomono",
+            "servings": 2,
+            "videoUrl": "https://cdn.cookfeed.app/videos/017.mp4",
+            "createdAt": "2026-07-22T12:00:00+00:00",
+            "creatorId": 4,
+            "saveCount": 3,
+            "visibility": "Public",
+            "cookMinutes": 0,
+            "description": "A sweet-sour cucumber salad that goes with any dinner. Ready in ten minutes.",
+            "isPublished": true,
+            "prepMinutes": 10,
+            "publishedAt": "2026-07-22T12:00:00+00:00",
+            "thumbnailUrl": "images/recipes/17.svg"
+        },
+        {
+            "id": 18,
+            "title": "Sheet-Pan Chicken and Vegetables",
+            "servings": 4,
+            "videoUrl": "https://cdn.cookfeed.app/videos/018.mp4",
+            "createdAt": "2026-07-27T12:00:00+00:00",
+            "creatorId": 5,
+            "saveCount": 7,
+            "visibility": "Public",
+            "cookMinutes": 25,
+            "description": "One pan in the oven, one pan to wash. Dinner while you help with homework.",
+            "isPublished": true,
+            "prepMinutes": 10,
+            "publishedAt": "2026-07-27T12:00:00+00:00",
+            "thumbnailUrl": "images/recipes/18.svg"
+        },
+        {
+            "id": 19,
+            "title": "Black Bean Quesadillas",
+            "servings": 4,
+            "videoUrl": "https://cdn.cookfeed.app/videos/019.mp4",
+            "createdAt": "2026-07-31T12:00:00+00:00",
+            "creatorId": 5,
+            "saveCount": 3,
+            "visibility": "Public",
+            "cookMinutes": 15,
+            "description": "A pantry dinner. The kids fold their own.",
+            "isPublished": true,
+            "prepMinutes": 5,
+            "publishedAt": "2026-07-31T12:00:00+00:00",
+            "thumbnailUrl": "images/recipes/19.svg"
+        },
+        {
+            "id": 20,
+            "title": "Rosemary Ciabatta",
+            "servings": 8,
+            "videoUrl": "https://cdn.cookfeed.app/videos/020.mp4",
+            "createdAt": "2026-07-21T12:00:00+00:00",
+            "creatorId": 3,
+            "saveCount": 0,
+            "visibility": "ProductOnly",
+            "cookMinutes": 25,
+            "description": "A wet dough, a long rest and big holes. Mix it the night before.",
+            "isPublished": true,
+            "prepMinutes": 20,
+            "publishedAt": "2026-07-21T12:00:00+00:00",
+            "thumbnailUrl": "images/recipes/20.svg"
         }
     ],
     "reviews": [
@@ -1071,6 +1183,55 @@ window.COOKFEED_SEED = {
             "category": "Pantry",
             "densityGPerMl": null,
             "preferredShoppingUnitId": 11
+        },
+        {
+            "id": 56,
+            "name": "pecorino romano",
+            "category": "Dairy",
+            "densityGPerMl": 0.4500,
+            "preferredShoppingUnitId": 7
+        },
+        {
+            "id": 57,
+            "name": "tomato",
+            "category": "Produce",
+            "densityGPerMl": null,
+            "preferredShoppingUnitId": 11
+        },
+        {
+            "id": 58,
+            "name": "cucumber",
+            "category": "Produce",
+            "densityGPerMl": null,
+            "preferredShoppingUnitId": 11
+        },
+        {
+            "id": 59,
+            "name": "black beans",
+            "category": "Pantry",
+            "densityGPerMl": null,
+            "preferredShoppingUnitId": 13
+        },
+        {
+            "id": 60,
+            "name": "cheddar cheese",
+            "category": "Dairy",
+            "densityGPerMl": null,
+            "preferredShoppingUnitId": 7
+        },
+        {
+            "id": 61,
+            "name": "fresh rosemary",
+            "category": "Produce",
+            "densityGPerMl": null,
+            "preferredShoppingUnitId": 14
+        },
+        {
+            "id": 62,
+            "name": "instant yeast",
+            "category": "Pantry",
+            "densityGPerMl": 0.6000,
+            "preferredShoppingUnitId": 7
         }
     ],
     "recipeSteps": [
@@ -1393,6 +1554,150 @@ window.COOKFEED_SEED = {
             "instruction": "TODO",
             "durationMinutes": null,
             "videoTimestampSeconds": null
+        },
+        {
+            "id": 41,
+            "recipeId": 14,
+            "stepNumber": 1,
+            "instruction": "Boil the spaghetti in less water than usual, so the water left behind is starchy.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 8
+        },
+        {
+            "id": 42,
+            "recipeId": 14,
+            "stepNumber": 2,
+            "instruction": "Toast the pepper in a dry pan for a minute, then add a ladle of the pasta water.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 16
+        },
+        {
+            "id": 43,
+            "recipeId": 14,
+            "stepNumber": 3,
+            "instruction": "Off the heat, add the pasta and the pecorino and toss hard, adding pasta water until the sauce is creamy.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 24
+        },
+        {
+            "id": 44,
+            "recipeId": 15,
+            "stepNumber": 1,
+            "instruction": "Slice the tomatoes and the mozzarella and lay them on a platter, alternating.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 8
+        },
+        {
+            "id": 45,
+            "recipeId": 15,
+            "stepNumber": 2,
+            "instruction": "Tuck the basil in between, drizzle with olive oil, and season with salt and pepper just before serving.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 16
+        },
+        {
+            "id": 46,
+            "recipeId": 16,
+            "stepNumber": 1,
+            "instruction": "Beat the eggs with the soy sauce, mirin and sugar, mixing gently so you do not whip in air.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 8
+        },
+        {
+            "id": 47,
+            "recipeId": 16,
+            "stepNumber": 2,
+            "instruction": "Pour a thin layer into the oiled pan and, as soon as it is just set, roll it up from the far side.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 16
+        },
+        {
+            "id": 48,
+            "recipeId": 16,
+            "stepNumber": 3,
+            "instruction": "Push the roll back, pour in another thin layer, lift the roll so the egg runs under it, and roll again until the egg is used up.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 24
+        },
+        {
+            "id": 49,
+            "recipeId": 17,
+            "stepNumber": 1,
+            "instruction": "Toss the cucumber with the salt, leave it 5 minutes, then squeeze out the water.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 8
+        },
+        {
+            "id": 50,
+            "recipeId": 17,
+            "stepNumber": 2,
+            "instruction": "Stir the vinegar, sugar and soy sauce until the sugar dissolves, and toss with the cucumber.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 16
+        },
+        {
+            "id": 51,
+            "recipeId": 18,
+            "stepNumber": 1,
+            "instruction": "Heat the oven to 220\u00b0C. Toss the chicken and vegetables with the oil, garlic, salt and pepper on a sheet pan.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 8
+        },
+        {
+            "id": 52,
+            "recipeId": 18,
+            "stepNumber": 2,
+            "instruction": "Roast for 25 minutes, stirring halfway, until the chicken is cooked through and the edges brown.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 16
+        },
+        {
+            "id": 53,
+            "recipeId": 19,
+            "stepNumber": 1,
+            "instruction": "Mash the black beans with the cumin.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 8
+        },
+        {
+            "id": 54,
+            "recipeId": 19,
+            "stepNumber": 2,
+            "instruction": "Spread the beans and the cheese over half of each tortilla and fold it over.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 16
+        },
+        {
+            "id": 55,
+            "recipeId": 19,
+            "stepNumber": 3,
+            "instruction": "Cook in a dry pan for 2\u20133 minutes a side, until crisp and melted. Serve with lime wedges.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 24
+        },
+        {
+            "id": 56,
+            "recipeId": 20,
+            "stepNumber": 1,
+            "instruction": "Mix the flour, yeast, salt, rosemary and 400 ml of water into a sticky dough. Cover and leave it for 12 hours.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 8
+        },
+        {
+            "id": 57,
+            "recipeId": 20,
+            "stepNumber": 2,
+            "instruction": "Turn it out onto a floured board, cut it into two loaves, and let them rest for 1 hour.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 16
+        },
+        {
+            "id": 58,
+            "recipeId": 20,
+            "stepNumber": 3,
+            "instruction": "Drizzle with the olive oil and bake at 230\u00b0C for 25 minutes, until deep golden.",
+            "durationMinutes": null,
+            "videoTimestampSeconds": 24
         }
     ],
     "savedRecipes": [
@@ -1428,11 +1733,6 @@ window.COOKFEED_SEED = {
         },
         {
             "userId": 2,
-            "savedAt": "2026-08-10T12:00:00+00:00",
-            "recipeId": 3
-        },
-        {
-            "userId": 2,
             "savedAt": "2026-08-09T12:00:00+00:00",
             "recipeId": 5
         },
@@ -1447,49 +1747,39 @@ window.COOKFEED_SEED = {
             "recipeId": 12
         },
         {
-            "userId": 3,
-            "savedAt": "2026-08-03T12:00:00+00:00",
-            "recipeId": 5
+            "userId": 2,
+            "savedAt": "2026-08-10T12:00:00+00:00",
+            "recipeId": 18
         },
         {
             "userId": 3,
-            "savedAt": "2026-08-15T12:00:00+00:00",
-            "recipeId": 7
+            "savedAt": "2026-08-03T12:00:00+00:00",
+            "recipeId": 16
         },
         {
             "userId": 3,
             "savedAt": "2026-08-14T12:00:00+00:00",
-            "recipeId": 12
+            "recipeId": 18
         },
         {
-            "userId": 4,
-            "savedAt": "2026-08-12T12:00:00+00:00",
-            "recipeId": 1
+            "userId": 3,
+            "savedAt": "2026-08-15T12:00:00+00:00",
+            "recipeId": 19
         },
         {
             "userId": 4,
             "savedAt": "2026-08-11T12:00:00+00:00",
-            "recipeId": 3
+            "recipeId": 14
+        },
+        {
+            "userId": 4,
+            "savedAt": "2026-08-12T12:00:00+00:00",
+            "recipeId": 15
         },
         {
             "userId": 4,
             "savedAt": "2026-08-04T12:00:00+00:00",
-            "recipeId": 12
-        },
-        {
-            "userId": 5,
-            "savedAt": "2026-08-13T12:00:00+00:00",
-            "recipeId": 1
-        },
-        {
-            "userId": 5,
-            "savedAt": "2026-08-20T12:00:00+00:00",
-            "recipeId": 2
-        },
-        {
-            "userId": 5,
-            "savedAt": "2026-08-13T12:00:00+00:00",
-            "recipeId": 3
+            "recipeId": 18
         },
         {
             "userId": 5,
@@ -1497,94 +1787,109 @@ window.COOKFEED_SEED = {
             "recipeId": 5
         },
         {
-            "userId": 7,
-            "savedAt": "2026-08-17T12:00:00+00:00",
-            "recipeId": 1
+            "userId": 5,
+            "savedAt": "2026-08-13T12:00:00+00:00",
+            "recipeId": 14
+        },
+        {
+            "userId": 5,
+            "savedAt": "2026-08-13T12:00:00+00:00",
+            "recipeId": 15
+        },
+        {
+            "userId": 5,
+            "savedAt": "2026-08-20T12:00:00+00:00",
+            "recipeId": 16
         },
         {
             "userId": 7,
             "savedAt": "2026-08-08T12:00:00+00:00",
-            "recipeId": 3
+            "recipeId": 14
+        },
+        {
+            "userId": 7,
+            "savedAt": "2026-08-17T12:00:00+00:00",
+            "recipeId": 15
         },
         {
             "userId": 7,
             "savedAt": "2026-08-07T12:00:00+00:00",
-            "recipeId": 5
+            "recipeId": 16
+        },
+        {
+            "userId": 7,
+            "savedAt": "2026-08-07T12:00:00+00:00",
+            "recipeId": 18
         },
         {
             "userId": 7,
             "savedAt": "2026-08-16T12:00:00+00:00",
-            "recipeId": 9
+            "recipeId": 19
         },
         {
-            "userId": 7,
-            "savedAt": "2026-08-07T12:00:00+00:00",
-            "recipeId": 12
+            "userId": 8,
+            "savedAt": "2026-08-09T12:00:00+00:00",
+            "recipeId": 14
         },
         {
             "userId": 8,
             "savedAt": "2026-08-19T12:00:00+00:00",
-            "recipeId": 2
-        },
-        {
-            "userId": 8,
-            "savedAt": "2026-08-09T12:00:00+00:00",
-            "recipeId": 5
+            "recipeId": 15
         },
         {
             "userId": 8,
             "savedAt": "2026-08-18T12:00:00+00:00",
-            "recipeId": 8
+            "recipeId": 17
         },
         {
             "userId": 8,
             "savedAt": "2026-08-09T12:00:00+00:00",
-            "recipeId": 12
+            "recipeId": 18
         },
         {
             "userId": 9,
             "savedAt": "2026-08-12T12:00:00+00:00",
-            "recipeId": 3
+            "recipeId": 14
         },
         {
             "userId": 9,
             "savedAt": "2026-08-11T12:00:00+00:00",
-            "recipeId": 5
+            "recipeId": 16
         },
         {
             "userId": 9,
             "savedAt": "2026-08-23T12:00:00+00:00",
-            "recipeId": 10
-        },
-        {
-            "userId": 9,
-            "savedAt": "2026-08-24T12:00:00+00:00",
-            "recipeId": 11
+            "recipeId": 17
         },
         {
             "userId": 9,
             "savedAt": "2026-08-11T12:00:00+00:00",
-            "recipeId": 12
+            "recipeId": 18
+        },
+        {
+            "userId": 9,
+            "savedAt": "2026-08-24T12:00:00+00:00",
+            "recipeId": 19
+        },
+        {
+            "userId": 10,
+            "savedAt": "2026-08-13T12:00:00+00:00",
+            "recipeId": 14
         },
         {
             "userId": 10,
             "savedAt": "2026-08-25T12:00:00+00:00",
-            "recipeId": 2
+            "recipeId": 15
         },
         {
             "userId": 10,
             "savedAt": "2026-08-26T12:00:00+00:00",
-            "recipeId": 8
+            "recipeId": 17
         },
         {
             "userId": 10,
             "savedAt": "2026-08-13T12:00:00+00:00",
-            "recipeId": 9
-        },
-        {
-            "userId": 10,
-            "savedAt": "2026-08-13T12:00:00+00:00",
-            "recipeId": 12
+            "recipeId": 18
         }
     ],
     "productRecipes": [
@@ -1622,6 +1927,14 @@ window.COOKFEED_SEED = {
         },
         {
             "id": 5,
+            "slot": null,
+            "recipeId": 20,
+            "dayOffset": null,
+            "productId": 2,
+            "sortOrder": 2
+        },
+        {
+            "id": 6,
             "slot": "Dinner",
             "recipeId": 5,
             "dayOffset": 0,
@@ -1629,7 +1942,7 @@ window.COOKFEED_SEED = {
             "sortOrder": 1
         },
         {
-            "id": 6,
+            "id": 7,
             "slot": "Dinner",
             "recipeId": 7,
             "dayOffset": 1,
@@ -1637,7 +1950,7 @@ window.COOKFEED_SEED = {
             "sortOrder": 2
         },
         {
-            "id": 7,
+            "id": 8,
             "slot": "Dinner",
             "recipeId": 6,
             "dayOffset": 2,
@@ -1645,7 +1958,7 @@ window.COOKFEED_SEED = {
             "sortOrder": 3
         },
         {
-            "id": 8,
+            "id": 9,
             "slot": "Breakfast",
             "recipeId": 9,
             "dayOffset": 0,
@@ -1653,7 +1966,7 @@ window.COOKFEED_SEED = {
             "sortOrder": 1
         },
         {
-            "id": 9,
+            "id": 10,
             "slot": "Dinner",
             "recipeId": 10,
             "dayOffset": 0,
@@ -1661,7 +1974,7 @@ window.COOKFEED_SEED = {
             "sortOrder": 2
         },
         {
-            "id": 10,
+            "id": 11,
             "slot": "Snack",
             "recipeId": 11,
             "dayOffset": 2,
@@ -1669,7 +1982,7 @@ window.COOKFEED_SEED = {
             "sortOrder": 3
         },
         {
-            "id": 11,
+            "id": 12,
             "slot": "Breakfast",
             "recipeId": 9,
             "dayOffset": 3,
@@ -1677,7 +1990,7 @@ window.COOKFEED_SEED = {
             "sortOrder": 4
         },
         {
-            "id": 12,
+            "id": 13,
             "slot": "Breakfast",
             "recipeId": 8,
             "dayOffset": 5,
@@ -1685,7 +1998,7 @@ window.COOKFEED_SEED = {
             "sortOrder": 5
         },
         {
-            "id": 13,
+            "id": 14,
             "slot": "Snack",
             "recipeId": 12,
             "dayOffset": 6,
@@ -2939,6 +3252,413 @@ window.COOKFEED_SEED = {
             "displayText": "nori sheets",
             "preparation": "cut into strips",
             "ingredientId": 55
+        },
+        {
+            "id": 90,
+            "unitId": 7,
+            "quantity": 200.000,
+            "recipeId": 14,
+            "sortOrder": 1,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 17
+        },
+        {
+            "id": 91,
+            "unitId": 3,
+            "quantity": 1.000,
+            "recipeId": 14,
+            "sortOrder": 2,
+            "isOptional": false,
+            "displayText": "Pecorino Romano",
+            "preparation": "finely grated",
+            "ingredientId": 56
+        },
+        {
+            "id": 92,
+            "unitId": 1,
+            "quantity": 2.000,
+            "recipeId": 14,
+            "sortOrder": 3,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "coarsely cracked",
+            "ingredientId": 12
+        },
+        {
+            "id": 93,
+            "unitId": 2,
+            "quantity": 1.000,
+            "recipeId": 14,
+            "sortOrder": 4,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "for the pasta water",
+            "ingredientId": 11
+        },
+        {
+            "id": 94,
+            "unitId": 11,
+            "quantity": 4.000,
+            "recipeId": 15,
+            "sortOrder": 1,
+            "isOptional": false,
+            "displayText": "ripe tomatoes",
+            "preparation": "sliced thick",
+            "ingredientId": 57
+        },
+        {
+            "id": 95,
+            "unitId": 7,
+            "quantity": 250.000,
+            "recipeId": 15,
+            "sortOrder": 2,
+            "isOptional": false,
+            "displayText": "fresh mozzarella",
+            "preparation": "sliced",
+            "ingredientId": 8
+        },
+        {
+            "id": 96,
+            "unitId": 14,
+            "quantity": 1.000,
+            "recipeId": 15,
+            "sortOrder": 3,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "leaves picked",
+            "ingredientId": 16
+        },
+        {
+            "id": 97,
+            "unitId": 2,
+            "quantity": 2.000,
+            "recipeId": 15,
+            "sortOrder": 4,
+            "isOptional": false,
+            "displayText": "extra-virgin olive oil",
+            "preparation": null,
+            "ingredientId": 10
+        },
+        {
+            "id": 98,
+            "unitId": 1,
+            "quantity": 0.500,
+            "recipeId": 15,
+            "sortOrder": 5,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 11
+        },
+        {
+            "id": 99,
+            "unitId": 1,
+            "quantity": 0.500,
+            "recipeId": 15,
+            "sortOrder": 6,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 12
+        },
+        {
+            "id": 100,
+            "unitId": 11,
+            "quantity": 4.000,
+            "recipeId": 16,
+            "sortOrder": 1,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 5
+        },
+        {
+            "id": 101,
+            "unitId": 1,
+            "quantity": 1.000,
+            "recipeId": 16,
+            "sortOrder": 2,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 22
+        },
+        {
+            "id": 102,
+            "unitId": 2,
+            "quantity": 1.000,
+            "recipeId": 16,
+            "sortOrder": 3,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 23
+        },
+        {
+            "id": 103,
+            "unitId": 1,
+            "quantity": 2.000,
+            "recipeId": 16,
+            "sortOrder": 4,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 2
+        },
+        {
+            "id": 104,
+            "unitId": 1,
+            "quantity": 1.000,
+            "recipeId": 16,
+            "sortOrder": 5,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "for the pan",
+            "ingredientId": 30
+        },
+        {
+            "id": 105,
+            "unitId": 11,
+            "quantity": 2.000,
+            "recipeId": 17,
+            "sortOrder": 1,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "sliced paper-thin",
+            "ingredientId": 58
+        },
+        {
+            "id": 106,
+            "unitId": 1,
+            "quantity": 0.500,
+            "recipeId": 17,
+            "sortOrder": 2,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 11
+        },
+        {
+            "id": 107,
+            "unitId": 2,
+            "quantity": 3.000,
+            "recipeId": 17,
+            "sortOrder": 3,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 28
+        },
+        {
+            "id": 108,
+            "unitId": 2,
+            "quantity": 1.000,
+            "recipeId": 17,
+            "sortOrder": 4,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 2
+        },
+        {
+            "id": 109,
+            "unitId": 1,
+            "quantity": 1.000,
+            "recipeId": 17,
+            "sortOrder": 5,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 22
+        },
+        {
+            "id": 110,
+            "unitId": 7,
+            "quantity": 700.000,
+            "recipeId": 18,
+            "sortOrder": 1,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "cut into chunks",
+            "ingredientId": 20
+        },
+        {
+            "id": 111,
+            "unitId": 11,
+            "quantity": 1.000,
+            "recipeId": 18,
+            "sortOrder": 2,
+            "isOptional": false,
+            "displayText": "head of broccoli",
+            "preparation": "cut into florets",
+            "ingredientId": 49
+        },
+        {
+            "id": 112,
+            "unitId": 11,
+            "quantity": 2.000,
+            "recipeId": 18,
+            "sortOrder": 3,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "cut into strips",
+            "ingredientId": 48
+        },
+        {
+            "id": 113,
+            "unitId": 2,
+            "quantity": 3.000,
+            "recipeId": 18,
+            "sortOrder": 4,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 10
+        },
+        {
+            "id": 114,
+            "unitId": 12,
+            "quantity": 3.000,
+            "recipeId": 18,
+            "sortOrder": 5,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "minced",
+            "ingredientId": 13
+        },
+        {
+            "id": 115,
+            "unitId": 1,
+            "quantity": 1.000,
+            "recipeId": 18,
+            "sortOrder": 6,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 11
+        },
+        {
+            "id": 116,
+            "unitId": 1,
+            "quantity": 0.500,
+            "recipeId": 18,
+            "sortOrder": 7,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 12
+        },
+        {
+            "id": 117,
+            "unitId": 11,
+            "quantity": 8.000,
+            "recipeId": 19,
+            "sortOrder": 1,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 33
+        },
+        {
+            "id": 118,
+            "unitId": 13,
+            "quantity": 1.000,
+            "recipeId": 19,
+            "sortOrder": 2,
+            "isOptional": false,
+            "displayText": "15 oz can black beans",
+            "preparation": "drained and mashed",
+            "ingredientId": 59
+        },
+        {
+            "id": 119,
+            "unitId": 7,
+            "quantity": 200.000,
+            "recipeId": 19,
+            "sortOrder": 3,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "grated",
+            "ingredientId": 60
+        },
+        {
+            "id": 120,
+            "unitId": 1,
+            "quantity": 1.000,
+            "recipeId": 19,
+            "sortOrder": 4,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 37
+        },
+        {
+            "id": 121,
+            "unitId": 11,
+            "quantity": 1.000,
+            "recipeId": 19,
+            "sortOrder": 5,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "cut in wedges",
+            "ingredientId": 31
+        },
+        {
+            "id": 122,
+            "unitId": 7,
+            "quantity": 500.000,
+            "recipeId": 20,
+            "sortOrder": 1,
+            "isOptional": false,
+            "displayText": "bread or all-purpose flour",
+            "preparation": null,
+            "ingredientId": 1
+        },
+        {
+            "id": 123,
+            "unitId": 1,
+            "quantity": 1.000,
+            "recipeId": 20,
+            "sortOrder": 2,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 62
+        },
+        {
+            "id": 124,
+            "unitId": 1,
+            "quantity": 2.000,
+            "recipeId": 20,
+            "sortOrder": 3,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": null,
+            "ingredientId": 11
+        },
+        {
+            "id": 125,
+            "unitId": 2,
+            "quantity": 2.000,
+            "recipeId": 20,
+            "sortOrder": 4,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "plus more for the board",
+            "ingredientId": 10
+        },
+        {
+            "id": 126,
+            "unitId": 14,
+            "quantity": 1.000,
+            "recipeId": 20,
+            "sortOrder": 5,
+            "isOptional": false,
+            "displayText": null,
+            "preparation": "leaves chopped",
+            "ingredientId": 61
         }
     ]
 };
