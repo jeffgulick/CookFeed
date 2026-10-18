@@ -10,10 +10,17 @@
 
 /* The cart rows joined to their products, skipping anything no longer sold. */
 function cartProducts() {
+  return buyableCartItems(currentUser()).map(function (item) { return productWithRecipes(item.productId); });
+}
+
+/* A plan that went off sale (retired, its creator suspended) or that the shopper now owns leaves the cart,
+   and the shopper is told once, rather than seeing a count the cart page does not explain. */
+function dropUnbuyable() {
   var user = currentUser();
-  return cartFor(user.id)
-    .map(function (item) { return productWithRecipes(item.productId); })
-    .filter(function (product) { return product !== null && product.isActive; });
+  var keep = buyableCartItems(user).map(function (item) { return item.productId; });
+  var gone = cartFor(user.id).filter(function (item) { return keep.indexOf(item.productId) === -1; });
+  gone.forEach(function (item) { removeFromCart(user.id, item.productId); });
+  return gone.map(function (item) { return rowById("products", item.productId).title; });
 }
 
 function cartTotal(products) {
@@ -153,7 +160,12 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
+  var gone = dropUnbuyable();
   renderCart();
+  if (gone.length) {
+    showToast(gone.join(" and ") + (gone.length === 1 ? " is" : " are") + " no longer for sale, so we took " +
+      (gone.length === 1 ? "it" : "them") + " out of your cart.");
+  }
   document.getElementById("cartLines").addEventListener("click", onCartClicked);
   document.getElementById("checkoutButton").addEventListener("click", checkout);
   document.getElementById("emptyCartButton").addEventListener("click", emptyCart);

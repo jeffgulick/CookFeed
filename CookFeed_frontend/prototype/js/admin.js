@@ -209,7 +209,7 @@ function onConsoleClicked(event) {
     apply = function () { setReviewHidden(admin.id, id, hide); return hide ? "The review is hidden." : "The review is shown again."; };
   } else if (action === "verify") {
     var verify = button.getAttribute("data-verify") === "true";
-    message = (verify ? "Mark @" : "Remove the verified mark from @") + creatorName(id) + "?";
+    message = verify ? "Mark @" + creatorName(id) + " as verified?" : "Remove the verified mark from @" + creatorName(id) + "?";
     label = verify ? "Verify" : "Remove";
     apply = function () { setCreatorVerified(admin.id, id, verify); return "@" + creatorName(id) + (verify ? " is verified." : " is no longer marked verified."); };
   } else if (action === "suspend") {

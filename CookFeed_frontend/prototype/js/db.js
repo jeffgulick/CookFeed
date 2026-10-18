@@ -54,8 +54,26 @@ var LIMITS = {
   reviewBodyMin: 15,
   reviewBodyMax: 2000,     // reviews.body varchar(2000)
   servingsMin: 1,
-  servingsMax: 20
+  servingsMax: 50          // people for one recipe; a plan's repeated meal can double a recipe written for 24
 };
+
+/* "" when the value is a whole number of people from 1 to 50, otherwise what to tell the cook. Every place
+   that takes a number of people (recipe and plan pages, the week, a trip, the pickers) asks this, and every
+   write below refuses what it refuses. */
+function peopleProblem(value) {
+  var text = String(value === undefined || value === null ? "" : value).trim();
+  if (text === "") { return "Enter how many people you are cooking for."; }
+  var people = Number(text);
+  if (isNaN(people) || Math.floor(people) !== people || !/^[0-9]+$/.test(text)) { return "Use a whole number of people."; }
+  if (people < LIMITS.servingsMin || people > LIMITS.servingsMax) {
+    return "Choose between " + LIMITS.servingsMin + " and " + LIMITS.servingsMax + " people.";
+  }
+  return "";
+}
+
+function isPeople(value) {
+  return peopleProblem(value) === "";
+}
 
 /* An account: its users row, the names of its roles (user_roles joined to roles) and, for a creator,
    its handle. Email and password never leave the database. */
@@ -197,8 +215,14 @@ function seedFingerprint() {
 
 var dbCopy = null;
 
+/* A page keeps one copy of the tables in memory and writes it back whole. Two tabs would then overwrite
+   each other's changes, bring back a deleted trip, or hand out the same id twice. So every write carries a
+   version number: a tab whose copy is older than what is stored refuses to write, and reloads instead (the
+   "storage" event below usually reloads it first, the moment another tab saves). */
+var STALE_KEY = "cookfeed.staleReload";
+
 function freshCopy() {
-  var copy = { seedFingerprint: seedFingerprint() };
+  var copy = { seedFingerprint: seedFingerprint(), version: 0, lastIds: {} };
   CHANGING_TABLES.forEach(function (table) { copy[table] = JSON.parse(JSON.stringify(seedRows(table))); });
   return copy;
 }
@@ -207,24 +231,64 @@ function db() {
   if (dbCopy === null) {
     OLD_KEYS.forEach(removeStored);
     var stored = loadJson(DB_KEY, null);
-    dbCopy = stored !== null && stored.seedFingerprint === seedFingerprint() ? stored : freshCopy();
-    saveJson(DB_KEY, dbCopy);
+    if (stored !== null && stored.seedFingerprint === seedFingerprint()) {
+      dbCopy = stored;
+      if (typeof dbCopy.version !== "number") { dbCopy.version = 0; }
+      if (!dbCopy.lastIds) { dbCopy.lastIds = {}; }
+    } else {
+      dbCopy = freshCopy();
+      saveJson(DB_KEY, dbCopy);
+    }
   }
   return dbCopy;
 }
 
+function storedVersion() {
+  var stored = loadJson(DB_KEY, null);
+  return stored !== null && typeof stored.version === "number" ? stored.version : 0;
+}
+
+/* Returns false, and reloads the page, when another tab saved first; the change is not written. */
 function commit() {
-  saveJson(DB_KEY, db());
+  var tables = db();
+  if (storedVersion() !== tables.version) {
+    dbCopy = null;
+    reloadStalePage();
+    return false;
+  }
+  tables.version = tables.version + 1;
+  saveJson(DB_KEY, tables);
+  return true;
+}
+
+function reloadStalePage() {
+  if (typeof window === "undefined" || !window.location || typeof window.location.reload !== "function") { return; }
+  try { window.sessionStorage.setItem(STALE_KEY, "1"); } catch (error) { /* nothing to remember */ }
+  window.location.reload();
+}
+
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  window.addEventListener("storage", function (event) {
+    if (event.key === DB_KEY) { dbCopy = null; reloadStalePage(); }
+  });
 }
 
 /* Put every account back to exactly what the database holds. */
 function resetDb() {
+  var version = storedVersion();
   dbCopy = freshCopy();
+  dbCopy.version = version;
   commit();
 }
 
+/* An id is never handed out twice, even after its row is deleted (as a database sequence behaves), so a
+   new trip never inherits a deleted trip's ticks or links. */
 function nextId(table) {
-  return db()[table].reduce(function (max, row) { return Math.max(max, row.id); }, 0) + 1;
+  var tables = db();
+  var id = Math.max(tables.lastIds[table] || 0,
+    tables[table].reduce(function (max, row) { return Math.max(max, row.id); }, 0)) + 1;
+  tables.lastIds[table] = id;
+  return id;
 }
 
 function newestFirst(field) {
@@ -248,6 +312,7 @@ function saveCount(recipeId) {
 
 function setSaved(userId, recipeId, saved) {
   var tables = db();
+  if (saved && !canSave(userById(userId), rowById("recipes", recipeId))) { return; }
   if (saved && !isSavedBy(userId, recipeId)) {
     tables.savedRecipes.push({ userId: userId, savedAt: new Date().toISOString(), recipeId: recipeId });
   }
@@ -269,10 +334,11 @@ function isInCartOf(userId, productId) {
   return cartFor(userId).some(function (c) { return c.productId === productId; });
 }
 
-/* Returns false when the product is already there or no longer for sale. */
+/* Returns false when the product is already there, already owned, the shopper's own, no longer for sale,
+   or the account does not shop (the same answers buyState gives the page). */
 function addToCart(userId, productId) {
   var product = rowById("products", productId);
-  if (product === null || !product.isActive || isInCartOf(userId, productId)) {
+  if (product === null || buyState(userById(userId), product) !== "buy") {
     return false;
   }
   db().cartItems.push({ userId: userId, addedAt: new Date().toISOString(), productId: productId });
@@ -319,9 +385,11 @@ function ordersFor(userId) {
    (order_item_recipes). What the buyer keeps is that snapshot, not the live product (design section 3.3).
    Returns the order, or null when the cart is empty. */
 function placeOrder(userId) {
+  var buyer = userById(userId);
+  if (!canShop(buyer)) { return null; }
   var lines = cartFor(userId)
     .map(function (c) { return productWithRecipes(c.productId); })
-    .filter(function (p) { return p !== null && p.isActive; });
+    .filter(function (p) { return p !== null && isForSale(p) && !ownsProduct(buyer, p.id) && p.creatorId !== userId; });
   if (lines.length === 0) {
     return null;
   }
@@ -397,7 +465,7 @@ function reviewBy(userId, productId) {
 /* One review per account and product (ix_reviews_product_id_user_id): a second returns null.
    Whether the account may review at all is reviewState in rules.js. */
 function addReview(userId, productId, rating, recommends, body) {
-  if (reviewBy(userId, productId) !== null) {
+  if (reviewState(userById(userId), productId) !== "canReview") {
     return null;
   }
   var review = {
@@ -727,8 +795,12 @@ function planEntries(planId) {
 
 /* Put a recipe on a day and meal. Only a recipe the cook may open can be planned (3.3, canPlan); anything
    else returns null and changes nothing. servingsOverride null keeps the recipe's own servings. */
+/* Returns null when the cook may not plan the recipe, the people are not a whole number from 1 to 50, or
+   the recipe is already on that day and meal (pressing a button twice never doubles a meal). */
 function addPlanEntry(userId, weekStart, recipeId, plannedDate, slot, servingsOverride) {
   if (!canPlan(userById(userId), rowById("recipes", recipeId))) { return null; }
+  if (servingsOverride !== null && servingsOverride !== undefined && !isPeople(servingsOverride)) { return null; }
+  if (entryOn(userId, weekStart, recipeId, plannedDate, slot) !== null) { return null; }
   var plan = ensurePlan(userId, weekStart);
   var entry = { id: nextId("mealPlanEntries"), mealPlanId: plan.id, recipeId: recipeId, plannedDate: plannedDate,
     slot: slot, servingsOverride: servingsOverride === undefined ? null : servingsOverride };
@@ -743,13 +815,36 @@ function addProductToPlan(userId, weekStart, productId) {
   var item = paidItemsOf(userById(userId)).filter(function (oi) { return oi.productId === productId; })[0];
   if (!item) { return null; }
   var added = [];
-  db().orderItemRecipes.filter(function (oir) { return oir.orderItemId === item.id; }).sort(bySortOrder)
-    .forEach(function (placement, index) {
-      var day = placement.dayOffset === null ? index % 7 : placement.dayOffset;
-      var entry = addPlanEntry(userId, weekStart, placement.recipeId, addDays(weekStart, day), placement.slot || "Dinner", null);
-      if (entry !== null) { added.push(entry); }
-    });
+  productPlacements(item, weekStart).forEach(function (p) {
+    var entry = addPlanEntry(userId, weekStart, p.recipeId, p.plannedDate, p.slot, null);
+    if (entry !== null) { added.push(entry); }
+  });
   return added;
+}
+
+function entryOn(userId, weekStart, recipeId, plannedDate, slot) {
+  var plan = planFor(userId, weekStart);
+  if (plan === null) { return null; }
+  return db().mealPlanEntries.filter(function (e) {
+    return e.mealPlanId === plan.id && e.recipeId === recipeId && e.plannedDate === plannedDate && e.slot === slot;
+  })[0] || null;
+}
+
+/* True when every meal of an owned plan is already on the week. */
+function productOnWeek(userId, weekStart, productId) {
+  var item = paidItemsOf(userById(userId)).filter(function (oi) { return oi.productId === productId; })[0];
+  if (!item) { return false; }
+  return productPlacements(item, weekStart).every(function (p) {
+    return entryOn(userId, weekStart, p.recipeId, p.plannedDate, p.slot) !== null;
+  });
+}
+
+function productPlacements(orderItem, weekStart) {
+  return db().orderItemRecipes.filter(function (oir) { return oir.orderItemId === orderItem.id; }).sort(bySortOrder)
+    .map(function (placement, index) {
+      var day = placement.dayOffset === null ? index % 7 : placement.dayOffset;
+      return { recipeId: placement.recipeId, plannedDate: addDays(weekStart, day), slot: placement.slot || "Dinner" };
+    });
 }
 
 function removePlanEntry(entryId) {
@@ -761,7 +856,7 @@ function removePlanEntry(entryId) {
 /* servings null means "as the recipe is written". */
 function setEntryServings(entryId, servings) {
   var entry = db().mealPlanEntries.filter(function (e) { return e.id === entryId; })[0];
-  if (!entry) { return null; }
+  if (!entry || (servings !== null && !isPeople(servings))) { return null; }
   entry.servingsOverride = servings;
   commit();
   return entry;
@@ -911,14 +1006,16 @@ function createTrip(userId, name, items) {
    summed, so the list still buys enough for both meals. */
 function addTripItems(tripId, items) {
   var trip = tripById(tripId);
+  if (!tripEditable(trip)) { return []; }
   var user = userById(trip.userId);
   var wanted = [];
   items.forEach(function (item) {
     var recipe = rowById("recipes", item.recipeId);
     if (!canPlan(user, recipe) || tripHasRecipe(tripId, item.recipeId)) { return; }
-    var people = item.servings > 0 ? item.servings : recipe.servings;
+    if (item.servings && !isPeople(item.servings)) { return; }
+    var people = item.servings ? item.servings : recipe.servings;
     var same = wanted.filter(function (w) { return w.recipeId === item.recipeId; })[0];
-    if (same) { same.servings = same.servings + people; return; }
+    if (same) { same.servings = Math.min(LIMITS.servingsMax, same.servings + people); return; }
     wanted.push({ recipeId: item.recipeId, servings: people });
   });
   var added = wanted.map(function (w) {
@@ -963,15 +1060,23 @@ function tripFromWeek(userId, weekStart) {
   }));
 }
 
+/* Every change to a trip's items and skips is refused once the trip is closed (tripEditable). */
+function tripOfItem(itemId) {
+  var item = db().shoppingTripItems.filter(function (i) { return i.id === itemId; })[0];
+  return item ? tripById(item.tripId) : null;
+}
+
 function removeTripItem(itemId) {
+  if (!tripEditable(tripOfItem(itemId))) { return false; }
   var tables = db();
   tables.shoppingTripItems = tables.shoppingTripItems.filter(function (i) { return i.id !== itemId; });
   commit();
+  return true;
 }
 
 function setTripItemServings(itemId, servings) {
   var item = db().shoppingTripItems.filter(function (i) { return i.id === itemId; })[0];
-  if (!item || !(servings > 0)) { return null; }
+  if (!item || !isPeople(servings) || !tripEditable(tripById(item.tripId))) { return null; }
   item.servings = servings;
   commit();
   return item;
@@ -1000,6 +1105,7 @@ function tripSkips(tripId) {
 }
 
 function setTripSkip(tripId, ingredientId, skipped) {
+  if (!tripEditable(tripById(tripId))) { return false; }
   var tables = db();
   tables.shoppingTripSkips = tables.shoppingTripSkips.filter(function (s) { return !(s.tripId === tripId && s.ingredientId === ingredientId); });
   if (skipped) { tables.shoppingTripSkips.push({ tripId: tripId, ingredientId: ingredientId }); }
@@ -1018,7 +1124,13 @@ function copyTrip(tripId) {
   return copy;
 }
 
+/* The ticks made in the store are a per-device convenience, kept apart from the tables, keyed by trip. */
+function tripHaveKey(tripId) {
+  return "cookfeed.have.trip." + tripId;
+}
+
 function deleteTrip(tripId) {
+  removeStored(tripHaveKey(tripId));
   var tables = db();
   tables.shoppingTrips = tables.shoppingTrips.filter(function (t) { return t.id !== tripId; });
   tables.shoppingTripItems = tables.shoppingTripItems.filter(function (i) { return i.tripId !== tripId; });

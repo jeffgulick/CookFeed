@@ -96,7 +96,7 @@ function renderItems() {
   document.getElementById("tripItems").innerHTML = tripItems(trip.id).map(function (item) {
     return "<div class='trip-item' data-item-id='" + item.id + "'>" +
       "<a href='recipe.html?id=" + item.recipeId + "'>" + escapeHtml(item.title) + "</a>" +
-      (editable ? "<label>for <input type='number' min='1' max='20' value='" + item.servings + "' aria-label='People for " + escapeHtml(item.title) + "'> people</label>" +
+      (editable ? "<span class='trip-people'>for " + peopleBoxHtml(item.servings, item.title) + "</span>" +
                   "<button type='button' class='link-button remove-item'>Remove</button>"
                 : "<span class='meta'>for " + item.servings + " people</span><span></span>") +
       "</div>";
@@ -135,13 +135,10 @@ function onTripClicked(event) {
   }
 }
 
-function onItemServingsChanged(event) {
-  var input = event.target;
-  if (input.type !== "number") { return; }
-  var people = Number(input.value);
-  if (!(people >= LIMITS.servingsMin && people <= LIMITS.servingsMax)) { return; }
-  setTripItemServings(Number(input.closest(".trip-item").getAttribute("data-item-id")), people);
+function onItemServingsChanged(input, people) {
+  var saved = setTripItemServings(Number(input.closest(".trip-item").getAttribute("data-item-id")), people) !== null;
   renderList();
+  return saved;
 }
 
 function onHaveChanged(event) {
@@ -175,6 +172,10 @@ function shopAgain() {
 function onAddSubmitted(event) {
   event.preventDefault();
   var picked = readPicker(document.getElementById("buildForm"));
+  if (picked.problem) {
+    document.getElementById("buildError").textContent = picked.problem;
+    return;
+  }
   if (picked.productIds.length === 0 && picked.items.length === 0) {
     document.getElementById("buildError").textContent = "Tick at least one plan or recipe.";
     return;
@@ -214,7 +215,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.getElementById("tripArea").addEventListener("click", onTripClicked);
   // As the cook types a number, the list follows (input), not only when they leave the box (change).
-  document.getElementById("tripItems").addEventListener("input", onItemServingsChanged);
+  wirePeopleBoxes(document.getElementById("tripItems"), onItemServingsChanged);
   document.getElementById("storeList").addEventListener("change", onHaveChanged);
   document.getElementById("clearHave").addEventListener("click", function () { removeStored(haveKey()); renderList(); });
   document.getElementById("startShopping").addEventListener("click", function () {

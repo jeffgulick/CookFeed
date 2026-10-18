@@ -81,23 +81,23 @@ test("a trip is built from any recipes and plans, each recipe once, sent, receiv
   await page.click("#newTrip");
   await page.fill("#tripName", "Taco night");
   await page.locator("#buildPlans .pick-plan[value='4']").check();                     // Family Week on a Budget
-  // Ticking the plan lights up the saved recipes it brings (pancakes, cookies): ticked, not counted again.
-  await expect(page.locator("#buildRecipes .placement.in-plan")).toHaveCount(2);
+  // The cookies are in Family Week too: ticked on their own for 10 people, they go on once, for the 10.
   const cookies = page.locator("#buildRecipes .placement", { hasText: "Brown Butter" });
-  await expect(cookies.locator(".pick-recipe")).toBeChecked();
-  await expect(cookies.locator(".pick-recipe")).toBeDisabled();
-  await expect(cookies).toContainText("with Family Week on a Budget");
-  await page.locator("#buildPlans .pick-plan[value='4']").uncheck();
-  await expect(page.locator("#buildRecipes .placement.in-plan")).toHaveCount(0);
-  await expect(cookies.locator(".pick-recipe")).not.toBeChecked();
-  await page.locator("#buildPlans .pick-plan[value='4']").check();
+  await cookies.locator(".pick-recipe").check();
+  await cookies.locator(".people-input").fill("10");
   const carbonara = page.locator("#buildRecipes .placement", { hasText: "Spaghetti Carbonara" });
   await carbonara.locator(".pick-recipe").check();
-  await carbonara.locator(".pick-servings").fill("8");
+  // A number of people the site cannot use is refused with a reason, not saved as something else.
+  await carbonara.locator(".people-input").fill("999");
+  await expect(carbonara.locator(".people-error")).toContainText("between 1 and 50");
+  await page.click("#buildSubmit");
+  await expect(page.locator("#buildError")).toContainText("People for 15-Minute Spaghetti Carbonara");
+  await carbonara.locator(".people-input").fill("8");
   await page.click("#buildSubmit");
   await expect(page).toHaveURL(/list\.html\?trip=/);
   await expect(page.locator("#tripHeading")).toHaveText("Taco night");
-  await expect(page.locator(".trip-item")).toHaveCount(6);                             // 1 recipe + the plan's 5 distinct recipes
+  await expect(page.locator(".trip-item")).toHaveCount(6);                             // carbonara + the plan's 5 distinct recipes
+  await expect(page.locator(".trip-item", { hasText: "Brown Butter" }).locator(".people-input")).toHaveValue("10");
   await expect(page.locator(".trip-item", { hasText: "Overnight Oats" })).toHaveCount(1);   // on two mornings, once on the trip
   await expect(page.locator(".store-line[data-key='spaghetti|g']")).toContainText(/800 g/);          // 400 g written for 4, cooked for 8
 
