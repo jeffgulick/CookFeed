@@ -260,8 +260,9 @@ marketplace rules of `CookFeed_api/docs/DesignDocument.md` section 3 for whoever
 
 ## Testing
 
-Both suites run from `CookFeed_frontend/` and in CI on every change to it
-(`.github/workflows/prototype-tests.yml`).
+Both suites run from `CookFeed_frontend/`, by hand. They no longer run in CI: the prototype is finished, and CI
+now tests the Angular app that replaces it (`.github/workflows/app-tests.yml`). The smoke tests here are the
+checklist the Angular pages are converted against.
 
 ```bash
 cd CookFeed_frontend
