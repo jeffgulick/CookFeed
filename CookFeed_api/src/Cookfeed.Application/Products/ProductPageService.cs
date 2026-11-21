@@ -32,7 +32,7 @@ public class ProductPageService(IProductRepository products)
             // serve one recipe on several days, so recipes and meals differ (DesignDocument.md §3.2, Q5).
             RecipeCount: page.Placements.Select(p => p.RecipeId).Distinct().Count(),
             MealCount: page.Type == ProductType.MealPlan ? page.Placements.Count : null,
-            Rating(page),
+            ProductRating.From(page.ReviewCount, page.RatingSum, page.RecommendCount),
             page.IsForSale,
             page.OwnedByViewer,
             ViewerIsCreator: viewerId == page.CreatorId,
@@ -60,13 +60,4 @@ public class ProductPageService(IProductRepository products)
                     p.FirstStep, p.SaveCount, p.SavedByViewer, p.OwnedThrough)
                 : null);
     }
-
-    // The numbers of queries.sql Q13. PostgreSQL's ROUND takes a half away from zero, so this does too.
-    private static ProductRatingDto Rating(ProductPage page) =>
-        page.ReviewCount == 0
-            ? new ProductRatingDto(0, null, null)
-            : new ProductRatingDto(
-                page.ReviewCount,
-                Math.Round((decimal)page.RatingSum / page.ReviewCount, 1, MidpointRounding.AwayFromZero),
-                (int)Math.Round(100m * page.RecommendCount / page.ReviewCount, MidpointRounding.AwayFromZero));
 }

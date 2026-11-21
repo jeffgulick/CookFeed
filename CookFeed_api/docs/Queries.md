@@ -383,6 +383,38 @@ the totals exactly as §3 describes. A viewer who can open nothing costs no ingr
 
 ---
 
+## 1d. My purchases and a product's reviews — *built 2026-11-21; generated SQL not yet captured here*
+
+**My purchases**, `GET /api/me/purchases`, required header `X-User-Id` (Q11). `MyPurchasesController` →
+`PurchasesService` → `OrderRepository.GetPurchasesAsync`. One statement: the caller's Paid order lines by
+id, each with its `order_item_recipes` rows in `sort_order` and each recipe's title, picture and
+visibility. It reads the snapshot and `order_items.product_title`, never `product_recipes` or the
+product's current title, so what a buyer sees is what they bought (Q15). One collection under each line,
+so a single statement multiplies no rows. The recipe and meal counts are counted from the fetched rows.
+
+**A product's reviews**, `GET /api/products/{id}/reviews`, optional header `X-User-Id` (Q12, Q13).
+`ProductReviewsController` → `ProductReviewsService` → `ReviewRepository.GetProductReviewsAsync`. Two
+statements:
+1. **The product**, by primary key, with its creator and three facts about the viewer as subqueries: do
+   they hold `HomeCook`, do they hold `Admin`, and do they have a Paid order for the product.
+2. **Every review of it**, newest first (Q12), with whether its author still has a Paid order for the
+   product and whether they have a creator profile.
+
+The service does the rest in C#, because each part is a rule rather than a query:
+- which reviews count (`ReviewAccess.Counts`: not hidden, author still owns the product);
+- which the viewer is shown (those that count, their own, and everything for the admin);
+- the summary of the ones that count, with `ProductRating.From` (the same arithmetic as §1c) and a count
+  per star;
+- what the form shows (`ReviewAccess.FormState`, unit-tested case by case).
+
+**Indexes used:** `ix_reviews_product_id_created_at` returns the reviews already newest first;
+`ix_orders_user_id_placed_at` and the `order_items` indexes answer ownership; the primary key of
+`user_roles` answers the role checks. No new index is needed.
+
+**To do:** capture the logged SQL and the plans here.
+
+---
+
 ## 2. Creator storefront — *verified 2026-10-11*
 
 **Endpoint:** `GET /api/creators/{handle}`, optional header `X-User-Id`. An unknown handle is 404.

@@ -49,6 +49,8 @@ in the [README](../README.md#deliverable-2).
 | The database password leaves the repository: it is `PGPASSWORD` in the git-ignored `CookFeed_api/.env`, read by Docker Compose, the API and the tests (`DotEnvFile`); a test fails if a password is written in a committed file. 9 tests | `.env.example`, `Api/Configuration/`, `DOCKER.md` |
 | Roadmap item 4, the plan page: `ProductsController` → `ProductPageService` (applies `RecipeAccess.CanOpen` to each recipe) → `ProductRepository.GetPageAsync`. A locked recipe is a card with no details; a buyer sees their purchase snapshot; a retired product still has its page, marked not for sale. `RecipeAccess` now lets a buyer keep a recipe that was unpublished, as the prototype does. 13 service and 42 HTTP tests (339 in all) | `src/*/Products/`, `docs/Queries.md` §1c |
 | Roadmap item 4, the plan's shopping list, `GET /api/products/{id}/shopping-list`: the ingredients of the recipes the viewer may open, as written, a repeated recipe counted twice, combined by `ShoppingListAggregator`; the locked recipes are named, never listed. 6 service and 14 HTTP tests (372 in all) | `ProductShoppingListService`, `ShoppingListRepository`, `docs/Queries.md` §1c |
+| Roadmap item 5, my purchases, `GET /api/me/purchases`: what the caller owns through Paid orders, as bought (the purchase snapshot and the title at checkout). 2 service and 15 HTTP tests, against Q11 and Q15 | `src/*/Purchases/`, `OrderRepository`, `docs/Queries.md` §1d |
+| Roadmap item 6, a product's reviews, `GET /api/products/{id}/reviews`: the reviews that count, the viewer's own, and everything for the admin; the summary with its star counts; and what the review form shows, from `Domain/Access/ReviewAccess`. 11 Domain, 16 service and 24 HTTP tests, against Q12 and Q13 (466 in all) | `src/*/Reviews/`, `Domain/Access/`, `docs/Queries.md` §1d |
 | Premium-only products: a product sells only `ProductOnly` recipes, so nothing a buyer pays for is free to save. Two triggers in the `ProductOnlyRecipesInProducts` migration and `schema.sql` (Q17f, g). The seed's 12 in-product recipes became `ProductOnly`; each creator gained two free recipes; The Bread Box gained Rosemary Ciabatta; saves of `ProductOnly` recipes are only by their buyers. 4 trigger tests and 2 seed and recipe-detail tests (257 in all) | `docs/schema.sql`, `Persistence/Migrations/`, `docs/sql/seed.sql`, `DesignDocument.md` §3.3 |
 | Browse pages, the kitchen split, the week and shopping trips (§3.9): `plans.html` (meal plans and collections, filtered and sorted) and `recipes.html` (free recipes, searched); My kitchen shows owned plans, saved recipes, the week planner and the trips apart; a trip (`shopping_trips`, `shopping_trip_items`, `shopping_trip_skips`, the `ShoppingTrips` migration) is built from any recipes and plans or from the week, edited, shopped or sent, and done. Saving builds no list. 258 API tests, 41 unit and 253 smoke tests | `docs/DesignDocument.md` §3.9, `CookFeed_frontend/prototype/js/{db,kitchen,list,plans,recipes}.js` |
 | Creator studio and Admin console (§3.8), in the prototype first: `reviews.hidden_at`, `creator_profiles.suspended_at` and the `admin_actions` audit table with its admin-only trigger (the `AdminModeration` migration, Q17h); `studio.html` (a creator's recipes, plans, sales and reviews) and `admin.html` (moderation, creators, catalog, orders, accounts, the log); the role rules in `rules.js`. 258 API tests, 33 unit and 222 smoke tests | `docs/DesignDocument.md` §3.8, `CookFeed_frontend/prototype/js/{db,rules,studio,admin}.js` |
@@ -295,22 +297,39 @@ Tick items off here as they merge.
        the server.
      - *Tests:* 6 service tests and 14 HTTP tests. Each HTTP test adds the lines up again in plain SQL and
        runs the aggregator over them; the oats served twice come to 485.01 g.
-5. **My purchases**, `GET /api/me/purchases`: the recipes the caller owns through Paid orders, grouped by
-   the product they came with (Q11).
-   - *DTO fields:* the product id and title as bought, and the order date; then, for each recipe: id,
-     title, thumbnail, `dayOffset`, `slot` and `sortOrder` from the snapshot.
-   - *Rules:* reads `order_item_recipes`, so a later bundle edit changes nothing (Q15's drift case).
-   - *Tests:* equal to Q11.
-6. **Reviews for a product**, `GET /api/products/{id}/reviews`: newest first (Q12), plus a summary (Q13).
+5. ✅ **My purchases**, `GET /api/me/purchases`: the plans and collections the caller owns through Paid
+   orders, each with the recipes it held when they bought it (Q11). It is "Your plans" in My kitchen.
+   - *Built:* `MyPurchasesController` → `PurchasesService` → `OrderRepository.GetPurchasesAsync`
+     (`docs/Queries.md` §1d).
+   - *DTO fields:* the product id, type and cover, the title as bought, the order date, and recipe and
+     meal counts; then, for each recipe: id, title, thumbnail, `visibility`, `dayOffset`, `slot` and
+     `sortOrder` from the snapshot.
+   - *Rules:* reads `order_item_recipes`, so a later bundle edit changes nothing (Q15's drift case), and
+     `order_items.product_title`, so a rename does not either. A cancelled or refunded order owns nothing.
+     Each product is listed once, in order-line order, as the prototype lists them. In the seed that is
+     not date order: Priya's Family Week line comes before her earlier Three Weeknights one.
+   - *Tests:* 2 service tests and 15 HTTP tests: equal to Q11, the snapshot against Q15, a rename and a
+     refund.
+6. ✅ **Reviews for a product**, `GET /api/products/{id}/reviews`: newest first (Q12), plus a summary (Q13).
+   - *Built:* `ProductReviewsController` → `ProductReviewsService` → `ReviewRepository`. The rule for the
+     form is one Domain function, `ReviewAccess.FormState`, the twin of `rules.js` `reviewState`
+     (`docs/Queries.md` §1d).
    - *DTO fields:*
+     - the product's id, type, title and creator, for the page's header;
      - each review's `id`, rating, `recommends`, body and date;
-     - the reviewer's display name, `isMine`, and `reviewerIsCreator` (the trust label);
+     - the reviewer's display name, `isMine`, `isHidden`, `counts`, and `reviewerIsCreator` (the trust label);
      - a summary of count, average, percent recommending, and the count for each star from 1 to 5, for
        the rating bars;
-     - `canReview` for the viewer: signed in, with a Paid order for the product, and no review yet.
+     - `formState` for the viewer, in place of the single `canReview` flag first planned, because the page
+       says why there is no form: `SignIn`, `NoShop`, `YourOwn`, `AlreadyReviewed`, `HiddenReview`,
+       `RefundedReview`, `MustBuy` or `CanReview`.
+   - *Rules, as the prototype shows them:* a review counts while the admin has not hidden it and its author
+     still owns the product. Other cooks see only the reviews that count; an author always sees their own;
+     the admin sees every review, marked. The summary adds up only the ones that count.
    - *Note:* "Verified purchase" is true of every review, since only buyers may review (DesignDocument.md
      §3.5). The label says that once, in the summary, rather than on each review.
-   - *Tests:* equal to Q12 and Q13.
+   - *Tests:* 11 Domain, 16 service and 24 HTTP tests: equal to Q12 and Q13, each form state, and a hidden
+     and a refunded review.
 
 **C. Writes**
 
