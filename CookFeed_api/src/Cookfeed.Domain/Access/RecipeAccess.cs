@@ -12,7 +12,8 @@ public sealed record RecipeAccessFacts(int CreatorId, bool IsPublished, RecipeVi
 
 /// <summary>
 /// Who may open a recipe (DesignDocument.md §3.3, <c>queries.sql</c> Q14): the rule recipe detail applies, and the one
-/// saving a recipe and the plan page will reuse. The prototype's <c>rules.js</c> <c>canOpenRecipe</c> is its twin.
+/// saving a recipe and the plan page reuse. The prototype's <c>rules.js</c> <c>canOpenRecipe</c> is its twin: its
+/// creator, a cook whose Paid order holds it, or anyone when it is published and Public.
 /// </summary>
 public static class RecipeAccess
 {
@@ -24,12 +25,14 @@ public static class RecipeAccess
             return true;
         }
 
-        // A draft is unfinished: no one else sees it, buyers included.
-        if (!recipe.IsPublished)
+        // A buyer keeps what they bought, even after its creator or the admin takes the recipe out of the store
+        // (DesignDocument.md §3.3 and §3.8).
+        if (recipe.ViewerHoldsPaidSnapshot)
         {
-            return false;
+            return true;
         }
 
-        return recipe.Visibility == RecipeVisibility.Public || recipe.ViewerHoldsPaidSnapshot;
+        // Everyone else sees only what is in the store and free: a draft or a ProductOnly recipe stays closed.
+        return recipe.IsPublished && recipe.Visibility == RecipeVisibility.Public;
     }
 }

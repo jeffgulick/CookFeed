@@ -121,6 +121,31 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
         Assert.True(recipe.ViewerIsCreator);
     }
 
+    [Fact]
+    public async Task A_recipe_taken_out_of_the_store_still_opens_for_the_cooks_who_bought_it()
+    {
+        // Its own database, because this test changes a row: Onigiri is unpublished after Alex bought it.
+        var connection = await databases.CreateMigratedDatabaseAsync("unpublished");
+        await DatabaseFixture.SeedWithDbSeederAsync(connection);
+        await Sql.ExecuteAsync(connection, $"UPDATE recipes SET is_published = FALSE WHERE id = {Onigiri}");
+        await using var api = new CookfeedApiFactory(connection);
+
+        async Task<HttpStatusCode> OpenAsync(int? viewer)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/recipes/{Onigiri}");
+            if (viewer is not null)
+            {
+                request.Headers.Add("X-User-Id", viewer.Value.ToString(CultureInfo.InvariantCulture));
+            }
+            return (await api.CreateClient().SendAsync(request, TestContext.Current.CancellationToken)).StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.OK, await OpenAsync(Alex));        // bought it in Three Weeknights in Japan
+        Assert.Equal(HttpStatusCode.OK, await OpenAsync(Kenji));       // made it
+        Assert.Equal(HttpStatusCode.NotFound, await OpenAsync(Sam));   // did neither
+        Assert.Equal(HttpStatusCode.NotFound, await OpenAsync(null));
+    }
+
     [Theory]
     [InlineData("/api/recipes/999")]
     [InlineData("/api/recipes/0")]
