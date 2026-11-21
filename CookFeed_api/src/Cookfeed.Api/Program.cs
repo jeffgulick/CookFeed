@@ -1,7 +1,12 @@
+using Cookfeed.Api.Configuration;
 using Cookfeed.Api.OpenApi;
 using Cookfeed.Application;
 using Cookfeed.Infrastructure;
 using Cookfeed.Infrastructure.Persistence.Seed;
+
+// Secrets come from CookFeed_api/.env (git-ignored), never from a committed file. It sets PGPASSWORD, which Npgsql
+// uses for a connection string that names no password. Read first, so configuration sees its variables too.
+DotEnvFile.Load(Directory.GetCurrentDirectory());
 
 var builder = WebApplication.CreateBuilder(args);
 

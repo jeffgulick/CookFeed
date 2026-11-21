@@ -103,6 +103,7 @@ On Ubuntu 24.04 (including WSL), `sudo apt install dotnet-sdk-10.0` installs SDK
 From this folder, with Docker running (one-time Docker setup is in [`DOCKER.md`](DOCKER.md)):
 
 ```bash
+cp .env.example .env                   # once: this machine's database password (git-ignored)
 docker compose up -d --wait            # PostgreSQL 16.15 on localhost:5432
 dotnet tool restore                    # installs dotnet-ef
 dotnet ef database update --project src/Cookfeed.Infrastructure --startup-project src/Cookfeed.Api

@@ -37,11 +37,13 @@ jobs:
     services:
       # The same PostgreSQL as docker-compose.yml. The integration tests connect to its "postgres" database and
       # create and drop their own throwaway databases (tests/Cookfeed.IntegrationTests/Support/TestDatabaseServer.cs).
+      # No password: this server lives only for the run and is reachable only from it, so it trusts local
+      # connections. The tests name no password either (on a developer's machine it comes from .env).
       postgres:
         image: postgres:16.15
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-

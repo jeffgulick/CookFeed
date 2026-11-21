@@ -6,7 +6,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      # From .env beside this file (git-ignored). Compose stops with this message if it is missing.
+      POSTGRES_PASSWORD: ${PGPASSWORD:?Copy .env.example to .env first (see README.md)}
       POSTGRES_DB: cookfeed
     ports:
       # host:container — the API on the WSL host connects to localhost:5432
