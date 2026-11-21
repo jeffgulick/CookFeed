@@ -1,3 +1,4 @@
+using Cookfeed.Api.Configuration;
 using Npgsql;
 
 namespace Cookfeed.IntegrationTests.Support;
@@ -10,8 +11,12 @@ namespace Cookfeed.IntegrationTests.Support;
 /// </summary>
 public static class TestDatabaseServer
 {
+    // No password here: Npgsql takes it from PGPASSWORD, which CookFeed_api/.env sets (see DotEnvFile).
     private const string DefaultConnection =
-        "Host=localhost;Port=5432;Database=cookfeed_test;Username=postgres;Password=postgres";
+        "Host=localhost;Port=5432;Database=cookfeed_test;Username=postgres";
+
+    // Runs once, before the first connection: the test binaries sit below CookFeed_api, where .env lives.
+    static TestDatabaseServer() => DotEnvFile.Load(AppContext.BaseDirectory);
 
     private static string ServerConnection =>
         Environment.GetEnvironmentVariable("COOKFEED_TEST_CONNECTION") is { Length: > 0 } fromEnvironment

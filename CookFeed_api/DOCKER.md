@@ -9,11 +9,24 @@ to the exact version the build is tested against, so `docker-compose.yml` is the
 | `cookfeed` | development: `dotnet run`, and the `docs/` scripts | the container, from `POSTGRES_DB`; tables by `dotnet ef database update` |
 | `cookfeed_test_*` | `tests/Cookfeed.IntegrationTests` | the tests themselves: each run creates throwaway databases and drops them when it finishes |
 
-The development connection string lives in `src/Cookfeed.Api/appsettings.Development.json`:
+The development connection string lives in `src/Cookfeed.Api/appsettings.Development.json`, without a
+password:
 
 ```
-Host=localhost;Port=5432;Database=cookfeed;Username=postgres;Password=postgres
+Host=localhost;Port=5432;Database=cookfeed;Username=postgres
 ```
+
+**The password is in `.env`, which git ignores.** Copy `.env.example` to `.env` once (One-time setup,
+step 3). Its one line sets `PGPASSWORD`, which serves everything:
+
+- Docker Compose reads `.env` beside `docker-compose.yml` and gives the container that password;
+- the API and the integration tests read the same file at startup
+  (`src/Cookfeed.Api/Configuration/DotEnvFile.cs`) into their environment, and Npgsql uses `PGPASSWORD`
+  for a connection string that names no password;
+- `psql` on the host and `CookFeed_frontend/tools/export-seed-data.sh` use `PGPASSWORD` too.
+
+A variable already set in the shell wins over the file. No committed file holds the password, and a test
+(`LocalSecretsTests`) fails if one ever does.
 
 The integration tests connect to the same server with the same credentials (the database name in their
 default connection string is not used; they create their own). To run them against a different server,
@@ -37,6 +50,16 @@ tests. It does no harm, so the init script stays.
 
    Then run `wsl --shutdown` in **PowerShell** and reopen the WSL terminal. Group membership is
    only applied at login, so a new shell in the old session is not enough.
+
+3. Create your `.env` from the example, in `CookFeed_api/`:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   It holds the database password for this machine. The value in the example works as it is. To use
+   your own, change it before the first `docker compose up`: the password is fixed when the data volume
+   is created.
 
 ---
 

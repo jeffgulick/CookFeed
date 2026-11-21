@@ -9,6 +9,7 @@
 #
 # It uses psql if it is installed, and otherwise psql inside the Docker container from docker-compose.yml.
 # The connection defaults match DOCKER.md; override them with PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE.
+# The password comes from CookFeed_api/.env unless PGPASSWORD is already set.
 # The integration test PrototypeDataTests fails if the committed file no longer matches the seed.
 set -euo pipefail
 
@@ -16,10 +17,15 @@ here="$(cd "$(dirname "$0")" && pwd)"
 sql="$here/export-seed-data.sql"
 out="$here/../prototype/js/seed-data.js"
 compose="$here/../../CookFeed_api/docker-compose.yml"
+env_file="$here/../../CookFeed_api/.env"
+
+if [ -z "${PGPASSWORD:-}" ] && [ -f "$env_file" ]; then
+  set -a; . "$env_file"; set +a
+fi
 
 export_json() {
   if command -v psql >/dev/null 2>&1; then
-    PGTZ=UTC PGPASSWORD="${PGPASSWORD:-postgres}" psql -X -q -A -t -v ON_ERROR_STOP=1 \
+    PGTZ=UTC psql -X -q -A -t -v ON_ERROR_STOP=1 \
       -h "${PGHOST:-localhost}" -p "${PGPORT:-5432}" -U "${PGUSER:-postgres}" -d "${PGDATABASE:-cookfeed}" -f "$sql"
   else
     docker compose -f "$compose" exec -T -e PGTZ=UTC postgres \

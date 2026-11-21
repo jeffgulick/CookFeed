@@ -26,7 +26,7 @@ public sealed class ErrorResponseTests(DatabaseFixture databases)
     {
         // Nothing listens on port 1, so the first query throws.
         await using var api = new CookfeedApiFactory(
-            "Host=localhost;Port=1;Database=cookfeed;Username=postgres;Password=postgres;Timeout=2");
+            "Host=localhost;Port=1;Database=cookfeed;Username=postgres;Timeout=2");
 
         var response = await api.CreateClient().GetAsync("/api/feed", TestContext.Current.CancellationToken);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
