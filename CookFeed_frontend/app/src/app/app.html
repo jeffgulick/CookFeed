@@ -1,0 +1,200 @@
+<a class="skip-link" href="#main" (click)="skipToContent($event)">Skip to content</a>
+
+<header class="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
+  <div class="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 md:h-16 md:gap-6 md:px-6">
+    <a routerLink="/" class="font-display text-2xl font-bold tracking-tight text-ink no-underline">
+      Cook<span class="text-brand">feed</span>
+    </a>
+
+    <!-- A wide screen: the pages across the top. -->
+    <nav data-nav="top" aria-label="Main" class="hidden min-w-0 flex-1 md:block">
+      <ul class="flex items-center gap-1">
+        @for (link of topLinks(); track link.path) {
+          <li>
+            <a
+              [routerLink]="link.path"
+              routerLinkActive="bg-brand-soft text-brand-dark"
+              [routerLinkActiveOptions]="{ exact: link.exact ?? false }"
+              ariaCurrentWhenActive="page"
+              class="rounded-full px-3 py-2 text-[0.9375rem] font-medium whitespace-nowrap text-ink-soft no-underline hover:bg-fill hover:text-ink"
+              >{{ link.label }}</a
+            >
+          </li>
+        }
+      </ul>
+    </nav>
+
+    <div class="ml-auto flex items-center gap-1 md:ml-0 md:gap-2">
+      @if (session.showShopLinks()) {
+        <a
+          routerLink="/cart"
+          aria-label="Cart"
+          class="grid size-11 place-items-center rounded-full text-ink-soft no-underline hover:bg-fill hover:text-ink"
+        >
+          <app-icon name="cart" />
+        </a>
+      }
+
+      <div data-account>
+        @if (session.user(); as user) {
+          <button
+            type="button"
+            [cdkMenuTriggerFor]="accountMenu"
+            class="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-line bg-card py-1 pr-1 pl-1 text-sm font-medium text-ink hover:border-line-strong md:pr-3"
+          >
+            <span
+              aria-hidden="true"
+              class="grid size-9 place-items-center rounded-full bg-brand text-sm font-bold text-on-dark"
+              >{{ initials() }}</span
+            >
+            <span class="sr-only md:not-sr-only">{{ user.displayName }}</span>
+            <app-icon name="chevron" [size]="16" class="hidden text-muted md:inline-flex" />
+          </button>
+
+          <ng-template #accountMenu>
+            <div cdkMenu class="card mt-2 flex w-64 flex-col p-2 shadow-lift">
+              <p class="px-3 pt-2 text-sm text-muted">Signed in as</p>
+              <p class="px-3 pb-2 font-semibold text-ink">{{ user.displayName }}</p>
+              <a
+                cdkMenuItem
+                routerLink="/sign-in"
+                class="flex min-h-11 items-center gap-3 rounded-lg px-3 text-ink no-underline hover:bg-fill"
+              >
+                <app-icon name="user" [size]="20" /> Switch account
+              </a>
+              <button
+                cdkMenuItem
+                type="button"
+                (click)="signOut()"
+                class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-ink hover:bg-fill"
+              >
+                <app-icon name="signOut" [size]="20" /> Sign out
+              </button>
+            </div>
+          </ng-template>
+        } @else {
+          <a routerLink="/sign-in" class="btn btn-secondary btn-small">Sign in</a>
+        }
+      </div>
+    </div>
+  </div>
+</header>
+
+<main #main id="main" tabindex="-1" class="mx-auto w-full max-w-6xl px-4 pt-6 pb-10 md:px-6 md:pt-10 md:pb-16">
+  <router-outlet />
+</main>
+
+<!-- Room for the tabs on a phone, so the footer's last line is never under them. -->
+<footer class="border-t border-line bg-espresso pb-24 text-on-dark-soft md:pb-0">
+  <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-8 text-sm md:flex-row md:items-center md:justify-between md:px-6">
+    <p>
+      <span class="font-display text-lg font-bold text-on-dark">Cookfeed</span>
+      &middot; short-video recipes, and one shopping list for the week
+    </p>
+    <a routerLink="/help" class="text-on-dark underline">Help</a>
+  </div>
+</footer>
+
+<!-- A phone: tabs along the bottom, where a thumb reaches. -->
+<nav
+  data-nav="tabs"
+  aria-label="Main"
+  class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+>
+  <ul class="mx-auto grid max-w-md grid-cols-5">
+    @for (tab of tabs(); track tab.path) {
+      <li>
+        <a
+          [routerLink]="tab.path"
+          routerLinkActive
+          [routerLinkActiveOptions]="{ exact: tab.exact ?? false }"
+          ariaCurrentWhenActive="page"
+          class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-semibold text-muted no-underline aria-[current=page]:text-brand-dark"
+        >
+          <app-icon [name]="tab.icon" />
+          {{ tab.short ?? tab.label }}
+        </a>
+      </li>
+    }
+    <li>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        (click)="openMore()"
+        class="flex min-h-14 w-full cursor-pointer flex-col items-center justify-center gap-0.5 text-xs font-semibold text-muted"
+      >
+        <app-icon name="more" />
+        More
+      </button>
+    </li>
+  </ul>
+</nav>
+
+<!-- More: the pages that did not fit in the tabs, and the account. A native dialog, so the browser keeps focus
+     inside it, closes it on Escape, and returns focus to the More tab. -->
+<dialog
+  #moreSheet
+  aria-labelledby="moreTitle"
+  (click)="closeMoreOnBackdrop($event)"
+  class="fixed inset-x-0 top-auto bottom-0 m-0 w-full max-w-none rounded-t-3xl border-0 bg-card p-0 text-ink shadow-lift backdrop:bg-ink/50 md:hidden"
+>
+  <div class="px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div class="flex items-center justify-between">
+      <h2 id="moreTitle" class="text-xl font-bold">More</h2>
+      <button
+        type="button"
+        aria-label="Close"
+        (click)="closeMore()"
+        class="grid size-11 cursor-pointer place-items-center rounded-full text-ink-soft hover:bg-fill"
+      >
+        <app-icon name="close" />
+      </button>
+    </div>
+
+    @if (session.user(); as user) {
+      <p class="meta mt-1">
+        Signed in as <strong class="text-ink">{{ user.displayName }}</strong>
+      </p>
+    } @else {
+      <p class="meta mt-1">You are browsing as a guest.</p>
+    }
+
+    <nav data-nav="more" aria-label="More pages" class="mt-3">
+      <ul class="divide-y divide-line">
+        @for (link of moreLinks(); track link.path) {
+          <li>
+            <a [routerLink]="link.path" class="flex min-h-14 items-center gap-3 font-medium text-ink no-underline">
+              <app-icon [name]="link.icon" class="text-muted" />
+              {{ link.label }}
+            </a>
+          </li>
+        }
+        @if (session.user()) {
+          <li>
+            <a routerLink="/sign-in" class="flex min-h-14 items-center gap-3 font-medium text-ink no-underline">
+              <app-icon name="user" class="text-muted" />
+              Switch account
+            </a>
+          </li>
+          <li>
+            <button
+              type="button"
+              (click)="signOut()"
+              class="flex min-h-14 w-full cursor-pointer items-center gap-3 text-left font-medium text-ink"
+            >
+              <app-icon name="signOut" class="text-muted" />
+              Sign out
+            </button>
+          </li>
+        } @else {
+          <li>
+            <a routerLink="/sign-in" class="flex min-h-14 items-center gap-3 font-medium text-ink no-underline">
+              <app-icon name="user" class="text-muted" />
+              Sign in
+            </a>
+          </li>
+        }
+      </ul>
+    </nav>
+  </div>
+</dialog>

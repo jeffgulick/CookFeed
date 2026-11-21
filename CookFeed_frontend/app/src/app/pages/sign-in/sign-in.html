@@ -1,0 +1,70 @@
+<span class="pill">Account</span>
+<h1 class="mt-3 text-3xl font-bold md:text-4xl">Sign in</h1>
+<p class="meta mt-3 max-w-prose">
+  There are no passwords yet: pick one of the store's accounts to see Cookfeed the way that person does. Each account
+  is a real row in the project database.
+</p>
+
+<div role="status" aria-live="polite" class="card mt-6 p-4 md:p-5">
+  @if (session.user(); as user) {
+    <p>
+      You are signed in as <strong>{{ user.displayName }}</strong
+      >.
+    </p>
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+      @if (session.isAdmin()) {
+        <a routerLink="/admin" class="btn btn-primary">Open the Admin console <app-icon name="arrow" [size]="18" /></a>
+      } @else if (session.isCreator()) {
+        <a routerLink="/studio" class="btn btn-primary">Open My studio <app-icon name="arrow" [size]="18" /></a>
+        <a routerLink="/" class="btn btn-secondary">Discover</a>
+      } @else {
+        <a routerLink="/" class="btn btn-primary">Continue to Discover <app-icon name="arrow" [size]="18" /></a>
+      }
+      <button type="button" class="btn btn-secondary" (click)="session.signOut()">Sign out and browse as a guest</button>
+    </div>
+  } @else {
+    <p>You are browsing as a guest. Pick an account below to sign in.</p>
+  }
+</div>
+
+@if (session.reachable()) {
+  @for (group of groups(); track group.id) {
+    <section [attr.data-group]="group.id" class="mt-10" [attr.aria-labelledby]="group.id + 'Heading'">
+      <h2 [id]="group.id + 'Heading'" class="text-2xl font-bold">{{ group.heading }}</h2>
+      <p class="meta mt-1 max-w-prose">{{ group.about }}</p>
+
+      <ul class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        @for (account of group.accounts; track account.id) {
+          @let current = session.user()?.id === account.id;
+          <li
+            [attr.data-account-id]="account.id"
+            class="card flex flex-col gap-3 p-4"
+            [class.border-good]="current"
+            [class.bg-good-soft]="current"
+          >
+            <div>
+              <p data-account-name class="text-lg font-semibold text-ink">{{ account.displayName }}</p>
+              <p class="meta">
+                {{ roleText(account) }}
+                @if (account.handle) {
+                  &middot; <span class="font-medium text-ink-soft">&#64;{{ account.handle }}</span>
+                }
+              </p>
+            </div>
+            @if (current) {
+              <p class="tag-good self-start"><app-icon name="check" [size]="16" /> Signed in now</p>
+            } @else {
+              <button type="button" class="btn btn-secondary btn-small self-start" (click)="session.signIn(account.id)">
+                Sign in as {{ account.displayName }}
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+} @else {
+  <p role="alert" class="card mt-8 border-bad bg-bad-soft p-4 text-ink">
+    The accounts could not be loaded. Check that the Cookfeed API is running, then reload this page.
+  </p>
+}

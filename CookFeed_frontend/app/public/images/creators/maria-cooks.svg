@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Profile picture for the creator maria-cooks">
+  <circle cx="100" cy="100" r="100" fill="#fde4d0"/>
+  <path d="M48 118 q-6 -76 52 -80 q58 4 52 80 q-4 34 -14 52 h-76 q-10 -18 -14 -52 Z" fill="#5a3825"/>
+  <circle cx="100" cy="112" r="46" fill="#f0c39c"/>
+  <path d="M56 104 q20 -40 70 -30 q16 6 20 26 q-30 -14 -90 4 Z" fill="#5a3825"/>
+  <circle cx="84" cy="112" r="5" fill="#3a2f26"/>
+  <circle cx="116" cy="112" r="5" fill="#3a2f26"/>
+  <path d="M86 132 q14 12 28 0" stroke="#3a2f26" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <circle cx="74" cy="126" r="6" fill="#f2a58a" opacity=".6"/>
+  <circle cx="126" cy="126" r="6" fill="#f2a58a" opacity=".6"/>
+  <path d="M40 200 q12 -48 60 -48 q48 0 60 48 Z" fill="#9a3412"/>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Brown butter chocolate chip cookies on a cooling rack">
+  <rect width="400" height="300" fill="#f9f1ea"/>
+  <circle cx="200" cy="140" r="108" fill="#f1e1d3"/>
+  <ellipse cx="200" cy="248" rx="150" ry="14" fill="#ddc8b6"/>
+  <rect x="60" y="214" width="280" height="10" rx="4" fill="#9ca3af"/>
+  <g stroke="#9ca3af" stroke-width="4"><path d="M80 224 v20"/><path d="M320 224 v20"/></g>
+  <g id="cookie">
+    <circle cx="120" cy="176" r="44" fill="#c98a3f"/>
+    <circle cx="120" cy="176" r="38" fill="#d9a05b"/>
+    <g fill="#4a2a17"><circle cx="104" cy="160" r="6"/><circle cx="132" cy="166" r="5"/><circle cx="114" cy="190" r="6"/><circle cx="140" cy="188" r="5"/><circle cx="96" cy="182" r="4"/></g>
+  </g>
+  <use href="#cookie" x="80" y="-20"/>
+  <use href="#cookie" x="160"/>
+</svg>

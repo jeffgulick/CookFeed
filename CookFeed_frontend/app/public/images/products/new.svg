@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img" aria-label="A set table with three plates waiting for the week's meals">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fdf1e3"/>
+      <stop offset="1" stop-color="#f8e2cd"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="400" fill="url(#wall)"/>
+  <circle cx="820" cy="82" r="46" fill="#fcd9b6" opacity=".7"/>
+  <rect y="300" width="960" height="100" fill="#b9825a"/>
+  <rect y="300" width="960" height="10" fill="#a06f4b"/>
+  <g transform="translate(240 300)">
+    <ellipse cx="0" cy="4" rx="120" ry="14" fill="#a06f4b" opacity=".45"/>
+    <ellipse cx="0" cy="-10" rx="110" ry="30" fill="#f6f1e7"/><ellipse cx="0" cy="-14" rx="92" ry="22" fill="#fffdf8"/>
+  </g>
+  <g transform="translate(480 300)">
+    <ellipse cx="0" cy="4" rx="120" ry="14" fill="#a06f4b" opacity=".45"/>
+    <ellipse cx="0" cy="-10" rx="110" ry="30" fill="#f6f1e7"/><ellipse cx="0" cy="-14" rx="92" ry="22" fill="#fffdf8"/>
+  </g>
+  <g transform="translate(720 300)">
+    <ellipse cx="0" cy="4" rx="120" ry="14" fill="#a06f4b" opacity=".45"/>
+    <ellipse cx="0" cy="-10" rx="110" ry="30" fill="#f6f1e7"/><ellipse cx="0" cy="-14" rx="92" ry="22" fill="#fffdf8"/>
+  </g>
+  <g stroke="#7c4a2b" stroke-width="6" stroke-linecap="round">
+    <path d="M110 240 v50"/><path d="M370 240 v50"/><path d="M610 240 v50"/><path d="M850 240 v50"/>
+  </g>
+  <g fill="#4d7c0f"><ellipse cx="240" cy="276" rx="12" ry="5"/><ellipse cx="480" cy="276" rx="12" ry="5"/><ellipse cx="720" cy="276" rx="12" ry="5"/></g>
+</svg>

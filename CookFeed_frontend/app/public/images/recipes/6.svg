@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Three onigiri rice triangles wrapped in nori on a plate">
+  <rect width="400" height="300" fill="#f3f0fa"/>
+  <circle cx="200" cy="140" r="108" fill="#e7e2f2"/>
+  <ellipse cx="200" cy="232" rx="140" ry="30" fill="#ddd7ea"/>
+  <ellipse cx="200" cy="224" rx="124" ry="25" fill="#f8f6fd"/>
+  <g>
+    <path d="M78 214 L124 122 L170 214 Z" fill="#fffdf8" stroke="#e4dfd2" stroke-width="3"/>
+    <rect x="102" y="176" width="44" height="38" fill="#2f3b45"/>
+    <circle cx="124" cy="150" r="7" fill="#e27a72"/>
+  </g>
+  <g>
+    <path d="M148 216 L200 106 L252 216 Z" fill="#fffdf8" stroke="#e4dfd2" stroke-width="3"/>
+    <rect x="174" y="172" width="52" height="44" fill="#2f3b45"/>
+    <circle cx="200" cy="142" r="8" fill="#6f9e4a"/>
+  </g>
+  <g>
+    <path d="M230 214 L276 122 L322 214 Z" fill="#fffdf8" stroke="#e4dfd2" stroke-width="3"/>
+    <rect x="254" y="176" width="44" height="38" fill="#2f3b45"/>
+    <circle cx="276" cy="150" r="7" fill="#e0a012"/>
+  </g>
+</svg>

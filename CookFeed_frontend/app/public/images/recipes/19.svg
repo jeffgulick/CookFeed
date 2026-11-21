@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Black bean quesadillas cut into wedges with melted cheese and a lime wedge">
+  <rect width="400" height="300" fill="#fdf5e2"/>
+  <circle cx="200" cy="140" r="108" fill="#f9e8c0"/>
+  <ellipse cx="200" cy="236" rx="140" ry="26" fill="#e8d3a2"/>
+  <ellipse cx="200" cy="226" rx="126" ry="22" fill="#fffdf6"/>
+  <g>
+    <path d="M200 206 L104 186 A100 40 0 0 1 170 150 Z" fill="#e9bf72"/>
+    <path d="M200 206 L180 148 A100 40 0 0 1 270 156 Z" fill="#efc87c"/>
+    <path d="M200 206 L280 162 A100 40 0 0 1 300 200 Z" fill="#e9bf72"/>
+  </g>
+  <g fill="#f6d54a"><path d="M118 186 q12 6 26 2" stroke="#f6d54a" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M198 152 q14 4 28 0" stroke="#f6d54a" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M262 172 q12 6 24 4" stroke="#f6d54a" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+  <g fill="#2b2430"><circle cx="146" cy="176" r="3.5"/><circle cx="214" cy="170" r="3.5"/><circle cx="270" cy="186" r="3.5"/><circle cx="236" cy="162" r="3.5"/><circle cx="166" cy="190" r="3.5"/></g>
+  <g fill="#d39a4a" opacity=".6"><circle cx="150" cy="164" r="3"/><circle cx="230" cy="178" r="3"/><circle cx="282" cy="196" r="3"/></g>
+  <path d="M300 214 A22 22 0 0 1 340 214 Z" fill="#7cb342"/><path d="M304 214 A18 18 0 0 1 336 214 Z" fill="#c5e1a5"/>
+</svg>
