@@ -36,18 +36,40 @@ npm run test:ci     # the unit tests, once (npm test watches for changes instead
 npm run build       # a production build; strict TypeScript and strict templates, so a type error fails it
 ```
 
-With the API and the app both running:
+**Browser smoke tests** (`e2e/`, Playwright in Chromium) drive the real app against the real API and the seeded
+database:
+
+```bash
+npx playwright install chromium   # once
+npm run test:smoke
+```
+
+They start the API and the app themselves when neither is already running; the database container has to be up
+(`docker compose up -d --wait` in `CookFeed_api`). What they check:
+
+| File | What it checks |
+|---|---|
+| `pages.spec.ts` | every page, as each kind of account: no page or console error, one main heading, a title, every image loaded |
+| `navigation.spec.ts` | the links each account is offered; the top bar on a wide screen; the tabs and the More sheet on a phone; no page wider than a 320px or 375px screen |
+| `keyboard.spec.ts` | the skip link, a visible focus ring, where focus goes after moving to another page, the account menu by keyboard |
+| `sign-in.spec.ts` | the picker lists the database's accounts; choosing one changes the navigation, survives a reload, and is sent to the API |
+| `discover.spec.ts` | what a first-time visitor is told, and the trending recipes from the database, most saved first |
+| `accessibility.spec.ts` | axe finds no WCAG 2.1 A or AA violation (color contrast included) on any page, on either screen size |
+
+A page being converted is added to `BUILT_PAGES` in `e2e/support.ts`, which puts it under every one of those checks.
+
+**Screenshots.** With the API and the app both running:
 
 ```bash
 npm run screenshots
 ```
 
-retakes the screenshots in `docs/screenshots` on a laptop-sized and a phone-sized screen, and runs an accessibility
-check (axe, WCAG 2.1 A and AA, color contrast included) on every page it opens. It exits with an error if it finds
-a violation. It needs Playwright's Chromium once: `npx playwright install chromium`.
+retakes the screenshots in `docs/screenshots` on a laptop-sized and a phone-sized screen, and runs the same
+accessibility check on each page it opens.
 
-GitHub Actions runs the unit tests and the build on every pull request that touches this folder
-(`.github/workflows/app-tests.yml`).
+**CI** (`.github/workflows/app-tests.yml`): the unit tests and the build run on every pull request and push to main
+that touches this folder. The smoke tests are slower, so they run on pull requests only, against a PostgreSQL the
+job starts for itself.
 
 ## How it is laid out
 
@@ -65,6 +87,7 @@ src/
     ui/                 pieces pages share: icons, the recipe card
     pages/              one folder per page
 public/images/          the pictures the API's data names (images/recipes/5.svg)
+e2e/                    browser smoke tests (Playwright): support.ts, and one spec per concern
 tools/screenshots.mjs   screenshots and the accessibility check
 docs/screenshots/       the screenshots, kept for the project write-up
 ```
