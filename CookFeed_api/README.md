@@ -63,6 +63,7 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Shopping list, `GET /api/me/shopping-list` | Done: 26 tests, incl. 14 Domain tests for `ShoppingListAggregator`; SQL verified in `docs/Queries.md` §3 |
 | Recipe detail, `GET /api/recipes/{id}` | Done: the access rule in `Domain/Access/RecipeAccess` (15 Domain tests), 4 service tests, 21 HTTP tests against Q4 and Q14; SQL verified in `docs/Queries.md` §1b |
 | Plan page, `GET /api/products/{id}` | Done: 13 service tests, 42 HTTP tests against Q5, Q13 and Q15; described in `docs/Queries.md` §1c |
+| Plan shopping list, `GET /api/products/{id}/shopping-list` | Done: 6 service tests, 14 HTTP tests checked against the same sums in plain SQL |
 | CORS and OpenAPI | Done: the Angular dev server may call the API; `/openapi/v1.json` describes it in Development (5 and 9 tests) |
 | Continuous integration | Done: GitHub Actions runs the build and all the tests on every pull request that touches the API (`.github/workflows/api-tests.yml`) |
 

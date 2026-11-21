@@ -372,6 +372,13 @@ one readable.
 or the `order_item_recipes` order-item index for the placements; `ix_reviews_product_id_user_id` for the
 rating; the `order_items` and `orders` indexes for ownership, as in §1b. No new index is needed.
 
+**The plan's shopping list**, `GET /api/products/{id}/shopping-list`. `ProductShoppingListService` reads
+the same page, keeps the placements `RecipeAccess.CanOpen` allows, and passes the recipes (with how many
+times each is served) to `ShoppingListRepository.GetIngredientTotalsForRecipesAsync`. That is one more
+statement: the joins and the per-line rounding of §3, over `recipe_id IN (...)` at the written size, grouped
+per recipe. A recipe served twice has its total doubled in C#, and `ShoppingListAggregator` then combines
+the totals exactly as §3 describes. A viewer who can open nothing costs no ingredient query at all.
+
 **To do:** capture the logged SQL and the plans here, as the other sections have.
 
 ---

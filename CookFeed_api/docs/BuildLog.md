@@ -48,6 +48,7 @@ in the [README](../README.md#deliverable-2).
 | Roadmap item 3, recipe detail: `RecipesController` → `RecipeDetailService` (applies `Domain/Access/RecipeAccess.CanOpen`) → `RecipeRepository.GetAccessFactsAsync` and `GetDetailAsync` (split query). A recipe the viewer may not open is a 404. 12 Domain, 4 service and 19 HTTP tests, against Q4 and Q14, and the route joins the caller-header and OpenAPI tests (251 in all) | `src/*/Recipes/`, `Domain/Access/`, `docs/Queries.md` §1b |
 | The database password leaves the repository: it is `PGPASSWORD` in the git-ignored `CookFeed_api/.env`, read by Docker Compose, the API and the tests (`DotEnvFile`); a test fails if a password is written in a committed file. 9 tests | `.env.example`, `Api/Configuration/`, `DOCKER.md` |
 | Roadmap item 4, the plan page: `ProductsController` → `ProductPageService` (applies `RecipeAccess.CanOpen` to each recipe) → `ProductRepository.GetPageAsync`. A locked recipe is a card with no details; a buyer sees their purchase snapshot; a retired product still has its page, marked not for sale. `RecipeAccess` now lets a buyer keep a recipe that was unpublished, as the prototype does. 13 service and 42 HTTP tests (339 in all) | `src/*/Products/`, `docs/Queries.md` §1c |
+| Roadmap item 4, the plan's shopping list, `GET /api/products/{id}/shopping-list`: the ingredients of the recipes the viewer may open, as written, a repeated recipe counted twice, combined by `ShoppingListAggregator`; the locked recipes are named, never listed. 6 service and 14 HTTP tests (372 in all) | `ProductShoppingListService`, `ShoppingListRepository`, `docs/Queries.md` §1c |
 | Premium-only products: a product sells only `ProductOnly` recipes, so nothing a buyer pays for is free to save. Two triggers in the `ProductOnlyRecipesInProducts` migration and `schema.sql` (Q17f, g). The seed's 12 in-product recipes became `ProductOnly`; each creator gained two free recipes; The Bread Box gained Rosemary Ciabatta; saves of `ProductOnly` recipes are only by their buyers. 4 trigger tests and 2 seed and recipe-detail tests (257 in all) | `docs/schema.sql`, `Persistence/Migrations/`, `docs/sql/seed.sql`, `DesignDocument.md` §3.3 |
 | Browse pages, the kitchen split, the week and shopping trips (§3.9): `plans.html` (meal plans and collections, filtered and sorted) and `recipes.html` (free recipes, searched); My kitchen shows owned plans, saved recipes, the week planner and the trips apart; a trip (`shopping_trips`, `shopping_trip_items`, `shopping_trip_skips`, the `ShoppingTrips` migration) is built from any recipes and plans or from the week, edited, shopped or sent, and done. Saving builds no list. 258 API tests, 41 unit and 253 smoke tests | `docs/DesignDocument.md` §3.9, `CookFeed_frontend/prototype/js/{db,kitchen,list,plans,recipes}.js` |
 | Creator studio and Admin console (§3.8), in the prototype first: `reviews.hidden_at`, `creator_profiles.suspended_at` and the `admin_actions` audit table with its admin-only trigger (the `AdminModeration` migration, Q17h); `studio.html` (a creator's recipes, plans, sales and reviews) and `admin.html` (moderation, creators, catalog, orders, accounts, the log); the role rules in `rules.js`. 258 API tests, 33 unit and 222 smoke tests | `docs/DesignDocument.md` §3.8, `CookFeed_frontend/prototype/js/{db,rules,studio,admin}.js` |
@@ -281,12 +282,19 @@ Tick items off here as they merge.
      - the rating leaves out hidden reviews and those of refunded buyers.
    - *Tests:* 13 service tests and 42 HTTP tests: counts against Q5, the rating against Q13, the snapshot
      against Q15, and a locked recipe giving nothing away.
-   - **Plan shopping list** (still to build), `GET /api/products/{id}/shopping-list?servings=N`: the combined list for the
-     whole plan, scaled to `N` people per meal, reusing `ShoppingListAggregator`. It lists only recipes the
-     viewer may open, the same rule as `/api/me/shopping-list`, so a non-buyer sees the Public recipes'
-     ingredients and a note that the rest come with the plan.
-   - *Tests:* the recipe and meal counts equal Q5; the locked recipes reveal nothing to a non-buyer; the
-     list equals the aggregator over the visible recipes.
+   - ✅ **Plan shopping list**, `GET /api/products/{id}/shopping-list`: "What you'll buy" on the plan's page.
+     - *Built:* `ProductShoppingListService` takes the page's placements (a buyer's snapshot, or the
+       product today), keeps the recipes `RecipeAccess.CanOpen` allows, and has
+       `ShoppingListRepository.GetIngredientTotalsForRecipesAsync` add up their ingredients. A recipe the
+       plan serves twice counts twice. `ShoppingListAggregator` combines the totals as it does for
+       `/api/me/shopping-list`.
+     - *As the prototype shows it:* amounts as each recipe is written, with no `servings` parameter. The
+       people are changed on the shopping list itself (item 16), not on the plan's page.
+     - *Response:* `lines` and `unmerged`, `fromRecipes` (the titles on the list) and `lockedRecipes` (the
+       titles left off because the viewer has not bought them). A locked recipe's ingredients never leave
+       the server.
+     - *Tests:* 6 service tests and 14 HTTP tests. Each HTTP test adds the lines up again in plain SQL and
+       runs the aggregator over them; the oats served twice come to 485.01 g.
 5. **My purchases**, `GET /api/me/purchases`: the recipes the caller owns through Paid orders, grouped by
    the product they came with (Q11).
    - *DTO fields:* the product id and title as bought, and the order date; then, for each recipe: id,

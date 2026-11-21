@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<ShoppingListService>();
         services.AddScoped<RecipeDetailService>();
         services.AddScoped<ProductPageService>();
+        services.AddScoped<ProductShoppingListService>();
         return services;
     }
 }
