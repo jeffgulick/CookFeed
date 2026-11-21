@@ -86,6 +86,60 @@ public class ShoppingListRepository(CookfeedDbContext db) : IShoppingListReposit
         return await totals.ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<IngredientTotal>> GetIngredientTotalsForRecipesAsync(
+        IReadOnlyDictionary<int, int> timesByRecipe, CancellationToken cancellationToken)
+    {
+        var recipeIds = timesByRecipe.Keys.ToList();
+
+        // The same sum as above, for a given set of recipes at their written size, kept apart per recipe: one
+        // statement, the same joins, and the same rounding of each line to 6 places before it is summed.
+        var perRecipe = await (
+            from ri in db.RecipeIngredients
+            join unit in db.Units on ri.UnitId equals unit.Id
+            join i in db.Ingredients on ri.IngredientId equals i.Id
+            join preferred in db.Units on i.PreferredShoppingUnitId equals preferred.Id into preferredUnits
+            from preferred in preferredUnits.DefaultIfEmpty()
+            where recipeIds.Contains(ri.RecipeId) && !ri.IsOptional
+            group new { ri.Quantity, unit.ToBaseFactor } by new
+            {
+                ri.RecipeId,
+                IngredientId = i.Id,
+                i.Name,
+                Aisle = i.Category,
+                i.DensityGPerMl,
+                PreferredUnitCategory = (UnitCategory?)preferred!.Category,
+                PreferredUnitToBaseFactor = (decimal?)preferred.ToBaseFactor,
+                PreferredUnitAbbreviation = preferred.Abbreviation,
+                UnitCategory = unit.Category,
+            }
+            into g
+            select new
+            {
+                g.Key,
+                BaseQuantity = g.Sum(x => Math.Round(x.Quantity * x.ToBaseFactor, 6)),
+            }).ToListAsync(cancellationToken);
+
+        // A recipe that counts twice has its total doubled here, then the recipes are added together per (ingredient,
+        // unit category): the shape the aggregator takes.
+        return perRecipe
+            .GroupBy(x => (x.Key.IngredientId, x.Key.UnitCategory))
+            .Select(g =>
+            {
+                var key = g.First().Key;
+                return new IngredientTotal(
+                    key.IngredientId,
+                    key.Name,
+                    key.Aisle,
+                    key.DensityGPerMl,
+                    key.PreferredUnitCategory,
+                    key.PreferredUnitToBaseFactor,
+                    key.PreferredUnitAbbreviation,
+                    key.UnitCategory,
+                    g.Sum(x => x.BaseQuantity * timesByRecipe[x.Key.RecipeId]));
+            })
+            .ToList();
+    }
+
     /// <summary>A recipe going onto the list and how many times its quantities count (1 = as written).</summary>
     private sealed class RecipeAtScale
     {

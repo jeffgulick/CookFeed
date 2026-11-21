@@ -46,6 +46,9 @@ in the [README](../README.md#deliverable-2).
 | Roadmap item 1, CORS: the `Angular` policy allows the origins in `Cors:AllowedOrigins` (the Angular dev server in Development, none by default), the caller and token headers, and `GET`/`POST`/`PUT`/`DELETE`; error responses carry it too. 5 tests | `Program.cs`, `appsettings*.json`, `tests/*/Api/CorsTests.cs` |
 | Roadmap item 2, OpenAPI: `/openapi/v1.json` describes every endpoint where `OpenApi:Enabled` is set (Development); `CallerHeaderTransformer` marks `X-User-Id` required under `/api/me` and optional elsewhere. 9 tests (203 in all) | `Program.cs`, `Api/OpenApi/`, `tests/*/Api/OpenApiTests.cs` |
 | Roadmap item 3, recipe detail: `RecipesController` → `RecipeDetailService` (applies `Domain/Access/RecipeAccess.CanOpen`) → `RecipeRepository.GetAccessFactsAsync` and `GetDetailAsync` (split query). A recipe the viewer may not open is a 404. 12 Domain, 4 service and 19 HTTP tests, against Q4 and Q14, and the route joins the caller-header and OpenAPI tests (251 in all) | `src/*/Recipes/`, `Domain/Access/`, `docs/Queries.md` §1b |
+| The database password leaves the repository: it is `PGPASSWORD` in the git-ignored `CookFeed_api/.env`, read by Docker Compose, the API and the tests (`DotEnvFile`); a test fails if a password is written in a committed file. 9 tests | `.env.example`, `Api/Configuration/`, `DOCKER.md` |
+| Roadmap item 4, the plan page: `ProductsController` → `ProductPageService` (applies `RecipeAccess.CanOpen` to each recipe) → `ProductRepository.GetPageAsync`. A locked recipe is a card with no details; a buyer sees their purchase snapshot; a retired product still has its page, marked not for sale. `RecipeAccess` now lets a buyer keep a recipe that was unpublished, as the prototype does. 13 service and 42 HTTP tests (339 in all) | `src/*/Products/`, `docs/Queries.md` §1c |
+| Roadmap item 4, the plan's shopping list, `GET /api/products/{id}/shopping-list`: the ingredients of the recipes the viewer may open, as written, a repeated recipe counted twice, combined by `ShoppingListAggregator`; the locked recipes are named, never listed. 6 service and 14 HTTP tests (372 in all) | `ProductShoppingListService`, `ShoppingListRepository`, `docs/Queries.md` §1c |
 | Premium-only products: a product sells only `ProductOnly` recipes, so nothing a buyer pays for is free to save. Two triggers in the `ProductOnlyRecipesInProducts` migration and `schema.sql` (Q17f, g). The seed's 12 in-product recipes became `ProductOnly`; each creator gained two free recipes; The Bread Box gained Rosemary Ciabatta; saves of `ProductOnly` recipes are only by their buyers. 4 trigger tests and 2 seed and recipe-detail tests (257 in all) | `docs/schema.sql`, `Persistence/Migrations/`, `docs/sql/seed.sql`, `DesignDocument.md` §3.3 |
 | Browse pages, the kitchen split, the week and shopping trips (§3.9): `plans.html` (meal plans and collections, filtered and sorted) and `recipes.html` (free recipes, searched); My kitchen shows owned plans, saved recipes, the week planner and the trips apart; a trip (`shopping_trips`, `shopping_trip_items`, `shopping_trip_skips`, the `ShoppingTrips` migration) is built from any recipes and plans or from the week, edited, shopped or sent, and done. Saving builds no list. 258 API tests, 41 unit and 253 smoke tests | `docs/DesignDocument.md` §3.9, `CookFeed_frontend/prototype/js/{db,kitchen,list,plans,recipes}.js` |
 | Creator studio and Admin console (§3.8), in the prototype first: `reviews.hidden_at`, `creator_profiles.suspended_at` and the `admin_actions` audit table with its admin-only trigger (the `AdminModeration` migration, Q17h); `studio.html` (a creator's recipes, plans, sales and reviews) and `admin.html` (moderation, creators, catalog, orders, accounts, the log); the role rules in `rules.js`. 258 API tests, 33 unit and 222 smoke tests | `docs/DesignDocument.md` §3.8, `CookFeed_frontend/prototype/js/{db,rules,studio,admin}.js` |
@@ -248,28 +251,50 @@ Tick items off here as they merge.
      statement would multiply them, as the storefront's did (`docs/Queries.md` §2).
    - *Rules:* a `ProductOnly` recipe opens only for a viewer whose Paid snapshot contains it (Q14),
      reading the snapshot, never the live bundle. Everyone else gets **404**, so its existence isn't
-     revealed. Drafts are 404 too. The recipe's own creator always gets it, drafts included: Q14 covers
+     revealed. A recipe that is not published is a 404 too, except to the cooks who bought it, who keep
+     what they paid for (§3.3, §3.8). The recipe's own creator always gets it, drafts included: Q14 covers
      buyers only, and the prototype's `rules.js` `canOpenRecipe` already lets the creator in
      (DesignDocument.md §3.7).
+   - *Changed with item 4:* the rule first closed an unpublished recipe to its buyers. The prototype and
+     §3.3 say buyers keep it, so `RecipeAccess.CanOpen` now does too.
    - *Tests:* Q4's lines; Q14's access matrix, plus the creator opening their own `ProductOnly` recipe and
-     draft.
-4. **Plan page**, `GET /api/products/{id}`: the product page (`product.html?id=` in the prototype) has no endpoint
-   yet.
+     draft, and a buyer opening a recipe taken out of the store.
+4. ✅ **Plan page**, `GET /api/products/{id}`: the product page (`product.html?id=` in the prototype).
+   - *Built:* `ProductsController` → `ProductPageService` → `ProductRepository.GetPageAsync`. The
+     repository reads everything the page could show; the service applies `RecipeAccess.CanOpen` to each
+     recipe and decides what goes out (`docs/Queries.md` §1c).
    - *DTO:* type, title, description, cover image, price and currency; the creator's handle, display name
      and verified flag; and its recipes in order.
      - For a meal plan, each recipe carries its `dayOffset` and `slot`. A recipe may appear twice.
-     - Each recipe carries the feed-card fields, `visibility`, ingredient and step counts, and the first
-       step.
-     - Also: the review summary (count, average, percent recommending); `ownedByViewer`, `viewerIsCreator`
-       and `inCart`; and recipe and meal counts, as in the storefront.
-   - *Rules:* a `ProductOnly` recipe a viewer doesn't own shows only its title and placement, with no link
-     and no ingredients or steps (DesignDocument.md §3.3, §3.7). Retired products are 404.
-   - **Plan shopping list**, `GET /api/products/{id}/shopping-list?servings=N`: the combined list for the
-     whole plan, scaled to `N` people per meal, reusing `ShoppingListAggregator`. It lists only recipes the
-     viewer may open, the same rule as `/api/me/shopping-list`, so a non-buyer sees the Public recipes'
-     ingredients and a note that the rest come with the plan.
-   - *Tests:* the recipe and meal counts equal Q5; the locked recipes reveal nothing to a non-buyer; the
-     list equals the aggregator over the visible recipes.
+     - Every recipe carries its card: title, picture, servings, total minutes and `visibility`.
+     - A recipe the viewer may open also carries `details`: its id, prep and cook minutes, ingredient and
+       step counts, the first step, the save count, `savedByViewer`, and `ownedThrough` (the purchase it
+       came with, for "Yours through *plan*").
+     - Also: the rating (count, average, percent recommending); `isForSale`, `ownedByViewer`,
+       `viewerIsCreator` and `inCart`; and recipe and meal counts, as in the storefront.
+   - *Rules, as the prototype shows them:*
+     - a `ProductOnly` recipe a viewer doesn't own is a card with no `details`: no id to link to, and no
+       ingredients or steps (DesignDocument.md §3.3, §3.7);
+     - a buyer sees their purchase snapshot, not the product as it is today (Q15);
+     - a retired product still has its page, with `isForSale` false ("No longer for sale"), so an old link
+       or an order leads somewhere. Only an id that names no product is a 404. The same flag is false for
+       a suspended creator's product and one holding a recipe that was taken down (§3.8);
+     - the rating leaves out hidden reviews and those of refunded buyers.
+   - *Tests:* 13 service tests and 42 HTTP tests: counts against Q5, the rating against Q13, the snapshot
+     against Q15, and a locked recipe giving nothing away.
+   - ✅ **Plan shopping list**, `GET /api/products/{id}/shopping-list`: "What you'll buy" on the plan's page.
+     - *Built:* `ProductShoppingListService` takes the page's placements (a buyer's snapshot, or the
+       product today), keeps the recipes `RecipeAccess.CanOpen` allows, and has
+       `ShoppingListRepository.GetIngredientTotalsForRecipesAsync` add up their ingredients. A recipe the
+       plan serves twice counts twice. `ShoppingListAggregator` combines the totals as it does for
+       `/api/me/shopping-list`.
+     - *As the prototype shows it:* amounts as each recipe is written, with no `servings` parameter. The
+       people are changed on the shopping list itself (item 16), not on the plan's page.
+     - *Response:* `lines` and `unmerged`, `fromRecipes` (the titles on the list) and `lockedRecipes` (the
+       titles left off because the viewer has not bought them). A locked recipe's ingredients never leave
+       the server.
+     - *Tests:* 6 service tests and 14 HTTP tests. Each HTTP test adds the lines up again in plain SQL and
+       runs the aggregator over them; the oats served twice come to 485.01 g.
 5. **My purchases**, `GET /api/me/purchases`: the recipes the caller owns through Paid orders, grouped by
    the product they came with (Q11).
    - *DTO fields:* the product id and title as bought, and the order date; then, for each recipe: id,
