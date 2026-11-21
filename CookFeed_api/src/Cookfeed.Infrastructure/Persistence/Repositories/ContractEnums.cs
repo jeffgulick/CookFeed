@@ -15,6 +15,13 @@ internal static class ContractEnums
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown product type."),
     };
 
+    public static Contracts.Recipes.RecipeVisibility ToContract(RecipeVisibility visibility) => visibility switch
+    {
+        RecipeVisibility.Public => Contracts.Recipes.RecipeVisibility.Public,
+        RecipeVisibility.ProductOnly => Contracts.Recipes.RecipeVisibility.ProductOnly,
+        _ => throw new ArgumentOutOfRangeException(nameof(visibility), visibility, "Unknown recipe visibility."),
+    };
+
     public static Contracts.Recipes.MealSlot? ToContract(MealSlot? slot) => slot switch
     {
         null => null,

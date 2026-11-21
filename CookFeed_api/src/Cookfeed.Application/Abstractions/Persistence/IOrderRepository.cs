@@ -1,4 +1,5 @@
 using Cookfeed.Contracts.Orders;
+using Cookfeed.Contracts.Purchases;
 
 namespace Cookfeed.Application.Abstractions.Persistence;
 
@@ -7,4 +8,10 @@ public interface IOrderRepository
 {
     /// <summary>Every order <paramref name="userId"/> has placed, newest first, whatever its status.</summary>
     Task<IReadOnlyList<OrderDto>> GetOrderHistoryAsync(int userId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The products <paramref name="userId"/> owns through Paid orders, in order-line order (the prototype's order), each once, with
+    /// the recipes its purchase snapshot holds (queries.sql Q11). A cancelled or refunded order owns nothing.
+    /// </summary>
+    Task<IReadOnlyList<PurchaseDto>> GetPurchasesAsync(int userId, CancellationToken cancellationToken);
 }

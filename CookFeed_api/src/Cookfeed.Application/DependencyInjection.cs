@@ -1,7 +1,9 @@
 using Cookfeed.Application.Feed;
 using Cookfeed.Application.Orders;
 using Cookfeed.Application.Products;
+using Cookfeed.Application.Purchases;
 using Cookfeed.Application.Recipes;
+using Cookfeed.Application.Reviews;
 using Cookfeed.Application.ShoppingList;
 using Cookfeed.Application.Storefront;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<RecipeDetailService>();
         services.AddScoped<ProductPageService>();
         services.AddScoped<ProductShoppingListService>();
+        services.AddScoped<PurchasesService>();
+        services.AddScoped<ProductReviewsService>();
         return services;
     }
 }

@@ -17,7 +17,7 @@ public sealed class OpenApiTests(DatabaseFixture databases) : IAsyncDisposable
     private readonly List<WebApplicationFactory<Program>> _factories = [];
 
     public static TheoryData<string> Routes =>
-        ["/api/feed", "/api/creators/{handle}", "/api/recipes/{id}", "/api/products/{id}", "/api/products/{id}/shopping-list", "/api/me/orders", "/api/me/shopping-list"];
+        ["/api/feed", "/api/creators/{handle}", "/api/recipes/{id}", "/api/products/{id}", "/api/products/{id}/shopping-list", "/api/products/{id}/reviews", "/api/me/orders", "/api/me/purchases", "/api/me/shopping-list"];
 
     [Theory]
     [MemberData(nameof(Routes))]
@@ -32,12 +32,14 @@ public sealed class OpenApiTests(DatabaseFixture databases) : IAsyncDisposable
 
     [Theory]
     [InlineData("/api/me/orders", true)]
+    [InlineData("/api/me/purchases", true)]
     [InlineData("/api/me/shopping-list", true)]
     [InlineData("/api/feed", false)]
     [InlineData("/api/creators/{handle}", false)]
     [InlineData("/api/recipes/{id}", false)]
     [InlineData("/api/products/{id}", false)]
     [InlineData("/api/products/{id}/shopping-list", false)]
+    [InlineData("/api/products/{id}/reviews", false)]
     public async Task The_caller_header_is_required_under_me_and_optional_on_public_routes(string route, bool required)
     {
         var document = await DocumentAsync();
