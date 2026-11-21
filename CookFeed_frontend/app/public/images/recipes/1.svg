@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A plate of spaghetti carbonara with pancetta and black pepper">
+  <rect width="400" height="300" fill="#fdf6e3"/>
+  <circle cx="200" cy="140" r="108" fill="#f8ebc8"/>
+  <ellipse cx="200" cy="232" rx="140" ry="30" fill="#eadbb3"/>
+  <ellipse cx="200" cy="224" rx="126" ry="26" fill="#fffdf6"/>
+  <ellipse cx="200" cy="196" rx="92" ry="40" fill="#f4d58a"/>
+  <path d="M124 196 q19 -20 38 0 t38 0 t38 0 t38 0" stroke="#e3b65a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M132 180 q17 -18 34 0 t34 0 t34 0 t34 0" stroke="#e3b65a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M146 166 q14 -14 28 0 t28 0 t28 0 t28 0" stroke="#e3b65a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <rect x="160" y="170" width="18" height="12" rx="3" fill="#c25b4a"/>
+  <rect x="214" y="160" width="18" height="12" rx="3" fill="#c25b4a"/>
+  <rect x="236" y="190" width="18" height="12" rx="3" fill="#c25b4a"/>
+  <rect x="180" y="200" width="18" height="12" rx="3" fill="#c25b4a"/>
+  <g fill="#3b3b40">
+    <circle cx="170" cy="190" r="2.5"/><circle cx="204" cy="178" r="2.5"/><circle cx="226" cy="204" r="2.5"/>
+    <circle cx="190" cy="214" r="2.5"/><circle cx="246" cy="176" r="2.5"/><circle cx="152" cy="204" r="2.5"/>
+  </g>
+</svg>

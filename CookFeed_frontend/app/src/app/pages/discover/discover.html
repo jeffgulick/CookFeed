@@ -1,0 +1,77 @@
+<!-- What Cookfeed is, before anything to buy. -->
+<section
+  data-hero
+  class="relative overflow-hidden rounded-3xl border border-brand-line bg-gradient-to-br from-brand-soft via-paper to-good-soft px-5 py-8 md:px-12 md:py-14"
+>
+  <span class="pill">Discover</span>
+  <h1 class="mt-4 max-w-2xl text-4xl font-bold tracking-tight md:text-6xl">Cook the week, shop once</h1>
+  <p class="mt-4 max-w-xl text-lg text-ink-soft md:text-xl">
+    Short cooking videos, real recipes, and a shopping list built from what you cook.
+  </p>
+  <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+    <a routerLink="/plans" class="btn btn-primary">Browse meal plans <app-icon name="arrow" [size]="18" /></a>
+    <a routerLink="/recipes" class="btn btn-secondary">See free recipes</a>
+  </div>
+</section>
+
+<section data-how-it-works aria-labelledby="howHeading" class="mt-10 md:mt-14">
+  <h2 id="howHeading" class="text-2xl font-bold md:text-3xl">How Cookfeed works</h2>
+  <ol class="mt-5 grid gap-4 md:grid-cols-3">
+    <li class="card flex gap-4 p-5">
+      <span aria-hidden="true" class="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand-dark">
+        <app-icon name="play" />
+      </span>
+      <div>
+        <h3 class="text-lg font-bold">Watch</h3>
+        <p class="meta mt-1">Find a recipe in a short cooking video. Every step is marked, so you can jump to the part you are on.</p>
+      </div>
+    </li>
+    <li class="card flex gap-4 p-5">
+      <span aria-hidden="true" class="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand-dark">
+        <app-icon name="plans" />
+      </span>
+      <div>
+        <h3 class="text-lg font-bold">Plan</h3>
+        <p class="meta mt-1">Save the recipes you like, or buy a creator's meal plan, and put them on your week.</p>
+      </div>
+    </li>
+    <li class="card flex gap-4 p-5">
+      <span aria-hidden="true" class="grid size-12 shrink-0 place-items-center rounded-2xl bg-good-soft text-good">
+        <app-icon name="list" />
+      </span>
+      <div>
+        <h3 class="text-lg font-bold">Shop once</h3>
+        <p class="meta mt-1">Cookfeed adds everything up into one shopping list, sorted by aisle. One trip covers the week.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section data-trending aria-labelledby="trendingHeading" class="mt-10 md:mt-14">
+  <div class="flex flex-wrap items-end justify-between gap-2">
+    <div>
+      <h2 id="trendingHeading" class="text-2xl font-bold md:text-3xl">Trending recipes</h2>
+      <p class="meta mt-1">The free recipes home cooks save most.</p>
+    </div>
+    <a routerLink="/recipes" class="font-semibold">See every free recipe <span aria-hidden="true">&rarr;</span></a>
+  </div>
+
+  @switch (state()) {
+    @case ('loading') {
+      <p role="status" class="meta mt-5">Loading recipes&hellip;</p>
+    }
+    @case ('failed') {
+      <p role="alert" class="card mt-5 border-bad bg-bad-soft p-4 text-ink">
+        The recipes could not be loaded. Check that the Cookfeed API is running, then reload this page.
+      </p>
+    }
+    @default {
+      <!-- Two across on a phone, like a photo grid; three on a wide screen. -->
+      <div class="mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        @for (recipe of trending(); track recipe.id) {
+          <app-recipe-card [recipe]="recipe" />
+        }
+      </div>
+    }
+  }
+</section>

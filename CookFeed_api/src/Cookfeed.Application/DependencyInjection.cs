@@ -1,3 +1,4 @@
+using Cookfeed.Application.Accounts;
 using Cookfeed.Application.Feed;
 using Cookfeed.Application.Orders;
 using Cookfeed.Application.Products;
@@ -24,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<ProductShoppingListService>();
         services.AddScoped<PurchasesService>();
         services.AddScoped<ProductReviewsService>();
+        services.AddScoped<AccountPickerService>();
         return services;
     }
 }

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A plate of cacio e pepe, spaghetti with grated pecorino and cracked black pepper">
+  <rect width="400" height="300" fill="#f7f3ea"/>
+  <circle cx="200" cy="140" r="108" fill="#ece5d3"/>
+  <ellipse cx="200" cy="232" rx="140" ry="30" fill="#dcd2ba"/>
+  <ellipse cx="200" cy="224" rx="126" ry="26" fill="#fffdf6"/>
+  <ellipse cx="200" cy="196" rx="92" ry="40" fill="#f2e2b4"/>
+  <path d="M124 196 q19 -20 38 0 t38 0 t38 0 t38 0" stroke="#e2c98a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M132 180 q17 -18 34 0 t34 0 t34 0 t34 0" stroke="#e2c98a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M146 166 q14 -14 28 0 t28 0 t28 0 t28 0" stroke="#e2c98a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <g fill="#fffaf0"><circle cx="176" cy="172" r="5"/><circle cx="214" cy="166" r="5"/><circle cx="240" cy="188" r="5"/><circle cx="160" cy="198" r="5"/><circle cx="204" cy="206" r="5"/></g>
+  <g fill="#2f2f33">
+    <circle cx="168" cy="186" r="2.5"/><circle cx="196" cy="174" r="2.5"/><circle cx="226" cy="200" r="2.5"/><circle cx="188" cy="212" r="2.5"/>
+    <circle cx="250" cy="174" r="2.5"/><circle cx="150" cy="206" r="2.5"/><circle cx="232" cy="164" r="2.5"/><circle cx="212" cy="190" r="2.5"/>
+  </g>
+</svg>

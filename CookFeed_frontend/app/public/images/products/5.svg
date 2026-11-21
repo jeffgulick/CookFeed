@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img" aria-label="Skewers of meat and vegetables on a charcoal grill">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fdf1e3"/>
+      <stop offset="1" stop-color="#f8e2cd"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="400" fill="url(#wall)"/>
+  <circle cx="820" cy="82" r="46" fill="#fcd9b6" opacity=".7"/>
+  <rect y="300" width="960" height="100" fill="#b9825a"/>
+  <rect y="300" width="960" height="10" fill="#a06f4b"/>
+  <g transform="translate(480 300)">
+    <ellipse cx="0" cy="6" rx="200" ry="14" fill="#a06f4b" opacity=".45"/>
+    <path d="M-170 -110 h340 q-20 100 -170 100 q-150 0 -170 -100 Z" fill="#3f3a36"/>
+    <rect x="-180" y="-120" width="360" height="14" rx="7" fill="#57514b"/>
+    <g stroke="#8a8178" stroke-width="5"><line x1="-150" y1="-126" x2="150" y2="-126"/></g>
+    <g transform="translate(0 -146)">
+      <line x1="-140" y1="0" x2="140" y2="0" stroke="#a06f4b" stroke-width="5"/>
+      <rect x="-110" y="-14" width="34" height="28" rx="8" fill="#a3561f"/><rect x="-60" y="-14" width="30" height="28" rx="8" fill="#ea580c"/>
+      <rect x="-16" y="-14" width="34" height="28" rx="8" fill="#a3561f"/><rect x="34" y="-14" width="30" height="28" rx="8" fill="#4d7c0f"/>
+      <rect x="80" y="-14" width="34" height="28" rx="8" fill="#a3561f"/>
+    </g>
+  </g>
+</svg>

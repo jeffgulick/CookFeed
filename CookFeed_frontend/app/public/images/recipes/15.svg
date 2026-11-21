@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A platter of caprese salad: tomato and mozzarella slices with basil leaves">
+  <rect width="400" height="300" fill="#fdf1ec"/>
+  <circle cx="200" cy="140" r="108" fill="#f9e0d6"/>
+  <ellipse cx="200" cy="232" rx="150" ry="28" fill="#e8cfc2"/>
+  <ellipse cx="200" cy="200" rx="140" ry="52" fill="#ffffff"/>
+  <g>
+    <circle cx="112" cy="196" r="26" fill="#d94a3a"/><circle cx="148" cy="190" r="24" fill="#fbf8ef"/>
+    <circle cx="184" cy="198" r="26" fill="#e0533f"/><circle cx="220" cy="190" r="24" fill="#fbf8ef"/>
+    <circle cx="256" cy="198" r="26" fill="#d94a3a"/><circle cx="292" cy="192" r="24" fill="#fbf8ef"/>
+  </g>
+  <g fill="#f6b3a6"><circle cx="106" cy="190" r="4"/><circle cx="118" cy="204" r="4"/><circle cx="180" cy="192" r="4"/><circle cx="190" cy="206" r="4"/><circle cx="252" cy="192" r="4"/><circle cx="262" cy="206" r="4"/></g>
+  <g fill="#3f8a3a">
+    <ellipse cx="132" cy="172" rx="14" ry="7" transform="rotate(-25 132 172)"/>
+    <ellipse cx="202" cy="170" rx="14" ry="7" transform="rotate(20 202 170)"/>
+    <ellipse cx="274" cy="172" rx="14" ry="7" transform="rotate(-15 274 172)"/>
+  </g>
+  <path d="M100 222 q100 18 200 0" stroke="#c7a43a" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+</svg>
