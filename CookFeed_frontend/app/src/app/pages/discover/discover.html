@@ -5,9 +5,7 @@
 >
   <span class="pill">Discover</span>
   <h1 class="mt-4 max-w-2xl text-4xl font-bold tracking-tight md:text-6xl">Cook the week, shop once</h1>
-  <p class="mt-4 max-w-xl text-lg text-ink-soft md:text-xl">
-    Short cooking videos, real recipes, and a shopping list built from what you cook.
-  </p>
+  <p data-greeting class="mt-4 max-w-xl text-lg text-ink-soft md:text-xl">{{ greeting() }}</p>
   <div class="mt-6 flex flex-col gap-3 sm:flex-row">
     <a routerLink="/plans" class="btn btn-primary">Browse meal plans <app-icon name="arrow" [size]="18" /></a>
     <a routerLink="/recipes" class="btn btn-secondary">See free recipes</a>
@@ -47,6 +45,30 @@
   </ol>
 </section>
 
+<section data-plans aria-labelledby="plansHeading" class="mt-10 md:mt-14">
+  <div class="flex flex-wrap items-end justify-between gap-2">
+    <div>
+      <h2 id="plansHeading" class="text-2xl font-bold md:text-3xl">Meal plans and collections</h2>
+      <p class="meta mt-1">Buy once and keep it: every recipe and its video, ready to plan into your week and shop.</p>
+    </div>
+    <a routerLink="/plans" class="font-semibold">See every plan and collection <span aria-hidden="true">&rarr;</span></a>
+  </div>
+
+  <app-load-state [state]="plans.state()" what="plans" />
+  @if (plans.state() === 'ready') {
+    @if (plans.items().length === 0) {
+      <p class="meta mt-5">Nothing is for sale right now. The free recipes below are always open.</p>
+    } @else {
+      <!-- One plan across on a phone, so its cover is shown whole; side by side on wider screens. -->
+      <div class="mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        @for (plan of plans.items(); track plan.id) {
+          <app-product-tile [product]="plan" />
+        }
+      </div>
+    }
+  }
+</section>
+
 <section data-trending aria-labelledby="trendingHeading" class="mt-10 md:mt-14">
   <div class="flex flex-wrap items-end justify-between gap-2">
     <div>
@@ -56,22 +78,27 @@
     <a routerLink="/recipes" class="font-semibold">See every free recipe <span aria-hidden="true">&rarr;</span></a>
   </div>
 
-  @switch (state()) {
-    @case ('loading') {
-      <p role="status" class="meta mt-5">Loading recipes&hellip;</p>
-    }
-    @case ('failed') {
-      <p role="alert" class="card mt-5 border-bad bg-bad-soft p-4 text-ink">
-        The recipes could not be loaded. Check that the Cookfeed API is running, then reload this page.
-      </p>
-    }
-    @default {
-      <!-- Two across on a phone, like a photo grid; three on a wide screen. -->
-      <div class="mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        @for (recipe of trending(); track recipe.id) {
-          <app-recipe-card [recipe]="recipe" />
-        }
-      </div>
-    }
+  <app-load-state [state]="trending.state()" what="recipes" />
+  @if (trending.state() === 'ready') {
+    <!-- Two across on a phone, like a photo grid; three on a wide screen. -->
+    <div class="mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      @for (recipe of trending.items(); track recipe.id) {
+        <app-recipe-card [recipe]="recipe" />
+      }
+    </div>
+  }
+</section>
+
+<section data-creators aria-labelledby="creatorsHeading" class="mt-10 md:mt-14">
+  <h2 id="creatorsHeading" class="text-2xl font-bold md:text-3xl">Creators</h2>
+  <p class="meta mt-1">The cooks behind the videos. Open a storefront to see everything a creator makes.</p>
+
+  <app-load-state [state]="creators.state()" what="creators" />
+  @if (creators.state() === 'ready') {
+    <div class="mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+      @for (creator of creators.items(); track creator.handle) {
+        <app-creator-tile [creator]="creator" />
+      }
+    </div>
   }
 </section>

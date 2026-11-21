@@ -8,8 +8,13 @@ namespace Cookfeed.Api.Controllers;
 /// <summary>Creator storefronts, addressed by handle: <c>/api/creators/maria-cooks</c>.</summary>
 [ApiController]
 [Route("api/creators")]
-public class CreatorsController(StorefrontService storefronts) : ControllerBase
+public class CreatorsController(CreatorListService creatorList, StorefrontService storefronts) : ControllerBase
 {
+    // Every creator, for the tiles on Discover. The same for every caller, so it takes no X-User-Id.
+    [HttpGet]
+    public Task<IReadOnlyList<CreatorTileDto>> List(CancellationToken cancellationToken = default) =>
+        creatorList.GetCreatorsAsync(cancellationToken);
+
     // X-User-Id is optional: it only fills the viewer's own flags (owned products, "this is me").
     // ActionResult<T> lets one method return either the storefront (200) or NotFound() (404).
     [HttpGet("{handle}")]

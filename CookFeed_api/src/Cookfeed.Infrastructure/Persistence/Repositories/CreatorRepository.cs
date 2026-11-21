@@ -8,6 +8,14 @@ namespace Cookfeed.Infrastructure.Persistence.Repositories;
 /// <summary>The EF Core queries over creators. See docs/Queries.md §2 for the SQL.</summary>
 public class CreatorRepository(CookfeedDbContext db) : ICreatorRepository
 {
+    // Every creator, suspended or not: a suspended creator keeps a storefront, and only their products leave the
+    // store (DesignDocument.md §3.8). The user id is the order they joined in.
+    public async Task<IReadOnlyList<CreatorTileDto>> GetTilesAsync(CancellationToken cancellationToken) =>
+        await db.CreatorProfiles.AsNoTracking()
+            .OrderBy(c => c.UserId)
+            .Select(c => new CreatorTileDto(c.Handle, c.User.DisplayName, c.AvatarUrl, c.IsVerified))
+            .ToListAsync(cancellationToken);
+
     public async Task<StorefrontDto?> GetStorefrontAsync(string handle, int? viewerId,
         CancellationToken cancellationToken)
     {

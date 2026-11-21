@@ -40,7 +40,7 @@ npm run build       # a production build; strict TypeScript and strict templates
 database:
 
 ```bash
-npx playwright install chromium   # once
+npx playwright install chromium   # once, and again after Playwright's version changes
 npm run test:smoke
 ```
 
@@ -53,7 +53,7 @@ They start the API and the app themselves when neither is already running; the d
 | `navigation.spec.ts` | the links each account is offered; the top bar on a wide screen; the tabs and the More sheet on a phone; no page wider than a 320px or 375px screen |
 | `keyboard.spec.ts` | the skip link, a visible focus ring, where focus goes after moving to another page, the account menu by keyboard |
 | `sign-in.spec.ts` | the picker lists the database's accounts; choosing one changes the navigation, survives a reload, and is sent to the API |
-| `discover.spec.ts` | what a first-time visitor is told, and the trending recipes from the database, most saved first |
+| `discover.spec.ts` | what a first-time visitor is told; the plans for sale, the trending recipes and the creators, from the database; a signed-in cook is greeted by name and shown what they own |
 | `accessibility.spec.ts` | axe finds no WCAG 2.1 A or AA violation (color contrast included) on any page, on either screen size |
 
 A page being converted is added to `BUILT_PAGES` in `e2e/support.ts`, which puts it under every one of those checks.
@@ -67,9 +67,11 @@ npm run screenshots
 retakes the screenshots in `docs/screenshots` on a laptop-sized and a phone-sized screen, and runs the same
 accessibility check on each page it opens.
 
-**CI** (`.github/workflows/app-tests.yml`): the unit tests and the build run on every pull request and push to main
-that touches this folder. The smoke tests are slower, so they run on pull requests only, against a PostgreSQL the
-job starts for itself.
+**CI.** The unit tests and the build (`.github/workflows/app-tests.yml`) run on every pull request, every push to
+one, and every push to main that touches this folder. The smoke tests are slower and have their own workflow
+(`.github/workflows/app-smoke-tests.yml`): they run once, when a pull request is opened, against a PostgreSQL the
+job starts for itself. Later pushes to the same pull request do not run them again; to run them on a branch by
+hand, open Actions, choose **App smoke tests**, and press **Run workflow**.
 
 ## How it is laid out
 
@@ -84,7 +86,9 @@ src/
       session.ts              who is signed in, and what that account may be offered (the prototype's rules.js)
       caller.interceptor.ts   adds X-User-Id to every call to the API
       api.ts, api-types.ts    one method per API endpoint, and the shapes the API sends
-    ui/                 pieces pages share: icons, the recipe card
+      load-list.ts            reads a list for a page and reports loading, ready or failed
+    ui/                 pieces pages share: icons, the recipe card, the plan tile, the creator tile,
+                        the loading and failed message, and how counts and prices are worded
     pages/              one folder per page
 public/images/          the pictures the API's data names (images/recipes/5.svg)
 e2e/                    browser smoke tests (Playwright): support.ts, and one spec per concern

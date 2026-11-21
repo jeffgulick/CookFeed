@@ -30,8 +30,8 @@ The four endpoints:
 
 Since Deliverable 2, from the API roadmap in `docs/BuildLog.md`: recipe detail, `GET /api/recipes/{id}`
 (Queries.md §1b), the plan page and its shopping list, `GET /api/products/{id}` (§1c), my purchases and a
-product's reviews (§1d), CORS for the Angular dev server, and an OpenAPI description at `/openapi/v1.json`
-in Development.
+product's reviews (§1d), the plans for sale and the creators, `GET /api/products` and `GET /api/creators`
+(§1e), CORS for the Angular dev server, and an OpenAPI description at `/openapi/v1.json` in Development.
 
 **How it is checked.** Each endpoint is tested over HTTP against what the reference queries in
 `queries.sql` return on the same seeded database (Q1, Q2, Q3, Q5, Q8, Q9). For example, the shopping list
@@ -57,7 +57,7 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Tests | 251, all passing: Domain 26, Application 24, Integration 201 |
+| Tests | 498, all passing: Domain 40, Application 65, Integration 393 |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 24 tests; SQL verified in `docs/Queries.md` §2 |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
@@ -67,6 +67,8 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Plan shopping list, `GET /api/products/{id}/shopping-list` | Done: 6 service tests, 14 HTTP tests checked against the same sums in plain SQL |
 | My purchases, `GET /api/me/purchases` | Done: 2 service tests, 15 HTTP tests against Q11 and Q15 |
 | A product's reviews, `GET /api/products/{id}/reviews` | Done: the form rule in `Domain/Access/ReviewAccess` (11 Domain tests), 16 service tests, 24 HTTP tests against Q12 and Q13 |
+| Plans for sale, `GET /api/products?type=&sort=` | Done: for sale by the same rule as the plan page, a type filter, three sorts, and what the viewer owns; 4 service tests, 16 HTTP tests; described in `docs/Queries.md` §1e |
+| Creators, `GET /api/creators` | Done: every creator as a tile, in the order they joined; 3 HTTP tests |
 | Accounts for the sign-in picker, `GET /api/accounts` | Done: Development only (`Accounts:PickerEnabled`), no email or password data; 6 tests |
 | CORS and OpenAPI | Done: the Angular dev server may call the API; `/openapi/v1.json` describes it in Development (5 and 9 tests) |
 | Continuous integration | Done: GitHub Actions runs the build and all the tests on every pull request that touches the API (`.github/workflows/api-tests.yml`) |

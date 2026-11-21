@@ -53,6 +53,8 @@ in the [README](../README.md#deliverable-2).
 | Roadmap item 6, a product's reviews, `GET /api/products/{id}/reviews`: the reviews that count, the viewer's own, and everything for the admin; the summary with its star counts; and what the review form shows, from `Domain/Access/ReviewAccess`. 11 Domain, 16 service and 24 HTTP tests, against Q12 and Q13 (466 in all) | `src/*/Reviews/`, `Domain/Access/`, `docs/Queries.md` §1d |
 | The sign-in picker's accounts, `GET /api/accounts`: each account's id, display name, roles and creator handle, for the Angular app's account picker while the caller is still the `X-User-Id` header. A development aid like the OpenAPI document: served only where `Accounts:PickerEnabled` is set (Development), a 404 elsewhere, and it never sends an email address or a password hash. 6 tests (472 in all) | `src/*/Accounts/`, `appsettings.Development.json` |
 | The Angular app, set up (`CookFeed_frontend/app`): Angular 22, strict TypeScript and templates, Tailwind CSS for the look and Angular CDK for the account menu. The shell gives a wide screen a top bar and a phone bottom tabs with a More sheet, drawn for whoever is signed in (`Session`, the twin of `rules.js`); the account picker signs in with `X-User-Id` (`callerInterceptor`); Discover says what Cookfeed is, in three steps, and lists the trending recipes from the API. The pages not converted yet say so. 44 unit tests; axe finds no WCAG 2.1 AA violation on a laptop or a phone. 113 browser smoke tests (Playwright) against the real API and database. CI: `app-tests.yml` runs the unit tests and build, and the smoke tests on pull requests; the prototype's own workflow is removed | `CookFeed_frontend/app/`, `.github/workflows/app-tests.yml` |
+| Discover, finished. API: the plans for sale, `GET /api/products?type=&sort=` (half of roadmap item 17: for sale by the plan page's rule, a type filter, sorted Newest, Price or Rating, owned marked for the caller), and the creators, `GET /api/creators`. 4 service and 19 HTTP tests (498 in all). App: Discover lists the plans and collections for sale (type, creator, recipe and meal counts, rating, and the price or "You own this"), the trending recipes, and the creators; greets a signed-in cook by name; and reads the plans again when the account changes. Each list says when it is loading or could not be loaded. 66 unit tests, 119 browser smoke tests | `src/*/Products/`, `src/*/Storefront/`, `docs/Queries.md` §1e, `CookFeed_frontend/app/src/app/pages/discover/`, `app/src/app/ui/` |
+| CI: the smoke tests get their own workflow and run once per pull request. The smoke job never finished on the first pull request: `playwright install` stalls on Node 26 with Playwright 1.56.1, and it had only worked locally because the browser was already downloaded. Playwright is now pinned at 1.65.1, which installs in under a minute. The smoke tests moved out of `app-tests.yml` into `app-smoke-tests.yml`, which runs when a pull request is opened (not on each later push) and can be started by hand; every job has a time limit, so a stall fails in minutes instead of running for hours | `CookFeed_frontend/app/package.json`, `.github/workflows/app-tests.yml`, `.github/workflows/app-smoke-tests.yml` |
 | Premium-only products: a product sells only `ProductOnly` recipes, so nothing a buyer pays for is free to save. Two triggers in the `ProductOnlyRecipesInProducts` migration and `schema.sql` (Q17f, g). The seed's 12 in-product recipes became `ProductOnly`; each creator gained two free recipes; The Bread Box gained Rosemary Ciabatta; saves of `ProductOnly` recipes are only by their buyers. 4 trigger tests and 2 seed and recipe-detail tests (257 in all) | `docs/schema.sql`, `Persistence/Migrations/`, `docs/sql/seed.sql`, `DesignDocument.md` §3.3 |
 | Browse pages, the kitchen split, the week and shopping trips (§3.9): `plans.html` (meal plans and collections, filtered and sorted) and `recipes.html` (free recipes, searched); My kitchen shows owned plans, saved recipes, the week planner and the trips apart; a trip (`shopping_trips`, `shopping_trip_items`, `shopping_trip_skips`, the `ShoppingTrips` migration) is built from any recipes and plans or from the week, edited, shopped or sent, and done. Saving builds no list. 258 API tests, 41 unit and 253 smoke tests | `docs/DesignDocument.md` §3.9, `CookFeed_frontend/prototype/js/{db,kitchen,list,plans,recipes}.js` |
 | Creator studio and Admin console (§3.8), in the prototype first: `reviews.hidden_at`, `creator_profiles.suspended_at` and the `admin_actions` audit table with its admin-only trigger (the `AdminModeration` migration, Q17h); `studio.html` (a creator's recipes, plans, sales and reviews) and `admin.html` (moderation, creators, catalog, orders, accounts, the log); the role rules in `rules.js`. 258 API tests, 33 unit and 222 smoke tests | `docs/DesignDocument.md` §3.8, `CookFeed_frontend/prototype/js/{db,rules,studio,admin}.js` |
@@ -85,7 +87,7 @@ Its data is the seeded database, exported to `js/seed-data.js` and checked again
 `CookFeed_frontend/tests/`. Playwright smoke tests (`CookFeed_frontend/tests/smoke/`) open every page from
 the file system as each seeded account and check the rules on screen, the purchase flow, phone layout,
 keyboard use and print. They no longer run in CI: the prototype is finished, and CI runs the Angular app's
-unit and browser tests instead (`app-tests.yml`). They still run by hand. How to run it and what each page does:
+unit and browser tests instead (`app-tests.yml`, `app-smoke-tests.yml`). They still run by hand. How to run it and what each page does:
 `CookFeed_frontend/prototype/README.md`.
 
 **Next: the Angular application (Assignment 4)**, built against this API once the endpoints it needs
@@ -187,7 +189,7 @@ one place for data and rules, and nothing the app needs may live only in the Ang
 | CI runner | GitHub-hosted `ubuntu-24.04`, `actions/checkout@v4`, `actions/setup-dotnet@v4` (SDK from `global.json`), `postgres:16.15` service | `.github/workflows/api-tests.yml` |
 | NuGet packages | see file | `Directory.Packages.props` + `packages.lock.json` |
 
-In a claude.ai cloud session (a fresh Ubuntu 24.04 container each time), the same versions install with
+In a fresh Ubuntu 24.04 container, the same versions install with
 `apt-get install dotnet-sdk-10.0=10.0.112-0ubuntu1~24.04.1`, then `dotnet tool restore`; PostgreSQL 16.15 is
 already there and starts with `pg_ctlcluster 16 main start`.
 
@@ -469,9 +471,9 @@ Tick items off here as they merge.
     - *Tests:* a trip from Alex's seeded week gives the teriyaki at 4 (thighs 1,000 g); a skip leaves a
       line out; only a recipe the caller may open joins; a done trip is read-only; another caller's trip
       is 404.
-17. **Browse**: `GET /api/products?type=&sort=` (for sale only, owned marked for the caller) and
-    `GET /api/recipes?q=&sort=&visibility=` (free, and premium with the plans selling each), as
-    `plans.html` and `recipes.html` show them.
+17. **Browse**: ✅ `GET /api/products?type=&sort=` (for sale only, owned marked for the caller; built with
+    Discover, which shows the same tiles) and, still to do, `GET /api/recipes?q=&sort=&visibility=` (free,
+    and premium with the plans selling each), as `plans.html` and `recipes.html` show them.
 
 **Not planned:** followers and a Follow button (the prototype's follower count was removed). The database has no
 followers table, so the Angular storefront leaves them out. Adding them later is a new table, a count on
