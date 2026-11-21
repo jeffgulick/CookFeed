@@ -29,8 +29,8 @@ The four endpoints:
 | Shopping-list aggregation | `GET /api/me/shopping-list?weekStart=` | §3 |
 
 Since Deliverable 2, from the API roadmap in `docs/BuildLog.md`: recipe detail, `GET /api/recipes/{id}`
-(Queries.md §1b), CORS for the Angular dev server, and an OpenAPI description at `/openapi/v1.json` in
-Development.
+(Queries.md §1b), the plan page, `GET /api/products/{id}` (§1c), CORS for the Angular dev server, and an
+OpenAPI description at `/openapi/v1.json` in Development.
 
 **How it is checked.** Each endpoint is tested over HTTP against what the reference queries in
 `queries.sql` return on the same seeded database (Q1, Q2, Q3, Q5, Q8, Q9). For example, the shopping list
@@ -61,7 +61,8 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Creator storefront, `GET /api/creators/{handle}` | Done: 24 tests; SQL verified in `docs/Queries.md` §2 |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
 | Shopping list, `GET /api/me/shopping-list` | Done: 26 tests, incl. 14 Domain tests for `ShoppingListAggregator`; SQL verified in `docs/Queries.md` §3 |
-| Recipe detail, `GET /api/recipes/{id}` | Done: the access rule in `Domain/Access/RecipeAccess` (12 Domain tests), 4 service tests, 19 HTTP tests against Q4 and Q14; SQL verified in `docs/Queries.md` §1b |
+| Recipe detail, `GET /api/recipes/{id}` | Done: the access rule in `Domain/Access/RecipeAccess` (15 Domain tests), 4 service tests, 21 HTTP tests against Q4 and Q14; SQL verified in `docs/Queries.md` §1b |
+| Plan page, `GET /api/products/{id}` | Done: 13 service tests, 42 HTTP tests against Q5, Q13 and Q15; described in `docs/Queries.md` §1c |
 | CORS and OpenAPI | Done: the Angular dev server may call the API; `/openapi/v1.json` describes it in Development (5 and 9 tests) |
 | Continuous integration | Done: GitHub Actions runs the build and all the tests on every pull request that touches the API (`.github/workflows/api-tests.yml`) |
 

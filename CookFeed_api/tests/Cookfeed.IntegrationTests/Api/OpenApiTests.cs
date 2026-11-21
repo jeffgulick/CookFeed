@@ -17,7 +17,7 @@ public sealed class OpenApiTests(DatabaseFixture databases) : IAsyncDisposable
     private readonly List<WebApplicationFactory<Program>> _factories = [];
 
     public static TheoryData<string> Routes =>
-        ["/api/feed", "/api/creators/{handle}", "/api/recipes/{id}", "/api/me/orders", "/api/me/shopping-list"];
+        ["/api/feed", "/api/creators/{handle}", "/api/recipes/{id}", "/api/products/{id}", "/api/me/orders", "/api/me/shopping-list"];
 
     [Theory]
     [MemberData(nameof(Routes))]
@@ -36,6 +36,7 @@ public sealed class OpenApiTests(DatabaseFixture databases) : IAsyncDisposable
     [InlineData("/api/feed", false)]
     [InlineData("/api/creators/{handle}", false)]
     [InlineData("/api/recipes/{id}", false)]
+    [InlineData("/api/products/{id}", false)]
     public async Task The_caller_header_is_required_under_me_and_optional_on_public_routes(string route, bool required)
     {
         var document = await DocumentAsync();

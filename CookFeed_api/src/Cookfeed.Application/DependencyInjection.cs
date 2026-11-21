@@ -1,5 +1,6 @@
 using Cookfeed.Application.Feed;
 using Cookfeed.Application.Orders;
+using Cookfeed.Application.Products;
 using Cookfeed.Application.Recipes;
 using Cookfeed.Application.ShoppingList;
 using Cookfeed.Application.Storefront;
@@ -17,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<OrderHistoryService>();
         services.AddScoped<ShoppingListService>();
         services.AddScoped<RecipeDetailService>();
+        services.AddScoped<ProductPageService>();
         return services;
     }
 }

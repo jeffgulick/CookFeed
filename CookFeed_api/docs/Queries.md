@@ -174,13 +174,15 @@ Nested Loop
 
 **Endpoint:** `GET /api/recipes/{id}`, optional header `X-User-Id`.
 - An id that names no recipe is a **404**.
-- So is a recipe the viewer may not open: ProductOnly and not bought, or a draft that is not theirs. Its
-  existence is not revealed.
+- So is a recipe the viewer may not open: ProductOnly and not bought, or not published and neither theirs
+  nor bought. Its existence is not revealed.
 
 **Code:** `RecipesController` → `RecipeDetailService` → `RecipeRepository.GetAccessFactsAsync`, then
 `GetDetailAsync`. The rule is `Domain/Access/RecipeAccess.CanOpen`:
 - the recipe's creator can always open it, drafts included;
-- anyone else needs it published, and either Public or held by the snapshot of one of their Paid orders (Q14).
+- so can a cook whose Paid order's snapshot holds it (Q14), even after it is unpublished: buyers keep what
+  they bought (DesignDocument.md §3.3, §3.8);
+- anyone else needs it published and Public.
 
 **Changed from the design: two steps, with the rule in C#.**
 - The plan above had the access test inside the detail query.
@@ -335,6 +337,42 @@ Hash Join (actual rows=2 loops=1)
   viewer's side.
 
 No new index is needed.
+
+---
+
+## 1c. Product page — *built 2026-11-21; generated SQL not yet captured here*
+
+**Endpoint:** `GET /api/products/{id}`, optional header `X-User-Id`. An id that names no product is a
+**404**. A retired product is still served, with `isForSale` false.
+
+**Code:** `ProductsController` → `ProductPageService` → `ProductRepository.GetPageAsync`. The repository
+reads everything the page could show, with the facts `RecipeAccess.CanOpen` needs for each recipe; the
+service applies the rule, so a recipe the viewer may not open goes out as a card with no `details`.
+
+**Four statements, each small:**
+1. **The product**, by primary key, with its creator and the viewer's flags as subqueries:
+   - `isForSale`: active, creator not suspended, at least one recipe, none unpublished (§3.8);
+   - the viewer's Paid order line for it, if any (`ownedByViewer`);
+   - whether it is in the viewer's cart.
+2. **The rating** (Q13), grouped to one row: the count, the sum of ratings and the number recommending,
+   over reviews that are not hidden and whose author still has a Paid order for the product. The service
+   divides and rounds as PostgreSQL's `ROUND` does.
+3. **The placements**: from `order_item_recipes` for the viewer's order line when they own the product
+   (their purchase snapshot, Q15), otherwise from `product_recipes`. Ordered by `sort_order`.
+4. **The recipes**, each distinct one once (`WHERE id IN (...)`): the card, the ingredient and step
+   counts, the first step, whether the viewer saved it, and the title of the viewer's earliest Paid
+   purchase whose snapshot holds it (`ownedThrough`). A meal plan that serves a recipe twice reads it
+   once and places it twice.
+
+**Why not one statement.** The placements come from one of two tables depending on the first statement's
+answer, and the per-recipe counts would repeat for a recipe placed twice. Four indexed lookups keep each
+one readable.
+
+**Indexes used:** the primary keys of `products` and `recipes`; `ix_product_recipes_product_id_sort_order`
+or the `order_item_recipes` order-item index for the placements; `ix_reviews_product_id_user_id` for the
+rating; the `order_items` and `orders` indexes for ownership, as in §1b. No new index is needed.
+
+**To do:** capture the logged SQL and the plans here, as the other sections have.
 
 ---
 

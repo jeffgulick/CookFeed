@@ -112,19 +112,9 @@ public class RecipeRepository(CookfeedDbContext db) : IRecipeRepository
                             ? Contracts.Storefront.ProductType.MealPlan
                             : Contracts.Storefront.ProductType.RecipeCollection,
                         pr.DayOffset,
-                        ToContract(pr.Slot),
+                        ContractEnums.ToContract(pr.Slot),
                         viewerId != null && db.OrderItems.Any(oi => oi.ProductId == pr.ProductId
                             && oi.Order.UserId == viewerId && oi.Order.Status == OrderStatus.Paid)))
                     .ToList()))
             .SingleOrDefaultAsync(cancellationToken);
-
-    private static Contracts.Recipes.MealSlot? ToContract(MealSlot? slot) => slot switch
-    {
-        null => null,
-        MealSlot.Breakfast => Contracts.Recipes.MealSlot.Breakfast,
-        MealSlot.Lunch => Contracts.Recipes.MealSlot.Lunch,
-        MealSlot.Dinner => Contracts.Recipes.MealSlot.Dinner,
-        MealSlot.Snack => Contracts.Recipes.MealSlot.Snack,
-        _ => throw new ArgumentOutOfRangeException(nameof(slot), slot, "Unknown meal slot."),
-    };
 }
