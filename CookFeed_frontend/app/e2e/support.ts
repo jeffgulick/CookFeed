@@ -26,6 +26,7 @@ export const BUILT_PAGES = [
   '/help',
   '/cart',
   '/orders',
+  '/kitchen',
   '/creators/kenji-kitchen',
   '/plans/3',
   '/plans/3/reviews',
@@ -33,7 +34,7 @@ export const BUILT_PAGES = [
 ];
 
 /** Addresses that still show the "being built" placeholder. Move each to BUILT_PAGES as it is converted. */
-export const PLACEHOLDER_PAGES = ['/kitchen', '/studio', '/admin'];
+export const PLACEHOLDER_PAGES = ['/studio', '/admin'];
 
 export const PHONE = { width: 375, height: 760 };
 

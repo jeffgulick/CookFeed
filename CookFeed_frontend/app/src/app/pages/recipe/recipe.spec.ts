@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import axe from 'axe-core';
 import { Account, ProductDetail, RecipeDetail, RecipeLocked } from '../../core/api-types';
+import { Notices } from '../../core/notices';
 import { Session } from '../../core/session';
 import { RecipePage } from './recipe';
 
@@ -212,9 +213,65 @@ describe('Recipe page', () => {
     expect(text('[data-save-note]')).toBe('Sign in to keep this recipe in My kitchen, put it on your week, and shop it.');
   });
 
+  it('offers a cook Save recipe, and saves it when pressed', async () => {
+    await show(tamagoyaki, alex);
+    expect(text('[data-save-area]')).toBe('Save recipe');
+
+    button('Save recipe').click();
+    const request = http.expectOne('/api/me/saves/16');
+    expect(request.request.method).toBe('PUT');
+    request.flush({ recipeId: 16, saved: true, saveCount: 5 });
+    await harness.fixture.whenStable();
+
+    expect(text('[data-save-area]')).toBe('Saved in My kitchen Unsave');
+    expect(text('[data-facts]')).toBe('Serves 2 · 15 min total · saved by 5 cooks');
+    expect(TestBed.inject(Notices).message()?.text).toBe('Tamagoyaki is saved in My kitchen.');
+  });
+
+  it('unsaves a saved recipe when Unsave is pressed', async () => {
+    await show({ ...tamagoyaki, savedByViewer: true, saveCount: 5 }, alex);
+
+    button('Unsave').click();
+    const request = http.expectOne('/api/me/saves/16');
+    expect(request.request.method).toBe('DELETE');
+    request.flush({ recipeId: 16, saved: false, saveCount: 4 });
+    await harness.fixture.whenStable();
+
+    expect(text('[data-save-area]')).toBe('Save recipe');
+    expect(text('[data-facts]')).toBe('Serves 2 · 15 min total · saved by 4 cooks');
+    expect(TestBed.inject(Notices).message()?.text).toBe('Tamagoyaki is no longer saved.');
+  });
+
+  it('says what the API said when the recipe cannot be saved, and leaves it unsaved', async () => {
+    await show(tamagoyaki, alex);
+
+    button('Save recipe').click();
+    http
+      .expectOne('/api/me/saves/16')
+      .flush({ detail: 'There is no recipe with that id that you can save.' }, { status: 404, statusText: 'Not Found' });
+    await harness.fixture.whenStable();
+
+    const notice = TestBed.inject(Notices).message();
+    expect(notice?.kind).toBe('problem');
+    expect(notice?.text).toBe('There is no recipe with that id that you can save.');
+    expect(text('[data-save-area]')).toBe('Save recipe');
+  });
+
+  it('offers no Save on a draft, which cannot be saved even by its creator', async () => {
+    await show({ ...tamagoyaki, isPublished: false, publishedAt: null, viewerIsCreator: true }, kenji);
+
+    expect(text('[data-save-area]')).toBe('');
+  });
+
+  it('lets a buyer save a premium recipe they own', async () => {
+    await show(teriyaki, alex);
+
+    expect(text('[data-save-area]')).toBe('Save recipe');
+  });
+
   it('tells a cook when the recipe is already saved, and shows the admin nothing about saving', async () => {
     await show({ ...tamagoyaki, savedByViewer: true }, alex);
-    expect(text('[data-save-area]')).toBe('Saved in My kitchen');
+    expect(text('[data-save-area]')).toBe('Saved in My kitchen Unsave');
     expect(page.querySelector('[data-save-note]')).toBeNull();
 
     TestBed.resetTestingModule();

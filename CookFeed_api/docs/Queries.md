@@ -1080,27 +1080,55 @@ other environment the address is a 404. The browser tests call it before each ru
 - `DevResetEndpointTests.cs`: every row equal to the seed after a purchase and a reset, and a 404 outside
   Development.
 
-## Write paths worth noting
+## 6. Saved recipes — *built 2026-11-21; generated SQL not yet captured here*
 
-Not "queries" in the assignment's sense, but the writes that keep the denormalized columns correct. The cart
-and checkout are built and described in §5 above. **Saving is not built yet** (roadmap item 7 in
-`docs/BuildLog.md`). Like every route with the caller's own data, it lives under `/api/me/…` and takes no user
-id (DesignDocument.md §9).
+**Endpoints**, under `/api/me`, taking no user id (DesignDocument.md §9):
 
-**Save a recipe** (`PUT /api/me/saves/{recipeId}`; unsave is `DELETE` on the same route; both idempotent):
-- *Access:* requires the `HomeCook` role and, for a `ProductOnly` recipe, the same access check as the
-  detail endpoint.
-- *The write:* the service does one thing, add a `saved_recipes` row (`INSERT INTO saved_recipes`). The
-  `saved_recipes_save_count` trigger runs
+| Route | Answer |
+|---|---|
+| `GET /api/me/saves` | the caller's saved recipes as cards, the newest save first |
+| `PUT /api/me/saves/{recipeId}` | saves it, once however often it is asked; answers `{ recipeId, saved, saveCount }` |
+| `DELETE /api/me/saves/{recipeId}` | unsaves it; no error if it was not saved; the same answer |
+
+**Code:** `MySavesController` → `SaveService` → `SaveRepository`, with the rule in
+`Domain/Access/RecipeAccess.CanSave` (the prototype's `canSave`).
+
+**Who may save**
+
+- Only a home cook. The admin, and an id no account has, get a **403**.
+- A recipe the caller may open, while it is published or theirs through a purchase. So a premium recipe needs its
+  plan bought first, and a draft cannot be saved even by its creator, who can open it.
+- A recipe the caller may not save is a **404**, the same as an id no recipe has, so the existence of a draft or a
+  premium recipe is not revealed.
+
+**The statements**
+
+- *List:* one statement over `saved_recipes` by the leading column of its primary key (`user_id`), joined to the
+  recipe and its creator: Q6 with the columns a card needs, ordered `saved_at DESC, recipe_id DESC`.
+- *Save:* `INSERT INTO saved_recipes (user_id, recipe_id, saved_at) VALUES (...) ON CONFLICT (user_id, recipe_id)
+  DO NOTHING`. The `saved_recipes_save_count` trigger runs
 
   ```sql
   UPDATE recipes SET save_count = save_count + 1 WHERE id = @r
   ```
 
-  inside the same statement. It is a single atomic increment, so two users saving at once cannot both read
-  41 and write 42, and the application never touches the counter.
-- *Unsave and account deletion:* unsave is the mirror `DELETE`, and the trigger decrements. A cascaded
-  delete from a hard-deleted account is decremented the same way (DesignDocument.md §3.4).
-- *Check:* `queries.sql` Q16 is the consistency check the integration tests run after each of these.
+  for the inserted row, in the same statement. It is a single atomic increment, so two cooks saving at once
+  cannot both read 41 and write 42, and the application never writes the counter. A repeated save inserts no
+  row, so the trigger does not fire and the count is not raised twice.
+- *Unsave:* one `DELETE`; the trigger takes one off for the row removed, and nothing when there was none. A
+  cascaded delete from a hard-deleted account is decremented the same way (DesignDocument.md §3.4).
+- *The new count* is read back from `recipes.save_count` by primary key and sent in the answer.
 
-**Add to cart** and **checkout**: see §5.
+**Tests:**
+
+- `tests/Cookfeed.Domain.Tests/Access/RecipeSaveAccessTests.cs`: each case of the rule.
+- `tests/Cookfeed.Application.Tests/Saves/SaveServiceTests.cs`: the service with fake repositories.
+- `tests/Cookfeed.IntegrationTests/Api/SavesEndpointTests.cs`, over HTTP: the list matches the rows and Q6;
+  saving twice leaves one row and raises the count once; unsaving lowers it; after each, `queries.sql` Q16
+  (counter equals rows) returns nothing; the feed and recipe detail mark the recipe saved; each refusal's
+  status, with nothing written.
+
+## Write paths worth noting
+
+The writes that keep the denormalized columns correct are described where they are built: the cart and
+checkout in §5 (`orders.total_cents` and the order snapshots), saved recipes in §6 (`recipes.save_count`).

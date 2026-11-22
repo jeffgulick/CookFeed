@@ -54,7 +54,11 @@ export const routes: Routes = [
     title: 'Creator | Cookfeed',
     loadComponent: () => import('./pages/creator/creator').then((m) => m.CreatorPage),
   },
-  { path: 'kitchen', ...notBuiltYet('My kitchen') },
+  {
+    path: 'kitchen',
+    title: 'My kitchen | Cookfeed',
+    loadComponent: () => import('./pages/kitchen/kitchen').then((m) => m.KitchenPage),
+  },
   {
     path: 'orders',
     title: 'Your orders | Cookfeed',

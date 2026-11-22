@@ -66,6 +66,8 @@ change data sign in as accounts no other spec uses. What they check:
 | `cart.spec.ts` | the cart: who has one, adding a plan from its page and from a storefront, the count in the header, the totals, taking a line out and emptying it, each after confirming |
 | `checkout.spec.ts` | buying: Place order after confirming, the receipt, the plan now owned and its recipes open, the order in Your orders, the cart empty |
 | `orders.spec.ts` | Your orders: newest first, what each line held and cost, a cancelled order, no orders, a visitor and the admin |
+| `kitchen.spec.ts` | My kitchen: the plans a cook bought and the recipes they saved, a cook who has bought nothing, a visitor and the admin |
+| `saves.spec.ts` | saving a recipe from its page, finding it in My kitchen, and unsaving it there; the count every visitor sees follows. It runs after all the other specs, because a save changes that count |
 | `creator.spec.ts` | a creator's storefront: who they are, their recipes sorted two ways, what is for sale, and a buy area that changes with who is looking; signing in to buy comes back to the page; a handle nobody has says so |
 | `plan.spec.ts` | a plan's page for someone deciding (price, pitch, recipes locked), a buyer (recipes opened, the list to buy), its creator, the admin, a retired plan, and an address that names no plan |
 | `recipe.spec.ts` | a recipe: ingredients that rescale for the people cooked for, steps that jump the video, the way back to a plan; a premium recipe names its plan to someone who has not bought it; a draft stays private |

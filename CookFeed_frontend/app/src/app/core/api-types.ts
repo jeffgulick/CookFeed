@@ -357,3 +357,38 @@ export interface Order {
   currency: string;
   items: OrderItem[];
 }
+
+/** One recipe the signed-in cook saved, as a card in My kitchen (GET /api/me/saves). */
+export interface SavedRecipe {
+  id: number;
+  title: string;
+  thumbnailUrl: string | null;
+  servings: number;
+  totalMinutes: number | null;
+  saveCount: number;
+  creatorHandle: string;
+  creatorIsVerified: boolean;
+  visibility: 'Public' | 'ProductOnly';
+  savedAt: string;
+}
+
+/** The answer to saving or unsaving a recipe: whether it is saved now, and how many cooks have it saved. */
+export interface SaveState {
+  recipeId: number;
+  saved: boolean;
+  saveCount: number;
+}
+
+/** One plan or collection the signed-in cook owns, as it was when they bought it (GET /api/me/purchases). */
+export interface Purchase {
+  productId: number;
+  type: ProductType;
+  /** The title at checkout; a later rename does not change it. */
+  title: string;
+  coverImageUrl: string | null;
+  purchasedAt: string;
+  recipeCount: number;
+  mealCount: number | null;
+  /** What the purchase holds. My kitchen lists the plan, not its recipes, so their shape is not spelled out here. */
+  recipes: unknown[];
+}
