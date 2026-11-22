@@ -61,6 +61,7 @@ change data sign in as accounts no other spec uses. What they check:
 |---|---|
 | `pages.spec.ts` | every page, as each kind of account: no page or console error, one main heading, a title, every image loaded |
 | `navigation.spec.ts` | the links each account is offered; the top bar on a wide screen; the tabs and the More sheet on a phone; no page wider than a 320px or 375px screen |
+| `phone-shell.spec.ts` | on a touch phone the top bar and the tabs stay on the screen while the page scrolls, even when something on the page is too wide; Back in the top bar on every page the navigation does not lead to directly |
 | `keyboard.spec.ts` | the skip link, a visible focus ring, where focus goes after moving to another page, the account menu by keyboard |
 | `sign-in.spec.ts` | the picker lists the database's accounts; choosing one changes the navigation, survives a reload, and is sent to the API |
 | `discover.spec.ts` | what a first-time visitor is told; the plans for sale, the trending recipes and the creators, from the database; a signed-in cook is greeted by name and shown what they own |

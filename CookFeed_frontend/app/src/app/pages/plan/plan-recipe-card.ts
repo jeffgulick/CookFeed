@@ -5,8 +5,9 @@ import { plural } from '../../ui/format';
 import { Icon } from '../../ui/icon';
 
 /**
- * One recipe in a plan or collection. A recipe the viewer may open links to it and gives a quick look: the times,
- * how much is in it, and how it starts. A premium recipe the viewer has not bought shows only its card, with no
+ * One recipe in a plan or collection. A recipe the viewer may open gives a quick look (the times, how much is in
+ * it, and how it starts) and the whole card leads to it, as a recipe card on Discover does; the title is the link a
+ * keyboard or screen reader lands on. A premium recipe the viewer has not bought shows only its card, with no
  * link, and says what would open it.
  */
 @Component({
@@ -14,9 +15,11 @@ import { Icon } from '../../ui/icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, Icon],
   host: {
-    class: 'card relative flex flex-col overflow-hidden',
+    class: 'card relative flex flex-col overflow-hidden transition-shadow',
     'data-plan-recipe': '',
     '[class.bg-fill]': '!recipe().canOpen',
+    '[class.hover:shadow-lift]': 'recipe().canOpen',
+    '[class.focus-within:shadow-lift]': 'recipe().canOpen',
   },
   template: `
     <!-- Decorative: the title beside it says what the dish is. -->
@@ -35,9 +38,13 @@ import { Icon } from '../../ui/icon';
       }
       <h3 class="text-base leading-snug font-bold sm:text-lg">
         @if (recipe().details; as details) {
-          <a [routerLink]="['/recipes', details.recipeId]" [queryParams]="{ product: productId() }" class="text-ink">{{
-            recipe().title
-          }}</a>
+          <!-- after:absolute stretches the link over the whole card, so the card is one target. -->
+          <a
+            [routerLink]="['/recipes', details.recipeId]"
+            [queryParams]="{ product: productId() }"
+            class="text-ink no-underline after:absolute after:inset-0"
+            >{{ recipe().title }}</a
+          >
         } @else {
           {{ recipe().title }}
         }

@@ -1,8 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
-import { App } from './app';
+import { Component } from '@angular/core';
+import { Router, provideRouter } from '@angular/router';
+import { App, upFrom } from './app';
 import { Account } from './core/api-types';
 import { Notices } from './core/notices';
 import { Session } from './core/session';
@@ -10,6 +11,10 @@ import { Session } from './core/session';
 /* The app shell: one navigation on every page, drawn for whoever is signed in. On a wide screen it is a bar of
    links at the top; on a phone it is a row of tabs at the bottom, with the rest behind More. What each account is
    offered follows the prototype (rules.js, sections 3.1 and 3.8). */
+/** Stands in for every page: the shell is what these tests look at. */
+@Component({ template: '' })
+class AnyPage {}
+
 describe('App shell', () => {
   const accounts: Account[] = [
     { id: 1, displayName: 'Alex Rivera', roles: ['HomeCook'], handle: null },
@@ -24,7 +29,7 @@ describe('App shell', () => {
     localStorage.clear();
     TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([{ path: '**', component: AnyPage }]), provideHttpClient(), provideHttpClientTesting()],
     });
     const session = TestBed.inject(Session);
     session.accounts.set(accounts);
@@ -193,5 +198,89 @@ describe('App shell', () => {
     expect(page.querySelector('[data-nav="top"]')?.getAttribute('aria-label')).toBe('Main');
     expect(page.querySelector('[data-nav="tabs"]')?.getAttribute('aria-label')).toBe('Main');
     expect(page.querySelector('header a[href="/"]')?.textContent?.replace(/\s+/g, '')).toBe('Cookfeed');
+  });
+
+  /* Back: a phone app opened from the home screen has no browser Back, so the top bar has one on every page the
+     navigation does not lead to directly. */
+  const backButton = () => page.querySelector<HTMLButtonElement>('header [data-back]');
+
+  async function go(address: string): Promise<void> {
+    await TestBed.inject(Router).navigateByUrl(address);
+    await fixture.whenStable();
+  }
+
+  /** Lets a browser-history move finish: it is announced a moment later, then the router follows it. */
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+  }
+
+  it('has no Back button on the pages the navigation leads to', async () => {
+    await show(4);
+
+    for (const address of ['/', '/plans', '/recipes', '/kitchen', '/orders', '/help', '/studio']) {
+      await go(address);
+      expect(backButton(), address).toBeNull();
+    }
+  });
+
+  it('has a Back button, named for a screen reader, on a page inside another', async () => {
+    await show(1);
+
+    for (const address of ['/plans/3', '/plans/3/reviews', '/recipes/16', '/creators/kenji-kitchen', '/cart', '/list']) {
+      await go(address);
+      expect(backButton()?.getAttribute('aria-label'), address).toBe('Back');
+    }
+  });
+
+  it('goes back to the page the cook came from', async () => {
+    await show(1);
+    // In a test the router follows the browser's history only once it is told to listen.
+    TestBed.inject(Router).setUpLocationChangeListener();
+    await go('/kitchen');
+    await go('/plans/3');
+
+    backButton()!.click();
+    await settle();
+
+    expect(TestBed.inject(Router).url).toBe('/kitchen');
+  });
+
+  it('goes up a level at a time on a page opened by its address, which has nothing to go back to', async () => {
+    await show(1);
+    await go('/plans/3/reviews');
+
+    backButton()!.click();
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/plans/3');
+
+    backButton()!.click();
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/plans');
+    expect(backButton()).toBeNull();
+  });
+});
+
+describe('upFrom: the page one level above an address', () => {
+  it.each([
+    ['/plans/3/reviews', '/plans/3'],
+    ['/plans/3', '/plans'],
+    ['/recipes/16', '/recipes'],
+    ['/list/7', '/list'],
+    ['/list', '/kitchen'],
+    ['/cart', '/'],
+    ['/sign-in', '/'],
+    ['/creators/kenji-kitchen', '/'],
+  ])('%s is under %s', (address, above) => {
+    expect(upFrom(address)).toBe(above);
+  });
+
+  it('puts a recipe opened from a plan under that plan', () => {
+    expect(upFrom('/recipes/5?product=3')).toBe('/plans/3');
+  });
+
+  it('ignores a plan number that is not a number', () => {
+    expect(upFrom('/recipes/5?product=x')).toBe('/recipes');
   });
 });
