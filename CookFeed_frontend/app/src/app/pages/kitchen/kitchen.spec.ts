@@ -1,11 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import axe from 'axe-core';
 import { Account, Purchase, SavedRecipe, Trips } from '../../core/api-types';
 import { Notices } from '../../core/notices';
 import { Session } from '../../core/session';
+import { isoDay } from '../../ui/format';
 import { KitchenPage } from './kitchen';
 
 /* My kitchen (the prototype's kitchen.html): the plans a cook bought (GET /api/me/purchases) and the recipes they
@@ -38,7 +39,7 @@ describe('Kitchen page', () => {
     savedAt: '2026-08-17T12:00:00+00:00',
   });
 
-  const noLists: Trips = { active: null, past: [] };
+  const noLists: Trips = { active: null, open: [], past: [] };
 
   let fixture: ComponentFixture<KitchenPage>;
   let page: HTMLElement;
@@ -153,16 +154,35 @@ describe('Kitchen page', () => {
   });
 
   it('shows the list in use with how many recipes it cooks, and leads to it', async () => {
-    await show(alex, [], [], {
-      active: { id: 7, name: 'Shopping list, November 21', status: 'Shopping', createdAt: '2026-11-21T12:00:00+00:00', completedAt: null, recipeCount: 2 },
-      past: [],
-    });
+    const inUse = { id: 7, name: 'Shopping list, November 21', status: 'Shopping', createdAt: '2026-11-21T12:00:00+00:00', completedAt: null, recipeCount: 2 } as const;
+    await show(alex, [], [], { active: inUse, open: [inUse], past: [] });
 
+    expect(text('[data-your-list] h2')).toBe('Your shopping list');
     expect(text('[data-your-list]')).toContain('Shopping list, November 21');
     expect(text('[data-your-list]')).toContain('2 recipes · Shopping');
     const link = page.querySelector('[data-your-list] a');
     expect(link?.textContent?.trim()).toContain('Open list');
-    expect(link?.getAttribute('href')).toBe('/list');
+    expect(link?.getAttribute('href')).toBe('/list/7');
+  });
+
+  it('shows every list in use, newest first, each leading to its own list', async () => {
+    const first = { id: 7, name: 'Shopping list, November 21', status: 'Shopping', createdAt: '2026-11-21T12:00:00+00:00', completedAt: null, recipeCount: 2 } as const;
+    const second = { ...first, id: 8, name: 'Shopping list, November 21 (2)', status: 'Building', recipeCount: 1 } as const;
+    await show(alex, [], [], { active: second, open: [second, first], past: [] });
+
+    expect(text('[data-your-list] h2')).toBe('Your shopping lists');
+    const cards = Array.from(page.querySelectorAll('[data-your-list] [data-open-list]'));
+    expect(cards.map((card) => card.querySelector('strong')?.textContent?.trim())).toEqual([
+      'Shopping list, November 21 (2)',
+      'Shopping list, November 21',
+    ]);
+    expect(cards.map((card) => card.querySelector('.meta')?.textContent?.trim())).toEqual(['1 recipe · Building', '2 recipes · Shopping']);
+    expect(cards.map((card) => card.querySelector('a')?.getAttribute('href'))).toEqual(['/list/8', '/list/7']);
+    // Each link says which list it opens, for a screen reader moving from link to link.
+    expect(cards.map((card) => card.querySelector('a')?.textContent?.replace(/\s*→$/, '').trim())).toEqual([
+      'Open list: Shopping list, November 21 (2)',
+      'Open list: Shopping list, November 21',
+    ]);
   });
 
   it('tells a cook with no list how to start one', async () => {
@@ -176,15 +196,61 @@ describe('Kitchen page', () => {
   it('keeps the finished lists in a table, each leading to its list', async () => {
     await show(alex, [], [], {
       active: null,
+      open: [],
       past: [
         { id: 7, name: 'Shopping list, November 21', status: 'Done', createdAt: '2026-11-21T12:00:00+00:00', completedAt: '2026-11-22T12:00:00+00:00', recipeCount: 2 },
       ],
     });
 
-    expect(titles('[data-past-lists] th')).toEqual(['List', 'Made', 'Recipes', 'Status']);
+    // The fifth column holds Shop again; its heading is read out, not shown.
+    expect(titles('[data-past-lists] th')).toEqual(['List', 'Made', 'Recipes', 'Status', 'Actions']);
     const cells = titles('[data-past-lists] tbody td');
-    expect(cells).toEqual(['Shopping list, November 21', 'November 21, 2026', '2', 'Done November 22, 2026']);
+    expect(cells).toEqual(['Shopping list, November 21', 'November 21, 2026', '2', 'Done November 22, 2026', 'Shop again']);
     expect(page.querySelector('[data-past-lists] tbody a')?.getAttribute('href')).toBe('/list/7');
+  });
+
+  it('shops a finished list again: makes a new list from it, says so, and opens it', async () => {
+    await show(alex, [], [], {
+      active: null,
+      open: [],
+      past: [
+        { id: 7, name: 'Shopping list, November 21', status: 'Done', createdAt: '2026-11-21T12:00:00+00:00', completedAt: '2026-11-22T12:00:00+00:00', recipeCount: 2 },
+      ],
+    });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const again = page.querySelector<HTMLButtonElement>('[data-past-lists] tbody button')!;
+    expect(again.getAttribute('aria-label')).toBe('Shop again: Shopping list, November 21');
+
+    again.click();
+    const request = http.expectOne('/api/me/trips/7/again');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ today: isoDay(new Date()) });
+    request.flush({ tripId: 9, tripName: 'Shopping list, November 23', created: true, added: 2, alreadyOnList: 0 });
+    await new Promise((done) => setTimeout(done));
+
+    expect(TestBed.inject(Notices).message()?.text).toBe('2 recipes are on a new list.');
+    expect(navigate).toHaveBeenCalledWith(['/list', 9]);
+  });
+
+  it('says why when a finished list cannot be shopped again', async () => {
+    await show(alex, [], [], {
+      active: null,
+      open: [],
+      past: [
+        { id: 7, name: 'Shopping list, November 21', status: 'Done', createdAt: '2026-11-21T12:00:00+00:00', completedAt: '2026-11-22T12:00:00+00:00', recipeCount: 2 },
+      ],
+    });
+
+    page.querySelector<HTMLButtonElement>('[data-past-lists] tbody button')!.click();
+    http.expectOne('/api/me/trips/7/again').flush(
+      { title: 'Not found', detail: 'There is no such list, or nothing there that you can cook from.' },
+      { status: 404, statusText: 'Not Found' },
+    );
+    await new Promise((done) => setTimeout(done));
+
+    const notice = TestBed.inject(Notices).message();
+    expect(notice?.kind).toBe('problem');
+    expect(notice?.text).toBe('There is no such list, or nothing there that you can cook from.');
   });
 
   it('asks a visitor to sign in, and says where to come back to', async () => {

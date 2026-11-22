@@ -1,17 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
 import { CookfeedApi } from '../../core/api';
 import { loadList, loadValue } from '../../core/load';
 import { Notices, problemText } from '../../core/notices';
 import { Session } from '../../core/session';
+import { onNewList } from '../../core/shop-lists';
 import { longDate, plural, productCounts, productTypeLabel } from '../../ui/format';
 import { LoadStateMessage } from '../../ui/load-state';
 import { RecipeCard } from '../../ui/recipe-card';
 
 /**
- * My kitchen (/kitchen): the signed-in cook's shopping list, the plans they bought, the recipes they saved, and the
- * lists they finished, each leading to its page.
+ * My kitchen (/kitchen): the signed-in cook's shopping lists in use, the plans they bought, the recipes they saved,
+ * and the lists they finished, each leading to its page. A finished list can be shopped again.
  * A plan is listed as it was titled when it was bought, with what that purchase holds. A guest is asked to sign in;
  * the admin, who does not shop or save, is told so.
  */
@@ -24,6 +25,7 @@ import { RecipeCard } from '../../ui/recipe-card';
 export class KitchenPage {
   private readonly api = inject(CookfeedApi);
   private readonly notices = inject(Notices);
+  private readonly router = inject(Router);
   protected readonly session = inject(Session);
 
   /** Who the kitchen belongs to: read again when the account changes. A guest and the admin have none. */
@@ -39,19 +41,20 @@ export class KitchenPage {
     computed(() => `${this.cook()} ${this.savesChanged()}`),
   );
 
-  /** The cook's shopping lists: the one in use, and the finished ones. */
+  /** The cook's shopping lists: the ones in use, and the finished ones. */
   protected readonly lists = loadValue(
-    () => (this.cook() === null ? of({ active: null, past: [] }) : this.api.trips()),
+    () => (this.cook() === null ? of({ active: null, open: [], past: [] }) : this.api.trips()),
     this.cook,
   );
 
-  /** The list in use, in a line: "2 recipes · Shopping". Null when there is none. */
-  protected readonly activeList = computed(() => {
-    const active = this.lists.value()?.active ?? null;
-    return active === null
-      ? null
-      : { name: active.name, about: `${plural(active.recipeCount, 'recipe', 'recipes')} · ${active.status}` };
-  });
+  /** Every list in use, newest first, each in a line: "2 recipes · Shopping". */
+  protected readonly openLists = computed(() =>
+    (this.lists.value()?.open ?? []).map((list) => ({
+      id: list.id,
+      name: list.name,
+      about: `${plural(list.recipeCount, 'recipe', 'recipes')} · ${list.status}`,
+    })),
+  );
 
   protected readonly pastLists = computed(() =>
     (this.lists.value()?.past ?? []).map((list) => ({
@@ -74,6 +77,17 @@ export class KitchenPage {
       imageUrl: '/' + (plan.coverImageUrl ?? 'images/products/new.svg'),
     })),
   );
+
+  /** "Shop again": a new list made from a finished one, which stays where it is. Then the new list opens. */
+  protected async shopAgain(list: { id: number }): Promise<void> {
+    try {
+      const result = await firstValueFrom(this.api.shopAgain(list.id));
+      this.notices.say(onNewList(result.added));
+      await this.router.navigate(['/list', result.tripId]);
+    } catch (error) {
+      this.notices.problem(problemText(error, 'A new list could not be made. Please try again.'));
+    }
+  }
 
   protected async unsave(recipe: { id: number; title: string }): Promise<void> {
     try {

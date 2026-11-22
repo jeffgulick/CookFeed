@@ -324,6 +324,9 @@ describe('Plan page', () => {
     const shop = Array.from(page.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Shop this plan')!;
 
     shop.click();
+    // The page first asks which lists the cook has in use: none, so a list is made without a question.
+    http.expectOne('/api/me/trips').flush({ active: null, open: [], past: [] });
+    await new Promise((done) => setTimeout(done));
     const request = http.expectOne('/api/me/trips/items');
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({ productId: owned.id, today: isoDay(new Date()) });
@@ -333,7 +336,7 @@ describe('Plan page', () => {
     await harness.fixture.whenStable();
 
     expect(TestBed.inject(Notices).message()?.text).toBe(`3 recipes from ${owned.title} are on your shopping list.`);
-    expect(page.querySelector('[data-shop-plan] a')?.getAttribute('href')).toBe('/list');
+    expect(page.querySelector('[data-shop-plan] a')?.getAttribute('href')).toBe('/list/7');
   });
 
   it('offers Shop this plan only to someone who owns the plan', async () => {

@@ -39,11 +39,36 @@ public class TripRulesTests
         Assert.Equal(expected, TripRules.CanFinish(status));
     }
 
+    [Theory]
+    [InlineData(TripStatus.Building, false)]
+    [InlineData(TripStatus.Shopping, false)]
+    [InlineData(TripStatus.Sent, false)]
+    [InlineData(TripStatus.Done, true)]
+    public void Only_a_finished_list_is_shopped_again(TripStatus status, bool expected)
+    {
+        Assert.Equal(expected, TripRules.CanShopAgain(status));
+    }
+
     [Fact]
     public void A_new_list_is_named_for_the_day_it_was_made()
     {
         Assert.Equal("Shopping list, November 21", TripRules.ListName(new DateOnly(2026, 11, 21)));
         Assert.Equal("Shopping list, January 5", TripRules.ListName(new DateOnly(2027, 1, 5)));
+    }
+
+    [Fact]
+    public void A_second_list_made_the_same_day_is_numbered_so_the_cook_can_tell_them_apart()
+    {
+        var day = new DateOnly(2026, 11, 21);
+
+        Assert.Equal("Shopping list, November 21", TripRules.ListName(day, []));
+        Assert.Equal("Shopping list, November 21", TripRules.ListName(day, ["Shopping list, November 20"]));
+        Assert.Equal("Shopping list, November 21 (2)", TripRules.ListName(day, ["Shopping list, November 21"]));
+        Assert.Equal("Shopping list, November 21 (3)",
+            TripRules.ListName(day, ["Shopping list, November 21", "Shopping list, November 21 (2)"]));
+        // A number freed by a deleted list is used again.
+        Assert.Equal("Shopping list, November 21 (2)",
+            TripRules.ListName(day, ["Shopping list, November 21", "Shopping list, November 21 (3)"]));
     }
 
     [Theory]

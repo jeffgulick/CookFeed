@@ -9,6 +9,7 @@ import { loadValue } from '../../core/load';
 import { Notices, problemText } from '../../core/notices';
 import { PEOPLE_MAX, PEOPLE_MIN, peopleProblem } from '../../core/people';
 import { Session } from '../../core/session';
+import { ShopLists } from '../../core/shop-lists';
 import { amount, clockTime, dayAndMeal, plural, productCounts, productTypeLabel } from '../../ui/format';
 import { Icon } from '../../ui/icon';
 import { LoadStateMessage } from '../../ui/load-state';
@@ -28,6 +29,7 @@ import { LoadStateMessage } from '../../ui/load-state';
 })
 export class RecipePage {
   private readonly api = inject(CookfeedApi);
+  private readonly shopLists = inject(ShopLists);
   private readonly title = inject(Title);
   private readonly route = inject(ActivatedRoute);
   private readonly notices = inject(Notices);
@@ -169,7 +171,7 @@ export class RecipePage {
         this.people.set(recipe.servings);
         this.playing.set(null);
         this.saved.set(recipe.savedByViewer);
-        this.shopped.set(false);
+        this.shoppedTo.set(null);
         this.saveCount.set(recipe.saveCount);
       }
     });
@@ -203,10 +205,13 @@ export class RecipePage {
     }
   }
 
-  /** True once this recipe has been put on the shopping list from this page, so the page offers the way to the list. */
-  protected readonly shopped = signal(false);
+  /** The list this recipe was put on from this page, so the page offers the way to it; null until then. */
+  protected readonly shoppedTo = signal<number | null>(null);
 
-  /** Puts the recipe on the cook's shopping list, for the people chosen on this page. The list is made if there is none. */
+  /**
+   * Puts the recipe on a shopping list, for the people chosen on this page. With no list in use one is made; with
+   * lists in use the cook is asked which, or a new one, and may cancel.
+   */
   protected async shop(): Promise<void> {
     const recipe = this.recipe.value();
     if (recipe === null) {
@@ -214,8 +219,11 @@ export class RecipePage {
     }
     this.saving.set(true);
     try {
-      const result = await firstValueFrom(this.api.shop({ recipeId: recipe.id, servings: this.people() }));
-      this.shopped.set(true);
+      const result = await this.shopLists.shop({ recipeId: recipe.id, servings: this.people() });
+      if (result === null) {
+        return;
+      }
+      this.shoppedTo.set(result.tripId);
       this.notices.say(
         result.added > 0 ? `${recipe.title} is on your shopping list.` : `${recipe.title} is already on your shopping list.`,
       );

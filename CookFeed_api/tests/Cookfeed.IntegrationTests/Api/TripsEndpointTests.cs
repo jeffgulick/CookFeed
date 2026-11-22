@@ -6,14 +6,14 @@ using Cookfeed.IntegrationTests.Support;
 namespace Cookfeed.IntegrationTests.Api;
 
 /// <summary>
-/// The caller's shopping lists over HTTP (<c>/api/me/trips</c>, DesignDocument.md §3.9): one list at a time, made
-/// the first time a recipe or a plan is shopped; its lines computed from the recipes on it with the arithmetic of
+/// The caller's shopping lists over HTTP (<c>/api/me/trips</c>, DesignDocument.md §3.9): a list is made the first
+/// time a recipe or a plan is shopped, and the next goes on it unless the cook asks for a new list or names another; its lines computed from the recipes on it with the arithmetic of
 /// the shopping list (§7.5), never stored; "Have it" takes a line off; and the list moves from Building to Shopping
 /// to Done. The seed has no lists. Every test that writes builds its own database.
 /// </summary>
 public sealed class TripsEndpointTests(DatabaseFixture databases) : IAsyncDisposable
 {
-    private const int SheetPanChicken = 18, Caprese = 15, ChickenTeriyaki = 5, MisoSoupDraft = 13, FamilyWeek = 4;
+    private const int SheetPanChicken = 18, Caprese = 15, Tamagoyaki = 16, ChickenTeriyaki = 5, MisoSoupDraft = 13, FamilyWeek = 4;
     private const int Alex = 1, Priya = 2, Admin = 6, Sam = 7;
     private readonly Dictionary<string, CookfeedApiFactory> _apis = [];
 
@@ -23,7 +23,79 @@ public sealed class TripsEndpointTests(DatabaseFixture databases) : IAsyncDispos
         var trips = await GetAsync<TripsDto>(await databases.EfWithDbSeederAsync(), "/api/me/trips", Sam);
 
         Assert.Null(trips.Active);
+        Assert.Empty(trips.Open);
         Assert.Empty(trips.Past);
+    }
+
+    [Fact]
+    public async Task A_cook_can_ask_for_a_new_list_while_one_is_in_use_and_both_stay_open()
+    {
+        var connectionString = await OwnDatabaseAsync("trip_second_list");
+        var first = await ShopAsync(connectionString, Sam, new { recipeId = SheetPanChicken });
+
+        var second = await ShopAsync(connectionString, Sam, new { recipeId = Caprese, newList = true });
+
+        Assert.True(second.Created);
+        Assert.NotEqual(first.TripId, second.TripId);
+        // Made the same day, so it is numbered to tell the two apart.
+        Assert.Equal(first.TripName + " (2)", second.TripName);
+        var trips = await GetAsync<TripsDto>(connectionString, "/api/me/trips", Sam);
+        Assert.Equal([second.TripId, first.TripId], trips.Open.Select(t => t.Id));   // newest first
+        Assert.Equal([1, 1], trips.Open.Select(t => t.RecipeCount));
+        // The newest is where the next recipe goes when the cook does not say.
+        Assert.Equal(second.TripId, trips.Active!.Id);
+        Assert.Empty(trips.Past);
+        Assert.Equal([SheetPanChicken], (await GetAsync<TripDto>(connectionString, $"/api/me/trips/{first.TripId}", Sam)).Items.Select(i => i.RecipeId));
+        Assert.Equal([Caprese], (await GetAsync<TripDto>(connectionString, $"/api/me/trips/{second.TripId}", Sam)).Items.Select(i => i.RecipeId));
+    }
+
+    [Fact]
+    public async Task A_recipe_goes_on_the_list_the_cook_names_and_may_be_on_two_lists_at_once()
+    {
+        var connectionString = await OwnDatabaseAsync("trip_named_list");
+        var first = await ShopAsync(connectionString, Sam, new { recipeId = SheetPanChicken });
+        var second = await ShopAsync(connectionString, Sam, new { recipeId = Caprese, newList = true });
+
+        var onFirst = await ShopAsync(connectionString, Sam, new { recipeId = Tamagoyaki, tripId = first.TripId });
+        var capreseToo = await ShopAsync(connectionString, Sam, new { recipeId = Caprese, tripId = first.TripId });
+        var unsaid = await ShopAsync(connectionString, Sam, new { recipeId = Tamagoyaki });
+
+        Assert.Equal((first.TripId, first.TripName, false, 1), (onFirst.TripId, onFirst.TripName, onFirst.Created, onFirst.Added));
+        Assert.Equal((first.TripId, 1, 0), (capreseToo.TripId, capreseToo.Added, capreseToo.AlreadyOnList));
+        // Nothing said: the newest list in use.
+        Assert.Equal((second.TripId, false), (unsaid.TripId, unsaid.Created));
+        Assert.Equal([SheetPanChicken, Tamagoyaki, Caprese],
+            (await GetAsync<TripDto>(connectionString, $"/api/me/trips/{first.TripId}", Sam)).Items.Select(i => i.RecipeId));
+        Assert.Equal([Caprese, Tamagoyaki],
+            (await GetAsync<TripDto>(connectionString, $"/api/me/trips/{second.TripId}", Sam)).Items.Select(i => i.RecipeId));
+        Assert.Equal("2", await ScalarAsync(connectionString, $"SELECT COUNT(*) FROM shopping_trips WHERE user_id = {Sam}"));
+    }
+
+    [Fact]
+    public async Task A_list_that_is_another_cooks_or_finished_or_no_list_at_all_takes_nothing()
+    {
+        var connectionString = await OwnDatabaseAsync("trip_named_refused");
+        var sams = await ShopAsync(connectionString, Sam, new { recipeId = SheetPanChicken });
+        var finished = await ShopAsync(connectionString, Sam, new { recipeId = Caprese, newList = true });
+        await SendAsync(connectionString, HttpMethod.Post, $"/api/me/trips/{finished.TripId}/start", Sam);
+        await SendAsync(connectionString, HttpMethod.Post, $"/api/me/trips/{finished.TripId}/done", Sam);
+
+        var anothers = await SendAsync(connectionString, HttpMethod.Post, "/api/me/trips/items", Alex,
+            new { recipeId = Caprese, tripId = sams.TripId });
+        var done = await SendAsync(connectionString, HttpMethod.Post, "/api/me/trips/items", Sam,
+            new { recipeId = Tamagoyaki, tripId = finished.TripId });
+        var none = await SendAsync(connectionString, HttpMethod.Post, "/api/me/trips/items", Sam,
+            new { recipeId = Tamagoyaki, tripId = 9999 });
+        var both = await SendAsync(connectionString, HttpMethod.Post, "/api/me/trips/items", Sam,
+            new { recipeId = Tamagoyaki, tripId = sams.TripId, newList = true });
+
+        Assert.Equal(HttpStatusCode.NotFound, anothers.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, done.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, none.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, both.StatusCode);
+        // Nothing was written by any of the four: Sam's two lists hold what they held, and Alex has none.
+        Assert.Equal("2", await ScalarAsync(connectionString, "SELECT COUNT(*) FROM shopping_trips"));
+        Assert.Equal("2", await ScalarAsync(connectionString, "SELECT COUNT(*) FROM shopping_trip_items"));
     }
 
     [Fact]
@@ -232,6 +304,83 @@ public sealed class TripsEndpointTests(DatabaseFixture databases) : IAsyncDispos
         var next = await ShopAsync(connectionString, Sam, new { recipeId = Caprese });
         Assert.True(next.Created);
         Assert.NotEqual(result.TripId, next.TripId);
+    }
+
+    [Fact]
+    public async Task A_finished_list_is_shopped_again_as_a_new_list_with_the_same_recipes_people_and_have_its()
+    {
+        var connectionString = await OwnDatabaseAsync("trip_again");
+        var first = await ShopAsync(connectionString, Sam, new { recipeId = SheetPanChicken, servings = 6 });
+        await ShopAsync(connectionString, Sam, new { recipeId = Caprese });
+        var trip = $"/api/me/trips/{first.TripId}";
+        var have = (await GetAsync<TripDto>(connectionString, trip, Sam)).Lines[0];
+        await SendAsync(connectionString, HttpMethod.Put, $"{trip}/skips/{have.IngredientId}", Sam);
+        await SendAsync(connectionString, HttpMethod.Post, $"{trip}/start", Sam);
+        await SendAsync(connectionString, HttpMethod.Post, $"{trip}/done", Sam);
+
+        var again = await ReadAsync<ShopResultDto>(await SendAsync(connectionString, HttpMethod.Post, $"{trip}/again", Sam, new { }));
+
+        Assert.True(again.Created);
+        Assert.NotEqual(first.TripId, again.TripId);
+        Assert.Equal((2, 0), (again.Added, again.AlreadyOnList));
+        Assert.StartsWith("Shopping list, ", again.TripName);
+        var old = await GetAsync<TripDto>(connectionString, trip, Sam);
+        var copy = await GetAsync<TripDto>(connectionString, $"/api/me/trips/{again.TripId}", Sam);
+        Assert.Equal(TripStatus.Building, copy.Status);
+        Assert.Equal(old.Items.Select(i => (i.RecipeId, i.Servings)), copy.Items.Select(i => (i.RecipeId, i.Servings)));
+        Assert.Equal(6, copy.Items[0].Servings);
+        // What the cook had at home last time stays off the new list; they can put it back.
+        Assert.Equal([have.IngredientId], copy.Skipped.Select(s => s.IngredientId));
+        Assert.Equal(old.Lines.Select(l => (l.IngredientId, l.Unit, l.Quantity)), copy.Lines.Select(l => (l.IngredientId, l.Unit, l.Quantity)));
+        // The finished list is kept as it was.
+        Assert.Equal(TripStatus.Done, old.Status);
+        var trips = await GetAsync<TripsDto>(connectionString, "/api/me/trips", Sam);
+        Assert.Equal(again.TripId, Assert.Single(trips.Open).Id);
+        Assert.Equal(first.TripId, Assert.Single(trips.Past).Id);
+    }
+
+    [Fact]
+    public async Task Shopping_again_leaves_out_a_recipe_the_cook_can_no_longer_open_and_makes_no_empty_list()
+    {
+        var connectionString = await OwnDatabaseAsync("trip_again_gone");
+        var first = await ShopAsync(connectionString, Sam, new { recipeId = SheetPanChicken });
+        await ShopAsync(connectionString, Sam, new { recipeId = Caprese });
+        var trip = $"/api/me/trips/{first.TripId}";
+        await SendAsync(connectionString, HttpMethod.Post, $"{trip}/start", Sam);
+        await SendAsync(connectionString, HttpMethod.Post, $"{trip}/done", Sam);
+
+        // The creator unpublishes one of the two recipes.
+        await Sql.ExecuteAsync(connectionString, $"UPDATE recipes SET is_published = false WHERE id = {Caprese}");
+        var one = await ReadAsync<ShopResultDto>(await SendAsync(connectionString, HttpMethod.Post, $"{trip}/again", Sam, new { }));
+        var copy = await GetAsync<TripDto>(connectionString, $"/api/me/trips/{one.TripId}", Sam);
+
+        Assert.Equal(1, one.Added);
+        Assert.Equal([SheetPanChicken], copy.Items.Select(i => i.RecipeId));
+
+        // Then the other: nothing is left to shop, and no empty list is made.
+        await Sql.ExecuteAsync(connectionString, $"UPDATE recipes SET is_published = false WHERE id = {SheetPanChicken}");
+        var none = await SendAsync(connectionString, HttpMethod.Post, $"{trip}/again", Sam, new { });
+
+        Assert.Equal(HttpStatusCode.NotFound, none.StatusCode);
+        Assert.Equal("2", await ScalarAsync(connectionString, "SELECT COUNT(*) FROM shopping_trips"));
+    }
+
+    [Fact]
+    public async Task Only_a_finished_list_of_the_cooks_own_is_shopped_again()
+    {
+        var connectionString = await OwnDatabaseAsync("trip_again_refused");
+        var building = await ShopAsync(connectionString, Sam, new { recipeId = SheetPanChicken });
+        var trip = $"/api/me/trips/{building.TripId}";
+
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(connectionString, HttpMethod.Post, $"{trip}/again", Sam, new { })).StatusCode);
+        await SendAsync(connectionString, HttpMethod.Post, $"{trip}/start", Sam);
+        Assert.Equal(HttpStatusCode.Conflict, (await SendAsync(connectionString, HttpMethod.Post, $"{trip}/again", Sam, new { })).StatusCode);
+        await SendAsync(connectionString, HttpMethod.Post, $"{trip}/done", Sam);
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(connectionString, HttpMethod.Post, $"{trip}/again", Alex, new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(connectionString, HttpMethod.Post, "/api/me/trips/9999/again", Sam, new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(connectionString, HttpMethod.Post, $"{trip}/again", Admin, new { })).StatusCode);
+
+        Assert.Equal("1", await ScalarAsync(connectionString, "SELECT COUNT(*) FROM shopping_trips"));
     }
 
     [Fact]

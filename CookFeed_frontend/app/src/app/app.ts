@@ -10,6 +10,7 @@ import { Session } from './core/session';
 import { ConfirmDialog } from './ui/confirm';
 import { plural } from './ui/format';
 import { Icon, IconName } from './ui/icon';
+import { ListChoiceDialog } from './ui/list-choice-dialog';
 
 interface NavLink {
   path: string;
@@ -59,7 +60,7 @@ export function upFrom(address: string): string {
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CdkMenuTrigger, CdkMenu, CdkMenuItem, Icon, ConfirmDialog],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CdkMenuTrigger, CdkMenu, CdkMenuItem, Icon, ConfirmDialog, ListChoiceDialog],
   templateUrl: './app.html',
 })
 export class App {

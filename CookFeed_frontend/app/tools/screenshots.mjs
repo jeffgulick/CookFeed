@@ -154,6 +154,30 @@ const SHOTS = [
     only: 'desktop',
     before: (page) => page.getByRole('button', { name: 'Alex Rivera' }).click(),
   },
+  {
+    // Noor has a list in use by now, so Shop this recipe asks which list, or a new one.
+    name: 'list-choice',
+    path: '/recipes/16',
+    user: 8,
+    before: async (page) => {
+      await page.getByRole('button', { name: 'Shop this recipe' }).click();
+      await page.getByRole('dialog', { name: 'Add to which shopping list?' }).waitFor();
+    },
+  },
+  {
+    // Last, so the shots above see one list: Noor starts a second list, and the kitchen shows both.
+    name: 'kitchen-two-lists',
+    path: '/kitchen',
+    user: 8,
+    only: 'phone',
+    before: async (page) => {
+      await page.request.post(base + '/api/me/trips/items', {
+        headers: { 'X-User-Id': '8' },
+        data: { recipeId: 16, newList: true },
+      });
+      await page.reload({ waitUntil: 'networkidle' });
+    },
+  },
 ];
 
 // Start from the seed, and put it back afterwards: one shot places an order. The API offers this in Development.

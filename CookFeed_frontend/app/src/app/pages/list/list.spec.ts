@@ -8,6 +8,7 @@ import { Account, ShoppingListLine, Trip, Trips } from '../../core/api-types';
 import { Notices } from '../../core/notices';
 import { Session } from '../../core/session';
 import { Confirm } from '../../ui/confirm';
+import { isoDay } from '../../ui/format';
 import { ListPage } from './list';
 
 /* A shopping list (the prototype's list.html): what to buy, under the aisle each thing is found in; "Have it" for
@@ -42,10 +43,10 @@ describe('Shopping list page', () => {
   };
   const shopping: Trip = { ...building, status: 'Shopping' };
   const done: Trip = { ...building, status: 'Done', canChange: false, completedAt: '2026-11-22T12:00:00+00:00' };
-  const active = (trip: Trip): Trips => ({
-    active: { id: trip.id, name: trip.name, status: trip.status, createdAt: trip.createdAt, completedAt: null, recipeCount: 1 },
-    past: [],
-  });
+  const active = (trip: Trip): Trips => {
+    const summary = { id: trip.id, name: trip.name, status: trip.status, createdAt: trip.createdAt, completedAt: null, recipeCount: 1 };
+    return { active: summary, open: [summary], past: [] };
+  };
 
   let harness: RouterTestingHarness;
   let page: HTMLElement;
@@ -260,7 +261,32 @@ describe('Shopping list page', () => {
     expect(button('Have it: broccoli')).toBeUndefined();
     expect(page.querySelector('[data-list-recipe] input')).toBeNull();
     expect(text('[data-list-recipe]')).toContain('for 4 people');
-    expect(text('[data-hint]')).toBe('This list is done and kept as a record.');
+    expect(text('[data-hint]')).toBe('This list is done and kept as a record. Shop again makes a new list from it.');
+  });
+
+  it('shops a finished list again: makes a new list from it, says so, and opens it', async () => {
+    await open('/list/7');
+    http.expectOne('/api/me/trips/7').flush(done);
+    await settle();
+    expect(button('Shop again')).toBeDefined();
+
+    button('Shop again')!.click();
+    const request = http.expectOne('/api/me/trips/7/again');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ today: isoDay(new Date()) });
+    request.flush({ tripId: 9, tripName: 'Shopping list, November 23', created: true, added: 1, alreadyOnList: 0 });
+    await settle();
+
+    expect(TestBed.inject(Notices).message()?.text).toBe('1 recipe is on a new list.');
+    expect(TestBed.inject(Router).url).toBe('/list/9');
+    http.expectOne('/api/me/trips/9').flush({ ...building, id: 9, name: 'Shopping list, November 23' });
+    await settle();
+    expect(text('h1')).toBe('Shopping list, November 23');
+  });
+
+  it('offers Shop again only on a finished list', async () => {
+    await show(building);
+    expect(button('Shop again')).toBeUndefined();
   });
 
   it('deletes the list after asking, and goes back to the kitchen', async () => {
@@ -282,7 +308,7 @@ describe('Shopping list page', () => {
 
   it('tells a cook with no list in use how to start one', async () => {
     await open('/list');
-    http.expectOne('/api/me/trips').flush({ active: null, past: [] } satisfies Trips);
+    http.expectOne('/api/me/trips').flush({ active: null, open: [], past: [] } satisfies Trips);
     await settle();
 
     expect(text('h1')).toBe('Shopping list');
