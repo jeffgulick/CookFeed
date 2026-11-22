@@ -22,6 +22,8 @@ test('each built page names itself in the browser tab', async ({ page }) => {
     ['/sign-in', 'Sign in | Cookfeed'],
     ['/creators/kenji-kitchen', 'kenji-kitchen | Cookfeed'],
     ['/plans/3', 'Three Weeknights in Japan | Cookfeed'],
+    ['/recipes/16', 'Tamagoyaki | Cookfeed'],
+    ['/plans/3/reviews', 'Reviews of Three Weeknights in Japan | Cookfeed'],
   ]) {
     await openAs(page, 'guest', address);
     await expect(page, address).toHaveTitle(title);

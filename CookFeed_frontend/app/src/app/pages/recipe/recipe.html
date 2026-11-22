@@ -1,0 +1,205 @@
+@let dish = recipe.value();
+@let words = view();
+
+@if (recipe.state() === 'missing') {
+  <span class="pill">Recipe</span>
+  <h1 class="mt-3 text-3xl font-bold md:text-4xl">Recipe not found</h1>
+  <p class="meta mt-3 max-w-prose">There is no recipe at this address.</p>
+  <p class="mt-6"><a routerLink="/recipes" class="btn btn-secondary">Browse the free recipes</a></p>
+} @else if (recipe.state() === 'refused' && locked(); as premium) {
+  <span class="pill">Premium recipe</span>
+  <h1 class="mt-3 text-3xl font-bold md:text-4xl">{{ premium.title }}</h1>
+  <p data-locked class="card mt-5 flex max-w-prose gap-3 p-4 text-ink md:p-5">
+    <app-icon name="lock" class="mt-0.5 text-brand-dark" />
+    <span>
+      @if (session.isAdmin()) {
+        A premium recipe. Only its creator and the cooks who own its plan can open it.
+      } @else if (premium.availableIn.length > 0) {
+        This recipe comes with
+        @for (product of premium.availableIn; track product.productId) {
+          <a [routerLink]="['/plans', product.productId]" class="font-semibold">{{ product.title }}</a
+          >{{ $last ? '.' : ' and ' }}
+        }
+        Buy it to open the recipe.
+      } @else {
+        This recipe came with a plan that is no longer for sale.
+        <a routerLink="/recipes" class="font-semibold">Browse the free recipes</a> or
+        <a routerLink="/plans" class="font-semibold">see the plans</a>.
+      }
+    </span>
+  </p>
+} @else if (dish && words && recipe.state() === 'ready') {
+  <section data-recipe-head>
+    <p data-crumb class="meta">
+      @if (words.plan; as plan) {
+        <a [routerLink]="['/plans', plan.id]" class="font-semibold">{{ plan.title }}</a>
+        @if (plan.day) {
+          &rsaquo; {{ plan.day }}
+        }
+      } @else {
+        <a [routerLink]="['/creators', dish.creator.handle]" class="font-semibold">{{ dish.creator.displayName }}</a>
+        &rsaquo; Recipes
+      }
+    </p>
+
+    <span class="pill mt-4">{{ words.pill }}</span>
+    <h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">{{ dish.title }}</h1>
+    <p data-byline class="meta mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span>by <a [routerLink]="['/creators', dish.creator.handle]" class="font-semibold">{{ dish.creator.handle }}</a></span>
+      @if (dish.creator.isVerified) {
+        <span class="tag-good" title="Cookfeed has confirmed this creator is who they say they are"
+          ><app-icon name="check" [size]="14" /> Verified creator</span
+        >
+      }
+    </p>
+    @if (words.ownedNote; as note) {
+      <p data-owned-note class="mt-3 inline-block rounded-xl border border-good-line bg-good-soft px-3 py-1.5 text-sm font-semibold text-good">
+        {{ note }}
+      </p>
+    }
+    @if (dish.description) {
+      <p class="mt-4 max-w-prose text-lg text-ink-soft md:text-xl">{{ dish.description }}</p>
+    }
+  </section>
+
+  <!-- A stand-in for the video player: the picture, Play, and where the video is among the steps. -->
+  <section data-player aria-label="Video" class="mt-6 overflow-hidden rounded-3xl border border-line bg-espresso text-on-dark">
+    @if (words.imageUrl; as image) {
+      <img [src]="image" [alt]="'Video of ' + dish.title" width="800" height="600" class="aspect-video max-h-[26rem] w-full bg-fill object-cover" />
+    }
+    <div class="flex items-center gap-3 px-4 py-3">
+      <button
+        type="button"
+        aria-label="Play the video"
+        class="grid size-11 shrink-0 place-items-center rounded-full bg-brand text-on-dark hover:bg-brand-dark"
+        (click)="play()"
+      >
+        <app-icon name="play" [size]="20" />
+      </button>
+      <div class="h-2 flex-1 rounded-full bg-on-dark/25" aria-hidden="true">
+        <div class="h-2 rounded-full bg-on-dark" [style.width.%]="player().percent"></div>
+      </div>
+      <span data-player-time class="text-sm tabular-nums">{{ player().time }}</span>
+    </div>
+    <p data-player-note aria-live="polite" class="px-4 pb-3 text-sm text-on-dark-soft">{{ player().note }}</p>
+  </section>
+
+  <div class="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+    <p data-facts class="meta">{{ words.facts }}</p>
+    <span data-save-area class="inline-flex items-center">
+      @if (session.user() === null) {
+        <!-- next carries this page's address, so the sign-in page can offer the way back. -->
+        <a routerLink="/sign-in" [queryParams]="{ next: here }" class="btn btn-secondary btn-small">Sign in to save</a>
+      } @else if (session.canShop() && dish.savedByViewer) {
+        <span class="tag-good"><app-icon name="check" [size]="14" /> Saved in My kitchen</span>
+      }
+    </span>
+  </div>
+  @if (session.user() === null) {
+    <p data-save-note class="meta mt-2 text-sm">Sign in to keep this recipe in My kitchen, put it on your week, and shop it.</p>
+  }
+
+  <section data-ingredients aria-labelledby="ingredientsHeading" class="mt-10">
+    <h2 id="ingredientsHeading" class="text-2xl font-bold md:text-3xl">
+      Ingredients <span class="font-sans text-lg font-normal text-muted">for {{ people() }}</span>
+    </h2>
+    <div class="card mt-4 p-4 md:p-6">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <label for="servingsInput" class="font-semibold">Cooking for</label>
+        <div class="inline-flex items-center rounded-full border border-line-strong">
+          <button
+            type="button"
+            aria-label="One fewer person"
+            class="grid size-11 place-items-center rounded-full text-xl font-bold disabled:opacity-40"
+            [disabled]="atMin()"
+            (click)="step(-1)"
+          >
+            &minus;
+          </button>
+          <input
+            id="servingsInput"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            max="50"
+            step="1"
+            class="w-14 bg-transparent py-2 text-center text-lg font-semibold"
+            [value]="servingsText()"
+            [attr.aria-invalid]="servingsProblem() !== ''"
+            aria-describedby="servingsError"
+            (input)="typed($any($event.target).value)"
+          />
+          <button
+            type="button"
+            aria-label="One more person"
+            class="grid size-11 place-items-center rounded-full text-xl font-bold disabled:opacity-40"
+            [disabled]="atMax()"
+            (click)="step(1)"
+          >
+            +
+          </button>
+        </div>
+        <span class="meta">people</span>
+        <button type="button" class="font-semibold text-brand underline" (click)="reset()">
+          Reset to {{ dish.servings }} as written
+        </button>
+      </div>
+      <p id="servingsError" data-servings-error role="alert" class="mt-2 text-sm font-semibold text-bad">{{ servingsProblem() }}</p>
+
+      <ul class="mt-2 divide-y divide-line">
+        @for (line of ingredients(); track $index) {
+          <li class="py-2"><strong>{{ line.amount }}</strong> {{ line.name }}</li>
+        } @empty {
+          <li class="meta py-2">No ingredients yet.</li>
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section data-method aria-labelledby="methodHeading" class="mt-10">
+    <h2 id="methodHeading" class="text-2xl font-bold md:text-3xl">Method</h2>
+    <ol class="mt-4 grid gap-3">
+      @for (item of steps(); track item.step.stepNumber) {
+        @let current = playing()?.stepNumber === item.step.stepNumber;
+        <li
+          class="card flex gap-4 p-4"
+          [class.border-brand]="current"
+          [class.bg-brand-soft]="current"
+          [attr.aria-current]="current ? 'step' : null"
+        >
+          <span aria-hidden="true" class="grid size-9 shrink-0 place-items-center rounded-full bg-fill font-bold text-ink">{{
+            item.step.stepNumber
+          }}</span>
+          <div class="flex flex-1 flex-col items-start gap-2">
+            <p data-instruction>{{ item.step.instruction }}</p>
+            @if (item.watchAt; as watch) {
+              <button type="button" class="btn btn-secondary btn-small" (click)="playing.set(item.step)">{{ watch }}</button>
+            }
+          </div>
+        </li>
+      }
+    </ol>
+  </section>
+
+  <section data-recipe-foot class="mt-10 rounded-3xl border border-brand-line bg-brand-soft p-5 md:p-7">
+    @if (words.plan; as plan) {
+      <p class="text-lg"><strong>One of {{ plan.counts }} in {{ plan.title }}.</strong></p>
+      <p class="mt-2">
+        <a [routerLink]="['/plans', plan.id]" class="font-semibold text-brand-dark"
+          ><span aria-hidden="true">&larr;</span> Back to {{ plan.title }}</a
+        >
+      </p>
+    } @else {
+      <p class="text-lg"><strong>More from {{ dish.creator.displayName }}</strong></p>
+      <p class="mt-2">
+        <a [routerLink]="['/creators', dish.creator.handle]" class="font-semibold text-brand-dark"
+          >See every recipe from {{ dish.creator.handle }} <span aria-hidden="true">&rarr;</span></a
+        >
+      </p>
+    }
+  </section>
+} @else {
+  <span class="pill">Recipe</span>
+  <h1 class="mt-3 text-3xl font-bold md:text-4xl">Recipe</h1>
+  <app-load-state [state]="recipe.state()" what="recipe" />
+}

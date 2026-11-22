@@ -63,6 +63,25 @@ public class RecipeRepository(CookfeedDbContext db) : IRecipeRepository
                     oir.OrderItem.Order.UserId == viewerId && oir.OrderItem.Order.Status == OrderStatus.Paid)))
             .SingleOrDefaultAsync(cancellationToken);
 
+    public Task<Contracts.Recipes.RecipeLockedDto?> GetLockedAsync(int recipeId, CancellationToken cancellationToken) =>
+        // The title, and the products for sale that hold the recipe (the rule of ProductQueries.IsForSale), once each.
+        db.Recipes.AsNoTracking()
+            .Where(r => r.Id == recipeId)
+            .Select(r => new Contracts.Recipes.RecipeLockedDto(
+                r.Title,
+                db.Products
+                    .Where(ProductQueries.IsForSale)
+                    .Where(p => p.Recipes.Any(pr => pr.RecipeId == r.Id))
+                    .OrderBy(p => p.Id)
+                    .Select(p => new Contracts.Recipes.RecipeLockedProductDto(
+                        p.Id,
+                        p.Title,
+                        p.Type == ProductType.MealPlan
+                            ? Contracts.Storefront.ProductType.MealPlan
+                            : Contracts.Storefront.ProductType.RecipeCollection))
+                    .ToList()))
+            .SingleOrDefaultAsync(cancellationToken);
+
     public Task<Contracts.Recipes.RecipeDetailDto?> GetDetailAsync(int recipeId, int? viewerId,
         CancellationToken cancellationToken) =>
         // AsSplitQuery: the ingredient lines, the steps and the placements are sibling collections. Joined in one
@@ -90,6 +109,13 @@ public class RecipeRepository(CookfeedDbContext db) : IRecipeRepository
                     r.Creator.Handle, r.Creator.User.DisplayName, r.Creator.AvatarUrl, r.Creator.IsVerified),
                 viewerId != null && r.SavedBy.Any(s => s.UserId == viewerId),
                 viewerId != null && r.CreatorId == viewerId,
+                // The viewer's earliest Paid purchase whose snapshot holds the recipe: "Yours through <plan>". The
+                // snapshot, never the live product, decides what a buyer owns (Q14).
+                r.OrderItemRecipes
+                    .Where(oir => oir.OrderItem.Order.UserId == viewerId && oir.OrderItem.Order.Status == OrderStatus.Paid)
+                    .OrderBy(oir => oir.OrderItemId)
+                    .Select(oir => oir.OrderItem.ProductTitle)
+                    .FirstOrDefault(),
                 r.Ingredients
                     .OrderBy(i => i.SortOrder)
                     .Select(i => new Contracts.Recipes.RecipeIngredientDto(

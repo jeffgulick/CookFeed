@@ -27,9 +27,19 @@ export const routes: Routes = [
     title: 'Plan | Cookfeed',
     loadComponent: () => import('./pages/plan/plan').then((m) => m.PlanPage),
   },
-  { path: 'plans/:id/reviews', ...notBuiltYet('Reviews') },
+  {
+    // The page renames the tab after the plan once the reviews have loaded.
+    path: 'plans/:id/reviews',
+    title: 'Reviews | Cookfeed',
+    loadComponent: () => import('./pages/reviews/reviews').then((m) => m.ReviewsPage),
+  },
   { path: 'recipes', ...notBuiltYet('Recipes') },
-  { path: 'recipes/:id', ...notBuiltYet('Recipe') },
+  {
+    // The page renames the tab after the recipe once it has loaded.
+    path: 'recipes/:id',
+    title: 'Recipe | Cookfeed',
+    loadComponent: () => import('./pages/recipe/recipe').then((m) => m.RecipePage),
+  },
   {
     // The page renames the tab after the creator once the storefront has loaded.
     path: 'creators/:handle',

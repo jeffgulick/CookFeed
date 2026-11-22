@@ -174,8 +174,16 @@ Nested Loop
 
 **Endpoint:** `GET /api/recipes/{id}`, optional header `X-User-Id`.
 - An id that names no recipe is a **404**.
-- So is a recipe the viewer may not open: ProductOnly and not bought, or not published and neither theirs
-  nor bought. Its existence is not revealed.
+- So is a recipe that is not published and is neither the viewer's nor bought by them: a draft's existence
+  is not revealed.
+- A **published** ProductOnly recipe the viewer has not bought is a **403** whose body is its title and the
+  products for sale that hold it (`RecipeLockedDto`), and nothing of the recipe itself. *Changed 2026-11-21:*
+  it was a 404. The prototype's recipe page names the plan the recipe comes with, and the plan's own page
+  already shows the recipe's title to everyone, so the 403 gives away nothing new. One extra statement reads
+  it (`RecipeRepository.GetLockedAsync`): the title by primary key, and the products that pass
+  `ProductQueries.IsForSale` and hold the recipe.
+- The recipe also carries `ownedThrough`: the title of the viewer's earliest Paid purchase whose snapshot
+  holds it, for "Yours through *plan*"; one more subquery over `order_item_recipes`.
 
 **Code:** `RecipesController` → `RecipeDetailService` → `RecipeRepository.GetAccessFactsAsync`, then
 `GetDetailAsync`. The rule is `Domain/Access/RecipeAccess.CanOpen`:

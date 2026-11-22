@@ -3,8 +3,8 @@ import { LoadState } from '../core/load';
 
 /**
  * What a list says while it is being read, and when the read failed, so a page never shows an empty space with no
- * explanation. It shows nothing once the list is ready, or when the address names nothing (the page says that
- * itself); the page draws the list.
+ * explanation. It shows nothing once the list is ready, or when the address names nothing or the API refused
+ * (the page says those itself); the page draws the list.
  */
 @Component({
   selector: 'app-load-state',

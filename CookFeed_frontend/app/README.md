@@ -45,7 +45,9 @@ npm run test:smoke
 ```
 
 They start the API and the app themselves when neither is already running; the database container has to be up
-(`docker compose up -d --wait` in `CookFeed_api`). What they check:
+(`docker compose up -d --wait` in `CookFeed_api`). To test an app that is already running at another address,
+set `COOKFEED_APP_URL` (for example `COOKFEED_APP_URL=http://localhost:4201 npm run test:smoke`); the tests
+then start nothing. What they check:
 
 | File | What it checks |
 |---|---|
@@ -56,6 +58,8 @@ They start the API and the app themselves when neither is already running; the d
 | `discover.spec.ts` | what a first-time visitor is told; the plans for sale, the trending recipes and the creators, from the database; a signed-in cook is greeted by name and shown what they own |
 | `creator.spec.ts` | a creator's storefront: who they are, their recipes sorted two ways, what is for sale, and a buy area that changes with who is looking; signing in to buy comes back to the page; a handle nobody has says so |
 | `plan.spec.ts` | a plan's page for someone deciding (price, pitch, recipes locked), a buyer (recipes opened, the list to buy), its creator, the admin, a retired plan, and an address that names no plan |
+| `recipe.spec.ts` | a recipe: ingredients that rescale for the people cooked for, steps that jump the video, the way back to a plan; a premium recipe names its plan to someone who has not bought it; a draft stays private |
+| `reviews.spec.ts` | a plan's reviews: the rating, the star, recommendation and sort controls, and what each kind of account is told about reviewing |
 | `accessibility.spec.ts` | axe finds no WCAG 2.1 A or AA violation (color contrast included) on any page, on either screen size |
 
 A page being converted is added to `BUILT_PAGES` in `e2e/support.ts`, which puts it under every one of those checks.
@@ -90,8 +94,9 @@ src/
       session.ts              who is signed in, and what that account may be offered (the prototype's rules.js)
       caller.interceptor.ts   adds X-User-Id to every call to the API
       api.ts, api-types.ts    one method per API endpoint, and the shapes the API sends
-      load.ts                 reads something for a page and reports loading, ready, missing (404) or failed
+      load.ts                 reads something for a page: loading, ready, missing (404), refused (403) or failed
       buy-state.ts            what a plan's buy area shows a viewer (the prototype's buyState)
+      people.ts               how many people a recipe may be cooked for (the prototype's peopleProblem)
     ui/                 pieces pages share: icons, the recipe card, the plan tile, the creator tile, the buy
                         area, the loading and failed message, and how counts, prices and dates are worded
     pages/              one folder per page

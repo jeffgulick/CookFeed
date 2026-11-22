@@ -57,12 +57,12 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Tests | 517, all passing: Domain 45, Application 65, Integration 407 |
+| Tests | 523, all passing: Domain 45, Application 66, Integration 412 |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 35 tests; SQL verified in `docs/Queries.md` §2, with the 2026-11-21 changes noted there |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
 | Shopping list, `GET /api/me/shopping-list` | Done: 26 tests, incl. 14 Domain tests for `ShoppingListAggregator`; SQL verified in `docs/Queries.md` §3 |
-| Recipe detail, `GET /api/recipes/{id}` | Done: the access rule in `Domain/Access/RecipeAccess` (15 Domain tests), 4 service tests, 21 HTTP tests against Q4 and Q14; SQL verified in `docs/Queries.md` §1b |
+| Recipe detail, `GET /api/recipes/{id}` | Done: the access rule in `Domain/Access/RecipeAccess` (15 Domain tests), 5 service tests, 26 HTTP tests against Q4 and Q14; a premium recipe the viewer has not bought is a 403 naming the plans selling it; SQL verified in `docs/Queries.md` §1b |
 | Plan page, `GET /api/products/{id}` | Done: 13 service tests, 42 HTTP tests against Q5, Q13 and Q15; described in `docs/Queries.md` §1c |
 | Plan shopping list, `GET /api/products/{id}/shopping-list` | Done: the amounts as each recipe writes them, as the prototype's plan page lists them (`Domain/ShoppingList/WrittenShoppingList`, 5 Domain tests); 6 service tests, 17 HTTP tests checked against the same sums in plain SQL |
 | My purchases, `GET /api/me/purchases` | Done: 2 service tests, 15 HTTP tests against Q11 and Q15 |

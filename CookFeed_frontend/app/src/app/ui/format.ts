@@ -40,3 +40,20 @@ export function joinWithAnd(items: string[]): string {
 export function amount(quantity: number): string {
   return String(Math.round(quantity * 100) / 100);
 }
+
+/** Seconds the way a video player shows them: 76 is "1:16". */
+export function clockTime(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/** The day of a meal plan, counted from Monday as day 0. */
+export function dayName(dayOffset: number): string {
+  return DAY_NAMES[dayOffset] ?? '';
+}
+
+/** "Monday dinner": the day and meal a plan puts a recipe on. A placement with no meal named is a dinner. */
+export function dayAndMeal(dayOffset: number, slot: string | null): string {
+  return `${dayName(dayOffset)} ${(slot ?? 'Dinner').toLowerCase()}`;
+}

@@ -11,7 +11,7 @@ export const ACCOUNTS = { guest: null, alex: 1, priya: 2, kenji: 4, admin: 6, sa
 export type AccountName = keyof typeof ACCOUNTS;
 
 /** The pages converted from the prototype so far. Add each page here as it is built. */
-export const BUILT_PAGES = ['/', '/sign-in', '/creators/kenji-kitchen', '/plans/3'];
+export const BUILT_PAGES = ['/', '/sign-in', '/creators/kenji-kitchen', '/plans/3', '/plans/3/reviews', '/recipes/16'];
 
 /** Addresses that still show the "being built" placeholder. Move each to BUILT_PAGES as it is converted. */
 export const PLACEHOLDER_PAGES = ['/plans', '/recipes', '/kitchen', '/orders', '/cart', '/help', '/studio', '/admin'];

@@ -7,7 +7,12 @@ import { defineConfig } from '@playwright/test';
 
    The two servers the tests need are started here when they are not already running: the API (which needs the
    database container up; see CookFeed_api/README.md) and the app's development server. In CI both are always
-   started fresh. */
+   started fresh.
+
+   To test an app that is already running somewhere else (another port, say), set COOKFEED_APP_URL to its address:
+   the tests then use it and start nothing. */
+const appUrl = process.env['COOKFEED_APP_URL'];
+
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
@@ -15,11 +20,11 @@ export default defineConfig({
   // CI keeps an HTML report to upload when the job fails; locally the list is enough.
   reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://localhost:4200',
+    baseURL: appUrl ?? 'http://localhost:4200',
     trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
-  webServer: [
+  webServer: appUrl ? undefined : [
     {
       command: 'dotnet run --project src/Cookfeed.Api',
       cwd: '../../CookFeed_api',

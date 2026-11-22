@@ -26,4 +26,10 @@ public interface IRecipeRepository
     /// access rule: call it only once <see cref="RecipeAccess"/> has allowed the viewer.
     /// </summary>
     Task<RecipeDetailDto?> GetDetailAsync(int recipeId, int? viewerId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The recipe's title and the products for sale that hold it, or null when no recipe has the id. For a viewer
+    /// <see cref="RecipeAccess"/> has refused: it reads nothing else of the recipe.
+    /// </summary>
+    Task<RecipeLockedDto?> GetLockedAsync(int recipeId, CancellationToken cancellationToken);
 }
