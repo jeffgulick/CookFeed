@@ -19,6 +19,7 @@ import {
   SaveState,
   SavedRecipe,
   ShopResult,
+  Studio,
   Storefront,
   Trip,
   Trips,
@@ -200,6 +201,24 @@ export class CookfeedApi {
   /** Starts shopping a list being built, or finishes one being shopped (POST /api/me/trips/{id}/start or /done). */
   moveTrip(tripId: number, to: 'start' | 'done'): Observable<Trip> {
     return this.http.post<Trip>(`/api/me/trips/${tripId}/${to}`, null);
+  }
+
+  /** The signed-in creator's studio (GET /api/me/studio). A 403 for an account that is not a creator. */
+  studio(): Observable<Studio> {
+    return this.http.get<Studio>('/api/me/studio');
+  }
+
+  /**
+   * Publishes one of the creator's recipes, or makes it a draft again (POST /api/me/studio/recipes/{id}/publish or
+   * /unpublish). Answers the whole studio; a 409 says in its detail why the change is not allowed.
+   */
+  setRecipePublished(recipeId: number, published: boolean): Observable<Studio> {
+    return this.http.post<Studio>(`/api/me/studio/recipes/${recipeId}/${published ? 'publish' : 'unpublish'}`, null);
+  }
+
+  /** Retires one of the creator's plans, or puts it back on sale (POST /api/me/studio/products/{id}/retire or /restore). */
+  setProductActive(productId: number, active: boolean): Observable<Studio> {
+    return this.http.post<Studio>(`/api/me/studio/products/${productId}/${active ? 'restore' : 'retire'}`, null);
   }
 
   /** Deletes a list with everything on it (DELETE /api/me/trips/{id}). */

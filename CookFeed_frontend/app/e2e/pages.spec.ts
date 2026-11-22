@@ -38,9 +38,9 @@ test('each built page names itself in the browser tab', async ({ page }) => {
 });
 
 test('a page that is not converted yet says so, and leads back to Discover', async ({ page }) => {
-  await openAs(page, 'kenji', '/studio');
+  await openAs(page, 'admin', '/admin');
 
-  await expect(page.locator('main h1')).toHaveText('My studio');
+  await expect(page.locator('main h1')).toHaveText('Admin');
   await expect(page.locator('main')).toContainText('still being built');
   await page.getByRole('link', { name: 'Back to Discover' }).click();
   await expect(page).toHaveURL('/');

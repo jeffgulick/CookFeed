@@ -442,3 +442,67 @@ export interface ShopResult {
   /** Recipes asked for that were on the list already; a recipe is never on it twice. */
   alreadyOnList: number;
 }
+
+/** One of a creator's own recipes, as their studio lists it. */
+export interface StudioRecipe {
+  id: number;
+  title: string;
+  servings: number;
+  isPublished: boolean;
+  /** 'Public' is free: anyone may open it. 'ProductOnly' is premium: only buyers of a plan it is in. */
+  visibility: 'Public' | 'ProductOnly';
+  saveCount: number;
+  /** The titles of the plans that hold it. */
+  inPlans: string[];
+  /** Why it cannot be published (a draft) or unpublished (a published one) right now; null when it can. */
+  publishProblem: string | null;
+}
+
+/** One of a creator's own plans or collections, as their studio lists it. */
+export interface StudioProduct {
+  id: number;
+  title: string;
+  type: ProductType;
+  priceCents: number;
+  recipeCount: number;
+  mealCount: number | null;
+  /** False once retired. */
+  isActive: boolean;
+  /** On the store now: active, the creator not suspended, and every recipe in it published. */
+  isForSale: boolean;
+  /** Paid order lines for it. */
+  sold: number;
+  /** Why a retired plan cannot go back on sale right now; null when it can, or when it is not retired. */
+  restoreProblem: string | null;
+}
+
+/** A creator's studio (GET /api/me/studio). Every change to a recipe or a plan answers with it too. */
+export interface Studio {
+  handle: string;
+  /** True while Cookfeed has the creator suspended: their plans are off the store. */
+  isSuspended: boolean;
+  stats: {
+    publishedRecipes: number;
+    drafts: number;
+    plansForSale: number;
+    /** Paid order lines. */
+    sales: number;
+    earnedCents: number;
+    saves: number;
+  };
+  /** Drafts included, newest first. */
+  recipes: StudioRecipe[];
+  products: StudioProduct[];
+  /** Every order line that bought one of their plans, newest first, whatever the order's status. */
+  sales: { placedAt: string; buyerName: string; productTitle: string; unitPriceCents: number; status: OrderStatus }[];
+  /** The reviews of their plans that other cooks see, newest first. */
+  reviews: {
+    id: number;
+    reviewerName: string;
+    rating: number;
+    body: string;
+    createdAt: string;
+    productId: number;
+    productTitle: string;
+  }[];
+}

@@ -26,14 +26,21 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   // Saving a recipe and reviewing a plan change a count, a rating and an order that every visitor sees, so those
-  // two specs run after the rest have finished; everything else runs in parallel.
+  // two specs run after the rest have finished; everything else runs in parallel. A creator unpublishing a recipe
+  // and retiring a plan take them off the pages those two read, so that spec runs last of all.
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' }, testIgnore: /(saves|review-write)\.spec\.ts/ },
+    { name: 'chromium', use: { browserName: 'chromium' }, testIgnore: /(saves|review-write|studio-write)\.spec\.ts/ },
     {
       name: 'after',
       use: { browserName: 'chromium' },
       testMatch: /(saves|review-write)\.spec\.ts/,
       dependencies: ['chromium'],
+    },
+    {
+      name: 'last',
+      use: { browserName: 'chromium' },
+      testMatch: /studio-write\.spec\.ts/,
+      dependencies: ['after'],
     },
   ],
   webServer: appUrl ? undefined : [
