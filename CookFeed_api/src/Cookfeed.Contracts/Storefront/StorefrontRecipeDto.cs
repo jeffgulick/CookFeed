@@ -6,6 +6,7 @@ public sealed record StorefrontRecipeDto(
     int Id,
     string Title,
     string? ThumbnailUrl,
+    int Servings,
     int? TotalMinutes,
     int SaveCount,
     DateTimeOffset PublishedAt);

@@ -35,7 +35,7 @@ public class StorefrontServiceTests
     [Fact]
     public async Task Returns_what_the_repository_finds()
     {
-        var storefront = new StorefrontDto("maria-cooks", "Maria Conti", null, null, true, 0, 0, false, [], []);
+        var storefront = new StorefrontDto("maria-cooks", "Maria Conti", null, null, true, false, 0, 0, false, [], []);
         _creators.GetStorefrontAsync("maria-cooks", null, Arg.Any<CancellationToken>()).Returns(storefront);
 
         Assert.Same(storefront, await Service.GetStorefrontAsync("maria-cooks", null, CancellationToken.None));

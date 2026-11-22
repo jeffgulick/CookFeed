@@ -54,9 +54,12 @@ They start the API and the app themselves when neither is already running; the d
 | `keyboard.spec.ts` | the skip link, a visible focus ring, where focus goes after moving to another page, the account menu by keyboard |
 | `sign-in.spec.ts` | the picker lists the database's accounts; choosing one changes the navigation, survives a reload, and is sent to the API |
 | `discover.spec.ts` | what a first-time visitor is told; the plans for sale, the trending recipes and the creators, from the database; a signed-in cook is greeted by name and shown what they own |
+| `creator.spec.ts` | a creator's storefront: who they are, their recipes sorted two ways, what is for sale, and a buy area that changes with who is looking; signing in to buy comes back to the page; a handle nobody has says so |
 | `accessibility.spec.ts` | axe finds no WCAG 2.1 A or AA violation (color contrast included) on any page, on either screen size |
 
 A page being converted is added to `BUILT_PAGES` in `e2e/support.ts`, which puts it under every one of those checks.
+Every test fails on any error the page or the browser console raises. A test that causes one on purpose (the
+browser logs each 404 it receives) names it with `test.use({ expectedErrors: [...] })`; it must then happen.
 
 **Screenshots.** With the API and the app both running:
 
@@ -86,9 +89,10 @@ src/
       session.ts              who is signed in, and what that account may be offered (the prototype's rules.js)
       caller.interceptor.ts   adds X-User-Id to every call to the API
       api.ts, api-types.ts    one method per API endpoint, and the shapes the API sends
-      load-list.ts            reads a list for a page and reports loading, ready or failed
-    ui/                 pieces pages share: icons, the recipe card, the plan tile, the creator tile,
-                        the loading and failed message, and how counts and prices are worded
+      load.ts                 reads something for a page and reports loading, ready, missing (404) or failed
+      buy-state.ts            what a plan's buy area shows a viewer (the prototype's buyState)
+    ui/                 pieces pages share: icons, the recipe card, the plan tile, the creator tile, the buy
+                        area, the loading and failed message, and how counts, prices and dates are worded
     pages/              one folder per page
 public/images/          the pictures the API's data names (images/recipes/5.svg)
 e2e/                    browser smoke tests (Playwright): support.ts, and one spec per concern

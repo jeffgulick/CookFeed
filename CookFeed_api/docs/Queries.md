@@ -454,6 +454,17 @@ subqueries. No new index is needed.
 
 **Endpoint:** `GET /api/creators/{handle}`, optional header `X-User-Id`. An unknown handle is 404.
 
+**Changed 2026-11-21, for the Angular storefront page** (the SQL captured below predates these; to do:
+capture it again):
+- The storefront reports `isSuspended` (`creator_profiles.suspended_at IS NOT NULL`), so the page can say so.
+- The products are the ones **for sale**, not merely active: the rule of §1e and of the product page's
+  `isForSale`, written once as `ProductQueries.IsForSale`. A suspended creator's storefront lists none, and a
+  product holding a recipe that was taken down is left out. A test changes rows and checks that every product
+  a storefront lists is one its own page calls for sale.
+- Each product says whether it is in the viewer's cart (`cart_items`, by its primary key), next to whether
+  the viewer owns it; the page's buy area needs both.
+- Each recipe carries its `servings`, which its card shows.
+
 **Code:** `CreatorsController` → `StorefrontService` → `CreatorRepository.GetStorefrontAsync`. The service
 lower-cases the handle, so `/api/creators/Maria-Cooks` works. It lower-cases the *argument*, not the
 column, so the lookup still uses the unique index.
