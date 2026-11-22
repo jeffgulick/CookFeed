@@ -13,6 +13,7 @@ import { Session } from '../../core/session';
 import { ShopLists } from '../../core/shop-lists';
 import { BuyArea } from '../../ui/buy-area';
 import {
+  longDate,
   amount,
   dayAndMeal,
   dayName,
@@ -70,6 +71,53 @@ export class PlanPage {
 
   protected readonly product = loadValue(() => this.api.product(this.id()), this.reloadWhen);
   protected readonly list = loadValue(() => this.api.productShoppingList(this.id()), this.reloadWhen);
+
+  /** The plan's reviews, read beside the plan, so the newest few are on this page and not only behind a link. */
+  private readonly reviews = loadValue(() => this.api.productReviews(this.id()), this.reloadWhen);
+
+  /**
+   * "What cooks are saying", on the plan's own page: the rating in a line and the three newest reviews that count,
+   * with the way to the rest. Null until the reviews are read, or when they belong to another plan than the one
+   * on screen (while the next plan loads).
+   */
+  protected readonly saying = computed(() => {
+    const reviews = this.reviews.value();
+    if (reviews === null || this.reviews.state() !== 'ready' || String(reviews.productId) !== this.id()) {
+      return null;
+    }
+    const { reviewCount, average, percentRecommend } = reviews.summary;
+    // A review Cookfeed hid, or one whose order was refunded, is not in the rating and is not shown here.
+    const shown = reviews.reviews.filter((review) => review.counts && !review.isHidden).slice(0, 3);
+    const rounded = Math.round(average ?? 0);
+    return {
+      hasReviews: reviewCount > 0 && shown.length > 0,
+      average: average === null ? '' : average.toFixed(1),
+      stars: '★'.repeat(rounded) + '☆'.repeat(5 - rounded),
+      summary:
+        `${plural(reviewCount, 'review', 'reviews')}` +
+        (percentRecommend === null ? '' : ` · ${Math.round(percentRecommend)}% would recommend it`),
+      reviews: shown.map((review) => ({
+        id: review.id,
+        reviewer: review.reviewerName,
+        stars: '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating),
+        starsLabel: `${review.rating} out of 5 stars`,
+        recommends: review.recommends,
+        date: longDate(review.createdAt),
+        body: review.body,
+      })),
+      // The way to every review, and to the form for a buyer who has not reviewed yet.
+      more:
+        reviews.formState === 'CanReview'
+          ? reviewCount > 0
+            ? 'Read every review, or write yours'
+            : 'Write the first review'
+          : reviewCount > shown.length
+            ? `Read all ${reviewCount} reviews`
+            : reviewCount > 0
+              ? 'Open the reviews page'
+              : null,
+    };
+  });
 
   protected readonly state = computed<BuyState>(() => {
     const product = this.product.value();

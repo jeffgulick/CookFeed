@@ -130,6 +130,49 @@
     </section>
   }
 
+  @if (saying(); as said) {
+    <!-- The newest reviews on the plan's own page, for every visitor; the rest are a link away. -->
+    <section data-plan-reviews aria-labelledby="sayingHeading" class="mt-10 md:mt-12">
+      <h2 id="sayingHeading" class="text-2xl font-bold md:text-3xl">What cooks are saying</h2>
+      @if (said.hasReviews) {
+        <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span role="img" [attr.aria-label]="said.average + ' out of 5 stars'" class="text-xl text-star-text">{{ said.stars }}</span
+          >&ngsp;<strong class="text-lg">{{ said.average }}</strong
+          >&ngsp;<span class="meta">{{ said.summary }}</span>
+        </p>
+        <div class="mt-4 grid gap-3 lg:grid-cols-3">
+          @for (review of said.reviews; track review.id) {
+            <article data-plan-review class="card p-4 md:p-5">
+              <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <strong>{{ review.reviewer }}</strong
+                >&ngsp;<span role="img" [attr.aria-label]="review.starsLabel" class="text-star-text">{{ review.stars }}</span>
+              </p>
+              <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                @if (review.recommends) {
+                  <span class="tag-good">Recommends</span>
+                } @else {
+                  <span
+                    class="rounded-full border border-line-strong bg-fill px-2.5 py-0.5 text-[0.8125rem] font-semibold text-ink-soft"
+                    >Does not recommend</span
+                  >
+                }
+                <span class="meta text-sm">{{ review.date }}</span>
+              </p>
+              <p class="mt-2">{{ review.body }}</p>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="meta mt-2">No reviews yet. Cooks who buy this {{ words.noun }} can review it.</p>
+      }
+      @if (said.more; as more) {
+        <p class="mt-4">
+          <a [routerLink]="['/plans', plan.id, 'reviews']" class="font-semibold">{{ more }} <span aria-hidden="true">&rarr;</span></a>
+        </p>
+      }
+    </section>
+  }
+
   @if (deciding()) {
     <section data-reviews-prompt class="mt-10 rounded-3xl border border-brand-line bg-brand-soft p-5 md:p-7">
       <p class="text-lg"><strong>Not sure yet?</strong> See what other home cooks thought of this {{ words.noun }}.</p>
