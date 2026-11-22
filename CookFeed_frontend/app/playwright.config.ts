@@ -25,11 +25,16 @@ export default defineConfig({
     baseURL: appUrl ?? 'http://localhost:4200',
     trace: 'retain-on-failure',
   },
-  // Saving a recipe changes a count and an order that every visitor sees, so saves.spec runs alone, after the
-  // rest have finished; everything else runs in parallel.
+  // Saving a recipe and reviewing a plan change a count, a rating and an order that every visitor sees, so those
+  // two specs run after the rest have finished; everything else runs in parallel.
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' }, testIgnore: /saves\.spec\.ts/ },
-    { name: 'after', use: { browserName: 'chromium' }, testMatch: /saves\.spec\.ts/, dependencies: ['chromium'] },
+    { name: 'chromium', use: { browserName: 'chromium' }, testIgnore: /(saves|review-write)\.spec\.ts/ },
+    {
+      name: 'after',
+      use: { browserName: 'chromium' },
+      testMatch: /(saves|review-write)\.spec\.ts/,
+      dependencies: ['chromium'],
+    },
   ],
   webServer: appUrl ? undefined : [
     {

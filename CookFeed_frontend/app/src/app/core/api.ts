@@ -71,6 +71,19 @@ export class CookfeedApi {
   }
 
   /**
+   * Posts the caller's review of a plan (POST /api/products/{id}/reviews) and answers with the reviews page. Refused
+   * with a sentence in the body's detail when the caller has not bought the plan (403) or already reviewed it (409).
+   */
+  postReview(id: number, review: { rating: number; recommends: boolean; body: string }): Observable<ProductReviews> {
+    return this.http.post<ProductReviews>(`/api/products/${id}/reviews`, review);
+  }
+
+  /** Deletes the caller's own review of a plan (DELETE /api/products/{id}/reviews/mine). A 409 if Cookfeed hid it. */
+  deleteMyReview(id: number): Observable<ProductReviews> {
+    return this.http.delete<ProductReviews>(`/api/products/${id}/reviews/mine`);
+  }
+
+  /**
    * One recipe in full (GET /api/recipes/{id}). A 403 is a premium recipe the caller has not bought, with a
    * RecipeLocked body; a 404 is an id that names no recipe the caller may know about.
    */

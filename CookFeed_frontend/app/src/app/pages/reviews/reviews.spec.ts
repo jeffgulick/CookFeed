@@ -5,7 +5,10 @@ import { Title } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import axe from 'axe-core';
-import { ProductReviews, Review, ReviewFormState } from '../../core/api-types';
+import { Account, ProductReviews, Review, ReviewFormState } from '../../core/api-types';
+import { Notices } from '../../core/notices';
+import { Session } from '../../core/session';
+import { Confirm } from '../../ui/confirm';
 import { ReviewsPage } from './reviews';
 
 /* A plan's reviews (the prototype's reviews.html?product=): the rating in three numbers with a bar per star, the
@@ -66,6 +69,44 @@ describe('Reviews page', () => {
     http.expectOne('/api/products/3/reviews').flush(reviews);
     await harness.fixture.whenStable();
   }
+
+  const priyaShah: Account = { id: 2, displayName: 'Priya Shah', roles: ['HomeCook'], handle: null };
+
+  /** Opens the page signed in as Priya, a buyer. */
+  async function showAsBuyer(reviews: ProductReviews): Promise<void> {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [provideRouter([{ path: 'plans/:id/reviews', component: ReviewsPage }]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    const session = TestBed.inject(Session);
+    session.accounts.set([priyaShah]);
+    session.signIn(priyaShah.id);
+    harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/plans/3/reviews', ReviewsPage);
+    page = harness.routeNativeElement as HTMLElement;
+    http.expectOne('/api/products/3/reviews').flush(reviews);
+    await harness.fixture.whenStable();
+  }
+
+  /** Lets a press, the request it sends and the redraw after it all finish. */
+  async function settle(): Promise<void> {
+    await harness.fixture.whenStable();
+    await new Promise((done) => setTimeout(done));
+    await harness.fixture.whenStable();
+  }
+
+  function fillForm(rating: number, words: string): void {
+    const star = page.querySelector<HTMLInputElement>(`[data-review-form] input[name="rating"][value="${rating}"]`)!;
+    star.checked = true;
+    star.dispatchEvent(new Event('change'));
+    const box = page.querySelector<HTMLTextAreaElement>('#reviewBody')!;
+    box.value = words;
+    box.dispatchEvent(new Event('input'));
+  }
+
+  const submit = () =>
+    page.querySelector<HTMLFormElement>('[data-review-form]')!.dispatchEvent(new Event('submit', { cancelable: true }));
 
   const text = (selector: string) => page.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
   const texts = (selector: string) =>
@@ -249,6 +290,170 @@ describe('Reviews page', () => {
     await click(bar(4));
 
     // Color contrast needs a real browser's rendering; the browser tests check it.
+    const results = await axe.run(page, { rules: { 'color-contrast': { enabled: false }, region: { enabled: false } } });
+
+    expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+  });
+
+  /* ---------- writing a review ---------- */
+
+  const canReview: ProductReviews = { ...unreviewed, formState: 'CanReview' };
+
+  it('offers a buyer the form under their account name, with Yes chosen', async () => {
+    await showAsBuyer(canReview);
+
+    expect(text('[data-review-form]')).toContain('Posting as Priya Shah');
+    expect(text('[data-review-form] legend')).toBe('Rating');
+    expect(texts('[data-review-form] legend')[1]).toBe('Would you recommend this plan to another home cook?');
+    const stars = Array.from(page.querySelectorAll('[data-review-form] input[name="rating"]')) as HTMLInputElement[];
+    expect(stars.map((star) => star.closest('label')?.textContent?.trim())).toEqual([
+      '1 star',
+      '2 stars',
+      '3 stars',
+      '4 stars',
+      '5 stars',
+    ]);
+    expect(stars.some((star) => star.checked)).toBe(false);
+    expect((page.querySelector('[data-review-form] input[name="recommend"][value="yes"]') as HTMLInputElement).checked).toBe(true);
+    expect(page.querySelector('label[for="reviewBody"]')?.textContent?.trim()).toBe('Your review');
+    expect(page.querySelector('#reviewBody')?.getAttribute('maxlength')).toBe('2000');
+    expect(text('[data-review-count-typed]')).toBe('0 / 2000');
+    expect(page.querySelector('[data-review-gate]')).toBeNull();
+  });
+
+  it('shows no form to someone who may not review', async () => {
+    await show({ ...unreviewed, formState: 'MustBuy' });
+
+    expect(page.querySelector('[data-review-form]')).toBeNull();
+  });
+
+  it('says what is missing when Post review is pressed too soon, and posts nothing', async () => {
+    await showAsBuyer(canReview);
+
+    submit();
+    await harness.fixture.whenStable();
+
+    expect(text('#ratingError')).toBe('Choose a rating.');
+    expect(text('#reviewBodyError')).toBe('Write at least 15 characters.');
+    expect(page.querySelector('#reviewBody')?.getAttribute('aria-invalid')).toBe('true');
+    http.expectNone((request) => request.method === 'POST');
+  });
+
+  it('counts the characters as they are typed, and does not count spaces around the text toward the 15', async () => {
+    await showAsBuyer(canReview);
+
+    fillForm(5, '      short      ');
+    submit();
+    await harness.fixture.whenStable();
+
+    expect(text('[data-review-count-typed]')).toBe('17 / 2000');
+    expect(text('#reviewBodyError')).toBe('Write at least 15 characters.');
+    expect(text('#ratingError')).toBe('');
+  });
+
+  it('posts the review, thanks the reviewer, and reads the page again', async () => {
+    await showAsBuyer(canReview);
+    fillForm(4, '  One trip covered the week.  ');
+    const no = page.querySelector<HTMLInputElement>('[data-review-form] input[name="recommend"][value="no"]')!;
+    no.checked = true;
+    no.dispatchEvent(new Event('change'));
+
+    submit();
+    const request = http.expectOne((r) => r.method === 'POST' && r.url === '/api/products/3/reviews');
+    expect(request.request.body).toEqual({ rating: 4, recommends: false, body: 'One trip covered the week.' });
+    const mine = { ...review(9, 'Priya Shah', 4, false, '2026-11-21T18:00:00+00:00'), isMine: true };
+    const after: ProductReviews = {
+      ...unreviewed,
+      formState: 'AlreadyReviewed',
+      summary: { reviewCount: 1, average: 4, percentRecommend: 0, starCounts: [0, 0, 0, 1, 0] },
+      reviews: [mine],
+    };
+    request.flush(after, { status: 201, statusText: 'Created' });
+    await settle();
+    http.expectOne('/api/products/3/reviews').flush(after);
+    await harness.fixture.whenStable();
+
+    expect(names()).toEqual(['Priya Shah']);
+    expect(page.querySelector('[data-review-form]')).toBeNull();
+    expect(text('[data-review-gate]')).toBe('You have reviewed this plan. Thank you!');
+    expect(TestBed.inject(Notices).message()?.text).toBe('Thanks, Priya Shah. Your review is at the top of the list.');
+  });
+
+  it('says what the API said when the review is refused, and keeps what was typed', async () => {
+    await showAsBuyer(canReview);
+    fillForm(5, 'One trip covered the week.');
+
+    submit();
+    http
+      .expectOne((r) => r.method === 'POST')
+      .flush({ detail: 'You have already reviewed this plan. An account reviews a plan once.' }, { status: 409, statusText: 'Conflict' });
+    await settle();
+
+    const notice = TestBed.inject(Notices).message();
+    expect(notice?.kind).toBe('problem');
+    expect(notice?.text).toBe('You have already reviewed this plan. An account reviews a plan once.');
+    expect((page.querySelector('#reviewBody') as HTMLTextAreaElement).value).toBe('One trip covered the week.');
+  });
+
+  it('offers Delete my review on the viewer\'s own review only, and not on one Cookfeed hid', async () => {
+    const mine = { ...priya, isMine: true };
+    await showAsBuyer({ ...weeknights, formState: 'AlreadyReviewed', reviews: [alex, mine, dan] });
+
+    const cards = Array.from(page.querySelectorAll('[data-review]'));
+    expect(cards.map((card) => card.querySelector('button')?.textContent?.trim())).toEqual([
+      undefined,
+      'Delete my review',
+      undefined,
+    ]);
+
+    TestBed.resetTestingModule();
+    await showAsBuyer({ ...weeknights, formState: 'HiddenReview', reviews: [{ ...mine, isHidden: true, counts: false }] });
+    expect(page.querySelector('[data-review] button')).toBeNull();
+  });
+
+  it('deletes the viewer\'s review after asking, says so, and reads the page again', async () => {
+    const mine = { ...priya, isMine: true };
+    await showAsBuyer({ ...weeknights, formState: 'AlreadyReviewed', reviews: [alex, mine, dan] });
+
+    page.querySelector<HTMLButtonElement>('[data-review] button')!.click();
+    await harness.fixture.whenStable();
+    const question = TestBed.inject(Confirm).question();
+    expect(question?.message).toBe('Delete your review of Three Weeknights in Japan?');
+    expect(question?.action).toBe('Delete review');
+    question!.settle(true);
+    await settle();
+
+    const request = http.expectOne((r) => r.method === 'DELETE');
+    expect(request.request.url).toBe('/api/products/3/reviews/mine');
+    const after: ProductReviews = { ...weeknights, formState: 'CanReview', reviews: [alex, dan] };
+    request.flush(after);
+    await settle();
+    http.expectOne('/api/products/3/reviews').flush(after);
+    await harness.fixture.whenStable();
+
+    expect(names()).toEqual(['Alex Rivera', 'Dan Okafor']);
+    expect(TestBed.inject(Notices).message()?.text).toBe('Your review is deleted.');
+    expect(page.querySelector('[data-review-form]')).not.toBeNull();
+  });
+
+  it('keeps the review when the question is answered no', async () => {
+    const mine = { ...priya, isMine: true };
+    await showAsBuyer({ ...weeknights, formState: 'AlreadyReviewed', reviews: [alex, mine, dan] });
+
+    page.querySelector<HTMLButtonElement>('[data-review] button')!.click();
+    await harness.fixture.whenStable();
+    TestBed.inject(Confirm).question()!.settle(false);
+    await settle();
+
+    http.expectNone((r) => r.method === 'DELETE');
+    expect(names().length).toBe(3);
+  });
+
+  it('has no accessibility violations in the form that a structural check can find', async () => {
+    await showAsBuyer(canReview);
+    submit();
+    await harness.fixture.whenStable();
+
     const results = await axe.run(page, { rules: { 'color-contrast': { enabled: false }, region: { enabled: false } } });
 
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
