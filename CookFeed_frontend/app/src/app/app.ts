@@ -3,7 +3,11 @@ import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, viewC
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, skip } from 'rxjs';
+import { Cart } from './core/cart';
+import { Notices } from './core/notices';
 import { Session } from './core/session';
+import { ConfirmDialog } from './ui/confirm';
+import { plural } from './ui/format';
 import { Icon, IconName } from './ui/icon';
 
 interface NavLink {
@@ -33,11 +37,13 @@ const ADMIN: NavLink = { path: '/admin', label: 'Admin', icon: 'admin' };
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CdkMenuTrigger, CdkMenu, CdkMenuItem, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CdkMenuTrigger, CdkMenu, CdkMenuItem, Icon, ConfirmDialog],
   templateUrl: './app.html',
 })
 export class App {
   protected readonly session = inject(Session);
+  protected readonly cart = inject(Cart);
+  protected readonly notices = inject(Notices);
   private readonly router = inject(Router);
   private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
   private readonly moreSheet = viewChild.required<ElementRef<HTMLDialogElement>>('moreSheet');
@@ -67,6 +73,12 @@ export class App {
     ...(this.session.isCreator() ? [STUDIO] : []),
     HELP,
   ]);
+
+  /** What a screen reader says for the cart link: "Cart, 2 items", or just "Cart" when it is empty. */
+  protected readonly cartLabel = computed(() => {
+    const count = this.cart.count();
+    return count === 0 ? 'Cart' : `Cart, ${plural(count, 'item', 'items')}`;
+  });
 
   /** "AR" for Alex Rivera: the account's badge in the top bar. */
   protected readonly initials = computed(() =>

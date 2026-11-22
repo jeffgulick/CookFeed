@@ -72,6 +72,33 @@ public sealed class OrderHistoryEndpointTests(DatabaseFixture databases) : IAsyn
     }
 
     [Fact]
+    public async Task Each_line_says_what_kind_of_product_it_is_and_counts_the_recipes_and_meals_it_held()
+    {
+        // Counted from the purchase snapshot (order_item_recipes), not from the product today. A meal plan may
+        // serve one recipe on several days, so its meals can outnumber its recipes; a collection has no meals.
+        var connectionString = await databases.EfWithDbSeederAsync();
+        var expected = await Sql.QueryLinesAsync(connectionString, """
+            SELECT oi.order_id, oi.product_id, p.type,
+                   (SELECT COUNT(DISTINCT r.recipe_id) FROM order_item_recipes r WHERE r.order_item_id = oi.id),
+                   CASE WHEN p.type = 'MealPlan'
+                        THEN (SELECT COUNT(*) FROM order_item_recipes r WHERE r.order_item_id = oi.id) END
+            FROM order_items oi
+            JOIN orders o ON o.id = oi.order_id
+            JOIN products p ON p.id = oi.product_id
+            WHERE o.user_id = 1
+            ORDER BY o.placed_at DESC, o.id DESC, oi.id
+            """);
+
+        var orders = await GetOrdersAsync(connectionString, callerId: 1);
+
+        var actual = orders.SelectMany(o => o.Items.Select(i =>
+            string.Join(" | ", o.Id, i.ProductId, i.Type, i.RecipeCount, i.MealCount)));
+        Assert.Equal(expected, actual);
+        // The seed's own example: Family Week on a Budget, 5 recipes on 6 meals.
+        Assert.Contains(orders.SelectMany(o => o.Items), i => i is { ProductId: 4, RecipeCount: 5, MealCount: 6 });
+    }
+
+    [Fact]
     public async Task History_shows_the_title_and_price_paid_even_after_the_product_changes()
     {
         // The snapshot rule (DesignDocument.md §6): renaming or repricing a product must not rewrite history.

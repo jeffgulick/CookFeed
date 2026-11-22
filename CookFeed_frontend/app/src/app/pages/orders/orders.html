@@ -1,0 +1,65 @@
+<span class="pill">Account</span>
+<h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Your orders</h1>
+<p data-order-summary class="meta mt-2">{{ summary() }}</p>
+
+@if (session.user() === null) {
+  <!-- next carries this page's address, so the sign-in page can offer the way back. -->
+  <p data-no-orders-here class="card mt-6 max-w-prose p-4 md:p-5">
+    <a routerLink="/sign-in" [queryParams]="{ next: '/orders' }" class="font-semibold">Sign in to see your orders</a>
+  </p>
+} @else if (!session.canShop()) {
+  <p data-no-orders-here class="card mt-6 max-w-prose p-4 md:p-5">Admin accounts do not place orders.</p>
+} @else {
+  <app-load-state [state]="orders.state()" what="orders" />
+
+  @if (orders.state() === 'ready') {
+    @if (cards().length === 0) {
+      <p data-no-orders class="card mt-6 max-w-prose p-4 md:p-5">
+        <strong>No orders yet.</strong>
+        <a routerLink="/plans" class="font-semibold"
+          >See the meal plans and collections <span aria-hidden="true">&rarr;</span></a
+        >
+      </p>
+    } @else {
+      <div class="mt-6 grid max-w-3xl gap-4">
+        @for (order of cards(); track order.id) {
+          <article data-order class="card p-4 md:p-5">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <h2 data-order-number class="font-sans text-lg font-bold">Order {{ order.number }}</h2>
+              <span class="meta">{{ order.date }}</span>
+              <!-- The word says the status; the color only repeats it. -->
+              <span
+                data-status
+                class="ml-auto"
+                [class]="
+                  order.isPaid
+                    ? 'tag-good'
+                    : 'rounded-full border border-line-strong bg-fill px-2.5 py-0.5 text-[0.8125rem] font-semibold text-ink-soft'
+                "
+                >{{ order.status }}</span
+              >
+            </div>
+
+            <ul class="mt-3 divide-y divide-line border-y border-line">
+              @for (item of order.items; track item.productId) {
+                <li class="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2.5">
+                  <a [routerLink]="['/plans', item.productId]" class="font-semibold">{{ item.title }}</a>
+                  <span class="meta">&middot; {{ item.counts }}</span>
+                  <span data-line-price class="ml-auto font-semibold">{{ item.price }}</span>
+                </li>
+              }
+            </ul>
+
+            <p class="mt-3 flex justify-between text-lg font-bold">
+              <span>Total</span>
+              <span data-order-total>{{ order.total }}</span>
+            </p>
+            @if (order.notOwned) {
+              <p class="meta mt-2">{{ order.notOwned }}</p>
+            }
+          </article>
+        }
+      </div>
+    }
+  }
+}

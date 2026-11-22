@@ -47,7 +47,11 @@ npm run test:smoke
 They start the API and the app themselves when neither is already running; the database container has to be up
 (`docker compose up -d --wait` in `CookFeed_api`). To test an app that is already running at another address,
 set `COOKFEED_APP_URL` (for example `COOKFEED_APP_URL=http://localhost:4201 npm run test:smoke`); the tests
-then start nothing. What they check:
+then start nothing.
+
+Each run starts by putting the database back to the seed (`POST /api/dev/reset`, which the API offers in
+Development), so anything bought or put in a cart earlier, by a test or by hand, is gone. The specs that
+change data sign in as accounts no other spec uses. What they check:
 
 | File | What it checks |
 |---|---|
@@ -59,6 +63,9 @@ then start nothing. What they check:
 | `plans-browse.spec.ts` | the Plans page: everything for sale, narrowed to meal plans or collections, sorted by date, price or rating; what a signed-in cook owns |
 | `recipes-browse.spec.ts` | the Recipes page: every free recipe, sorted two ways; Find matches a title or a creator; a premium recipe is never listed |
 | `help.spec.ts` | the Help page: the common questions, each answered, with links on to the pages the answers name |
+| `cart.spec.ts` | the cart: who has one, adding a plan from its page and from a storefront, the count in the header, the totals, taking a line out and emptying it, each after confirming |
+| `checkout.spec.ts` | buying: Place order after confirming, the receipt, the plan now owned and its recipes open, the order in Your orders, the cart empty |
+| `orders.spec.ts` | Your orders: newest first, what each line held and cost, a cancelled order, no orders, a visitor and the admin |
 | `creator.spec.ts` | a creator's storefront: who they are, their recipes sorted two ways, what is for sale, and a buy area that changes with who is looking; signing in to buy comes back to the page; a handle nobody has says so |
 | `plan.spec.ts` | a plan's page for someone deciding (price, pitch, recipes locked), a buyer (recipes opened, the list to buy), its creator, the admin, a retired plan, and an address that names no plan |
 | `recipe.spec.ts` | a recipe: ingredients that rescale for the people cooked for, steps that jump the video, the way back to a plan; a premium recipe names its plan to someone who has not bought it; a draft stays private |
@@ -100,8 +107,11 @@ src/
       load.ts                 reads something for a page: loading, ready, missing (404), refused (403) or failed
       buy-state.ts            what a plan's buy area shows a viewer (the prototype's buyState)
       people.ts               how many people a recipe may be cooked for (the prototype's peopleProblem)
+      cart.ts                 the signed-in cook's cart, shared by the header, the buy areas and the cart page
+      notices.ts              what just happened, said once in a place every page shares
     ui/                 pieces pages share: icons, the recipe card, the plan tile, the creator tile, the buy
-                        area, the loading and failed message, and how counts, prices and dates are worded
+                        area, the confirmation dialog, the loading and failed message, and how counts, prices
+                        and dates are worded
     pages/              one folder per page
 public/images/          the pictures the API's data names (images/recipes/5.svg)
 e2e/                    browser smoke tests (Playwright): support.ts, and one spec per concern

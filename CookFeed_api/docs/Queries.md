@@ -1006,11 +1006,86 @@ Incremental Sort (actual rows=4 loops=1)
 
 ---
 
+## 5. Cart and checkout — *built 2026-11-21; generated SQL not yet captured here*
+
+The API's first writes. Every route is under `/api/me` and takes no user id (DesignDocument.md §9).
+
+**Endpoints**
+
+| Route | Answer |
+|---|---|
+| `GET /api/me/cart` | the cart: the lines that can be bought now, the total, and the titles of lines that cannot |
+| `PUT /api/me/cart/{productId}` | adds the product, once however often it is asked; answers with the cart |
+| `DELETE /api/me/cart/{productId}` | takes it out; no error if it is not there; answers with the cart |
+| `DELETE /api/me/cart` | empties the cart; answers with it |
+| `POST /api/me/checkout` | **201** with the new order (the shape `GET /api/me/orders` lists) |
+
+**Code:** `MyCartController` → `CartService` and `CheckoutService` → `CartRepository`, with the rule in
+`Domain/Access/BuyAccess` (the prototype's `buyState`, checks in the same order).
+
+**Who may buy what**
+
+- Only a home cook has a cart. The admin, and an id no account has, get a **403** on every route.
+- A product the caller made is a **400**; one they already own, or one not for sale, is a **409**; an id no
+  product has is a **404**. Each refusal is a ProblemDetails whose `detail` is a sentence the app shows.
+- "For sale" is `ProductQueries.IsForSale`, the rule the product lists and the storefront use.
+- A line already in the cart can stop being buyable (the product retired, or bought since). `GET` names it in
+  `unavailable` and leaves it out of the lines and the total; checkout leaves it out of the order. This is what
+  the prototype's cart and `placeOrder` do. *Changed from the roadmap*, which had checkout refuse the whole
+  cart with a 409.
+
+**The statements**
+
+- *Read the cart:* one statement over `cart_items` by the leading column of its primary key (`user_id`), joined
+  to the product and its creator, with three subqueries per line: for sale, made by the caller, owned through a
+  Paid order.
+- *Add:* `INSERT INTO cart_items (user_id, product_id, added_at) VALUES (...) ON CONFLICT (user_id, product_id)
+  DO NOTHING`. The primary key already holds a product to one line; `ON CONFLICT` makes two requests arriving
+  together leave one row and no error. The values are parameters.
+- *Remove and empty:* one `DELETE` each (`ExecuteDeleteAsync`), loading nothing.
+- *Checkout*, in one transaction (DesignDocument.md §6):
+  1. `DELETE FROM cart_items WHERE user_id = @caller AND product_id = ANY(@ids)`. The count deleted must equal
+     the number of lines being bought; if not, another checkout got there first, the transaction rolls back and
+     the answer is a 400. The `DELETE` locks those rows, so of two checkouts arriving together the second waits
+     for the first to commit and then finds nothing to buy.
+  2. `DELETE FROM cart_items WHERE user_id = @caller`: what could not be bought leaves the cart too.
+  3. One `SELECT` of the products with their `product_recipes` rows.
+  4. One `SaveChanges`: the `orders` row (`Paid`, `total_cents` the sum of the lines), an `order_items` row per
+     product with the title, price and seller copied, and an `order_item_recipes` row per `product_recipes` row
+     with `recipe_id`, `sort_order`, `day_offset` and `slot` copied.
+- The triggers `cart_items_refuse_self_purchase` and `order_items_refuse_self_purchase` remain the last line of
+  defense: the service refuses a self-purchase first, with a readable message.
+
+**Order history gained three fields** per line for the Your orders page: the product's `type`, and
+`recipeCount` and `mealCount` counted from the purchase snapshot (`order_item_recipes`), not from the product
+today. The statement is still one; the counts are two more subqueries per line.
+
+**`POST /api/dev/reset`** puts the database back to the seed: `TRUNCATE ... RESTART IDENTITY CASCADE` over
+every table of the EF Core model, then the seeder, in one transaction. It is mapped only in Development; in any
+other environment the address is a 404. The browser tests call it before each run.
+
+**Tests:**
+
+- `tests/Cookfeed.Domain.Tests/Access/BuyAccessTests.cs`: each state of the rule, and which states can be
+  checked out.
+- `tests/Cookfeed.Application.Tests/Cart/`: the services with a fake repository: the total, the meal count, the
+  unavailable lines, each refusal, and that nothing is written on a refusal.
+- `tests/Cookfeed.IntegrationTests/Api/CartEndpointTests.cs`, over HTTP: the cart matches the rows in the
+  database; adding twice leaves one row; each refusal's status; removing and emptying touch only the caller's
+  rows; a retired line is named and not charged.
+- `tests/Cookfeed.IntegrationTests/Api/CheckoutEndpointTests.cs`, over HTTP, each on its own database: the 201
+  and the order; the rows written, compared with `product_recipes` row for row; the recipes open at once and
+  the product cannot be added again; two products in one order; a retired line left out; nothing left to buy
+  is a 400 with nothing written; a second checkout is a 400.
+- `DevResetEndpointTests.cs`: every row equal to the seed after a purchase and a reset, and a 404 outside
+  Development.
+
 ## Write paths worth noting
 
-Not "queries" in the assignment's sense, but the writes that keep the denormalized columns correct. **None
-of these is built yet**; they are roadmap items 7, 9 and 10 in `docs/BuildLog.md`. Like every route with the
-caller's own data, they live under `/api/me/…` and take no user id (DesignDocument.md §9).
+Not "queries" in the assignment's sense, but the writes that keep the denormalized columns correct. The cart
+and checkout are built and described in §5 above. **Saving is not built yet** (roadmap item 7 in
+`docs/BuildLog.md`). Like every route with the caller's own data, it lives under `/api/me/…` and takes no user
+id (DesignDocument.md §9).
 
 **Save a recipe** (`PUT /api/me/saves/{recipeId}`; unsave is `DELETE` on the same route; both idempotent):
 - *Access:* requires the `HomeCook` role and, for a `ProductOnly` recipe, the same access check as the
@@ -1028,21 +1103,4 @@ caller's own data, they live under `/api/me/…` and take no user id (DesignDocu
   delete from a hard-deleted account is decremented the same way (DesignDocument.md §3.4).
 - *Check:* `queries.sql` Q16 is the consistency check the integration tests run after each of these.
 
-**Add to cart** (`PUT /api/me/cart/{productId}`):
-- requires `HomeCook`;
-- `CartService` refuses it if the product's creator is the caller ("you cannot buy your own product"), and
-  the controller returns `400`;
-- if anything else tries, the `cart_items_refuse_self_purchase` trigger refuses the row.
-
-**Checkout** (`POST /api/me/checkout`): requires `HomeCook`. `CheckoutService` reads the cart's products
-and builds the order, and `OrderRepository` saves it with a single `SaveChanges`. That inserts:
-- an `orders` row with `total_cents = SUM(price_cents)`;
-- one `order_items` row per product, carrying the `product_title`, `unit_price_cents` and `creator_id`
-  snapshots;
-- one `order_item_recipes` row per `product_recipes` row of each product, with `recipe_id`, `sort_order`,
-  `day_offset` and `slot` copied as they are at that moment.
-
-It then runs `DELETE FROM cart_items WHERE user_id = @caller`. All of it happens in the one transaction EF
-Core opens for that `SaveChanges`, so a failure anywhere leaves the cart intact and no partial order. The
-`order_items_refuse_self_purchase` trigger is the last line of defense against a self-purchase reaching an
-order. The response is `201 Created` with the new order.
+**Add to cart** and **checkout**: see §5.

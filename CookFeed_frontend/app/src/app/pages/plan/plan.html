@@ -42,7 +42,7 @@
       @if (showPrice()) {
         <span data-price class="text-3xl font-bold">{{ words.price }}</span>
       }
-      <app-buy-area [state]="state()" [noun]="words.noun" />
+      <app-buy-area [state]="state()" [noun]="words.noun" [productId]="plan.id" [title]="plan.title" />
     </div>
     @if (deciding()) {
       <p data-price-note class="meta mt-2">{{ words.priceNote }}</p>

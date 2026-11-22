@@ -18,7 +18,36 @@ public class DbSeeder(CookfeedDbContext db)
 
         // All or nothing: a failure part-way leaves the database empty, not half seeded.
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await InsertSeedAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
 
+    /// <summary>
+    /// Puts the database back to the seed: empties every table, starts every id sequence over, and loads the seed
+    /// rows again. All or nothing. Offered through the API in Development only (<c>POST /api/dev/reset</c>), so a
+    /// demonstration or a run of the browser tests starts from the same rows every time.
+    /// </summary>
+    public async Task ResetAsync(CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        // The table names come from the EF Core model, not from a caller, so building the statement from them is safe.
+        var tables = db.Model.GetEntityTypes()
+            .Select(entity => entity.GetTableName())
+            .Where(table => table is not null)
+            .Distinct()
+            .Select(table => $"\"{table}\"");
+#pragma warning disable EF1002 // The statement holds no value from outside the model.
+        await db.Database.ExecuteSqlRawAsync(
+            $"TRUNCATE TABLE {string.Join(", ", tables)} RESTART IDENTITY CASCADE", cancellationToken);
+#pragma warning restore EF1002
+
+        await InsertSeedAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task InsertSeedAsync(CancellationToken cancellationToken)
+    {
         db.Roles.AddRange(SeedData.Roles);
         db.Units.AddRange(SeedData.Units);
         db.Users.AddRange(SeedData.Users);
@@ -41,7 +70,6 @@ public class DbSeeder(CookfeedDbContext db)
         await db.SaveChangesAsync(cancellationToken);
 
         await ResetIdSequencesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
     }
 
     /// <summary>

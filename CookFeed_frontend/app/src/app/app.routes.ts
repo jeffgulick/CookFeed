@@ -55,8 +55,16 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/creator/creator').then((m) => m.CreatorPage),
   },
   { path: 'kitchen', ...notBuiltYet('My kitchen') },
-  { path: 'orders', ...notBuiltYet('Your orders') },
-  { path: 'cart', ...notBuiltYet('Cart') },
+  {
+    path: 'orders',
+    title: 'Your orders | Cookfeed',
+    loadComponent: () => import('./pages/orders/orders').then((m) => m.OrdersPage),
+  },
+  {
+    path: 'cart',
+    title: 'Cart | Cookfeed',
+    loadComponent: () => import('./pages/cart/cart').then((m) => m.CartPage),
+  },
   {
     path: 'help',
     title: 'Help | Cookfeed',

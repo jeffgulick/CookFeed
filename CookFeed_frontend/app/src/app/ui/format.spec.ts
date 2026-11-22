@@ -1,4 +1,4 @@
-import { amount, clockTime, dayAndMeal, joinWithAnd, longDate, plural, price } from './format';
+import { amount, clockTime, dayAndMeal, joinWithAnd, longDate, plural, price, orderNumber } from './format';
 
 /* The two small wordings every page shares (the prototype's plural and formatPrice in common.js). */
 describe('format', () => {
@@ -44,5 +44,11 @@ describe('format', () => {
     expect(dayAndMeal(0, 'Dinner')).toBe('Monday dinner');
     expect(dayAndMeal(6, 'Breakfast')).toBe('Sunday breakfast');
     expect(dayAndMeal(2, null)).toBe('Wednesday dinner');
+  });
+
+  it('writes an order number the way a receipt shows it', () => {
+    expect(orderNumber(7)).toBe('CF-00007');
+    expect(orderNumber(12345)).toBe('CF-12345');
+    expect(orderNumber(123456)).toBe('CF-123456');
   });
 });

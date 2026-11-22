@@ -6,6 +6,7 @@ import { map } from 'rxjs';
 import { CookfeedApi } from '../../core/api';
 import { ProductDetail } from '../../core/api-types';
 import { BuyState, buyState } from '../../core/buy-state';
+import { Cart } from '../../core/cart';
 import { loadValue } from '../../core/load';
 import { Session } from '../../core/session';
 import { BuyArea } from '../../ui/buy-area';
@@ -47,6 +48,7 @@ interface PitchItem {
 export class PlanPage {
   private readonly api = inject(CookfeedApi);
   private readonly session = inject(Session);
+  private readonly cart = inject(Cart);
   private readonly title = inject(Title);
 
   protected readonly id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((params) => params.get('id') ?? '')), {
@@ -67,7 +69,8 @@ export class PlanPage {
       viewerIsCreator: product?.viewerIsCreator ?? false,
       owned: product?.ownedByViewer ?? false,
       forSale: product?.isForSale ?? false,
-      inCart: product?.inCart ?? false,
+      // The cart as it is now, once it has been read: Add to cart changes it without reloading the page.
+      inCart: (product ? this.cart.has(product.id) : null) ?? product?.inCart ?? false,
     });
   });
 

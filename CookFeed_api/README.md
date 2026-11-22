@@ -31,7 +31,8 @@ The four endpoints:
 Since Deliverable 2, from the API roadmap in `docs/BuildLog.md`: recipe detail, `GET /api/recipes/{id}`
 (Queries.md §1b), the plan page and its shopping list, `GET /api/products/{id}` (§1c), my purchases and a
 product's reviews (§1d), the plans for sale and the creators, `GET /api/products` and `GET /api/creators`
-(§1e), CORS for the Angular dev server, and an OpenAPI description at `/openapi/v1.json` in Development.
+(§1e), the cart and checkout, the API's first writes (§5), CORS for the Angular dev server, and an OpenAPI
+description at `/openapi/v1.json` in Development.
 
 **How it is checked.** Each endpoint is tested over HTTP against what the reference queries in
 `queries.sql` return on the same seeded database (Q1, Q2, Q3, Q5, Q8, Q9). For example, the shopping list
@@ -57,7 +58,7 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Tests | 540, all passing: Domain 45, Application 70, Integration 425 |
+| Tests | 618, all passing: Domain 61, Application 90, Integration 467 |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 35 tests; SQL verified in `docs/Queries.md` §2, with the 2026-11-21 changes noted there |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
@@ -69,6 +70,9 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | A product's reviews, `GET /api/products/{id}/reviews` | Done: the form rule in `Domain/Access/ReviewAccess` (11 Domain tests), 16 service tests, 24 HTTP tests against Q12 and Q13 |
 | Plans for sale, `GET /api/products?type=&sort=` | Done: for sale by the same rule as the plan page, a type filter, three sorts, and what the viewer owns; 4 service tests, 16 HTTP tests; described in `docs/Queries.md` §1e |
 | Creators, `GET /api/creators` | Done: every creator as a tile, in the order they joined; 3 HTTP tests |
+| Cart, `GET /api/me/cart`, `PUT` and `DELETE /api/me/cart/{productId}`, `DELETE /api/me/cart` | Done: the buy rule in `Domain/Access/BuyAccess` (16 Domain tests), 15 service tests, 17 HTTP tests; each change answers with the cart; described in `docs/Queries.md` §5 |
+| Checkout, `POST /api/me/checkout` | Done: one transaction writes the Paid order, its lines and their recipe snapshots and empties the cart; 5 service tests, 10 HTTP tests; described in `docs/Queries.md` §5 |
+| Reset to the seed, `POST /api/dev/reset` | Done: Development only, for demonstrations and the browser tests; 2 tests |
 | Accounts for the sign-in picker, `GET /api/accounts` | Done: Development only (`Accounts:PickerEnabled`), no email or password data; 6 tests |
 | CORS and OpenAPI | Done: the Angular dev server may call the API; `/openapi/v1.json` describes it in Development (5 and 9 tests) |
 | Continuous integration | Done: GitHub Actions runs the build and all the tests on every pull request that touches the API (`.github/workflows/api-tests.yml`) |
@@ -118,6 +122,10 @@ dotnet ef database update --project src/Cookfeed.Infrastructure --startup-projec
 dotnet run --project src/Cookfeed.Api  # seeds an empty database in Development, then serves the API
 dotnet test --solution Cookfeed.slnx   # all tests
 ```
+
+Git ignores `.env`, and `.env.example` is committed in its place, which is common practice: the example shows
+which settings a machine needs. The value in it is a placeholder for the database container on your own
+machine, so the project runs without editing anything. It is not a credential for any real service.
 
 Every pull request that touches `CookFeed_api/` runs the same restore, build and tests in GitHub Actions
 (`.github/workflows/api-tests.yml`, against `postgres:16.15`); the result shows on the PR.

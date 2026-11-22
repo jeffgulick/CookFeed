@@ -28,10 +28,19 @@
       @if (session.showShopLinks()) {
         <a
           routerLink="/cart"
-          aria-label="Cart"
-          class="grid size-11 place-items-center rounded-full text-ink-soft no-underline hover:bg-fill hover:text-ink"
+          [attr.aria-label]="cartLabel()"
+          class="relative grid size-11 place-items-center rounded-full text-ink-soft no-underline hover:bg-fill hover:text-ink"
         >
           <app-icon name="cart" />
+          <!-- The count is in the link's label, so the badge itself is not read out a second time. -->
+          @if (cart.count() > 0) {
+            <span
+              data-cart-count
+              aria-hidden="true"
+              class="absolute top-0.5 right-0.5 grid min-w-5 place-items-center rounded-full bg-brand px-1 text-xs leading-5 font-bold text-on-dark"
+              >{{ cart.count() }}</span
+            >
+          }
         </a>
       }
 
@@ -83,6 +92,26 @@
 <main #main id="main" tabindex="-1" class="mx-auto w-full max-w-6xl px-4 pt-6 pb-10 md:px-6 md:pt-10 md:pb-16">
   <router-outlet />
 </main>
+
+<!-- What just happened ("added to your cart"), in one place every page shares. Always in the page, so a screen
+     reader announces the words when they arrive; above the tabs on a phone. -->
+<div
+  data-toast
+  role="status"
+  aria-live="polite"
+  class="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4 md:bottom-6"
+>
+  @if (notices.message(); as notice) {
+    <p
+      class="pointer-events-auto max-w-prose rounded-2xl px-4 py-3 text-center font-medium shadow-lift"
+      [class]="notice.kind === 'problem' ? 'border border-bad bg-bad-soft text-ink' : 'bg-espresso text-on-dark ring-1 ring-on-dark/40'"
+    >
+      {{ notice.text }}
+    </p>
+  }
+</div>
+
+<app-confirm-dialog />
 
 <!-- Room for the tabs on a phone, so the footer's last line is never under them. -->
 <footer class="border-t border-line bg-espresso pb-24 text-on-dark-soft md:pb-0">
