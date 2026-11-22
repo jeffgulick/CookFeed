@@ -133,9 +133,15 @@ dotnet tool restore
 Installs the pinned `dotnet-ef` tool from `dotnet-tools.json`. Once per clone.
 
 ```bash
+dotnet restore
+```
+Downloads the NuGet packages. Once per clone, and before the next command: on a fresh clone
+`dotnet ef database update` stops with "Assets file ... not found. Run a NuGet package restore" without it.
+
+```bash
 dotnet ef database update --project src/Cookfeed.Infrastructure --startup-project src/Cookfeed.Api
 ```
-Applies the EF Core migrations to the `cookfeed` database: 19 tables and the four triggers. Run it
+Applies the EF Core migrations to the `cookfeed` database: 23 tables and the seven triggers. Run it
 again after pulling a commit that adds a migration.
 
 ```bash

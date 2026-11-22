@@ -16,7 +16,7 @@ in place until the last page is done. A page that is not converted yet says so.
 
 Start the API first. On a fresh clone that takes the one-time steps in
 [`CookFeed_api/README.md`, "Getting started"](../../CookFeed_api/README.md#getting-started): copy `.env.example` to
-`.env`, start the database, and create its tables with `dotnet ef database update`. After that, from `CookFeed_api`:
+`.env`, start the database, restore the packages, and create its tables with `dotnet ef database update`. After that, from `CookFeed_api`:
 `docker compose up -d --wait`, then `dotnet run --project src/Cookfeed.Api`.
 
 Then, from this folder:
