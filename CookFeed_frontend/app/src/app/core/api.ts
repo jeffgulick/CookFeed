@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { isoDay } from '../ui/format';
 import {
   CartData,
   CreatorTile,
@@ -17,7 +18,10 @@ import {
   RecipeDetail,
   SaveState,
   SavedRecipe,
+  ShopResult,
   Storefront,
+  Trip,
+  Trips,
 } from './api-types';
 
 /**
@@ -147,6 +151,51 @@ export class CookfeedApi {
   /** Unsaves a recipe (DELETE /api/me/saves/{id}). */
   unsave(recipeId: number): Observable<SaveState> {
     return this.http.delete<SaveState>(`/api/me/saves/${recipeId}`);
+  }
+
+  /** The signed-in cook's shopping lists: the one in use, and the finished ones (GET /api/me/trips). */
+  trips(): Observable<Trips> {
+    return this.http.get<Trips>('/api/me/trips');
+  }
+
+  /** One shopping list in full (GET /api/me/trips/{id}); a 404 when the caller has no list with the id. */
+  trip(id: number | string): Observable<Trip> {
+    return this.http.get<Trip>(`/api/me/trips/${encodeURIComponent(id)}`);
+  }
+
+  /**
+   * "Shop this recipe" or "Shop this plan" (POST /api/me/trips/items): onto the list in use, which is made when
+   * there is none. A 404 when nothing asked for is something the caller may cook from.
+   */
+  shop(what: { recipeId: number; servings?: number } | { productId: number }): Observable<ShopResult> {
+    // The cook's own day names a new list: late in the evening the server's UTC day is already tomorrow.
+    return this.http.post<ShopResult>('/api/me/trips/items', { ...what, today: isoDay(new Date()) });
+  }
+
+  /** Changes the people a recipe on a list is cooked for (PUT /api/me/trips/{id}/items/{recipeId}). */
+  setTripServings(tripId: number, recipeId: number, servings: number): Observable<Trip> {
+    return this.http.put<Trip>(`/api/me/trips/${tripId}/items/${recipeId}`, { servings });
+  }
+
+  /** Takes a recipe off a list (DELETE /api/me/trips/{id}/items/{recipeId}). */
+  removeTripRecipe(tripId: number, recipeId: number): Observable<Trip> {
+    return this.http.delete<Trip>(`/api/me/trips/${tripId}/items/${recipeId}`);
+  }
+
+  /** "Have it": takes an ingredient off a list (PUT), or puts it back (DELETE). */
+  setTripSkip(tripId: number, ingredientId: number, skipped: boolean): Observable<Trip> {
+    const url = `/api/me/trips/${tripId}/skips/${ingredientId}`;
+    return skipped ? this.http.put<Trip>(url, null) : this.http.delete<Trip>(url);
+  }
+
+  /** Starts shopping a list being built, or finishes one being shopped (POST /api/me/trips/{id}/start or /done). */
+  moveTrip(tripId: number, to: 'start' | 'done'): Observable<Trip> {
+    return this.http.post<Trip>(`/api/me/trips/${tripId}/${to}`, null);
+  }
+
+  /** Deletes a list with everything on it (DELETE /api/me/trips/{id}). */
+  deleteTrip(tripId: number): Observable<void> {
+    return this.http.delete<void>(`/api/me/trips/${tripId}`);
   }
 
   /** The signed-in cook's orders, newest first, cancelled ones included (GET /api/me/orders). */

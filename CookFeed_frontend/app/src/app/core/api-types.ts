@@ -392,3 +392,50 @@ export interface Purchase {
   /** What the purchase holds. My kitchen lists the plan, not its recipes, so their shape is not spelled out here. */
   recipes: unknown[];
 }
+
+export type TripStatus = 'Building' | 'Shopping' | 'Sent' | 'Done';
+
+/** One shopping list in a few words, for My kitchen. */
+export interface TripSummary {
+  id: number;
+  name: string;
+  status: TripStatus;
+  createdAt: string;
+  completedAt: string | null;
+  recipeCount: number;
+}
+
+/** The signed-in cook's shopping lists (GET /api/me/trips): the one in use, if any, and the finished ones. */
+export interface Trips {
+  active: TripSummary | null;
+  /** Newest first. */
+  past: TripSummary[];
+}
+
+/** One shopping list in full (GET /api/me/trips/{id}). Every change to a list answers with it too. */
+export interface Trip {
+  id: number;
+  name: string;
+  status: TripStatus;
+  createdAt: string;
+  completedAt: string | null;
+  /** True while the list is being built or shopped; a finished list is read-only. */
+  canChange: boolean;
+  /** The recipes the list cooks, each for a number of people. */
+  items: { recipeId: number; title: string; servings: number }[];
+  /** What to buy, by aisle then name. */
+  lines: ShoppingListLine[];
+  /** Ingredients already at home, taken off the list with "Have it". */
+  skipped: { ingredientId: number; ingredient: string }[];
+}
+
+/** What "Shop this recipe" or "Shop this plan" did (POST /api/me/trips/items). */
+export interface ShopResult {
+  tripId: number;
+  tripName: string;
+  /** True when the list was made just now. */
+  created: boolean;
+  added: number;
+  /** Recipes asked for that were on the list already; a recipe is never on it twice. */
+  alreadyOnList: number;
+}

@@ -31,7 +31,7 @@ The four endpoints:
 Since Deliverable 2, from the API roadmap in `docs/BuildLog.md`: recipe detail, `GET /api/recipes/{id}`
 (Queries.md §1b), the plan page and its shopping list, `GET /api/products/{id}` (§1c), my purchases and a
 product's reviews (§1d), the plans for sale and the creators, `GET /api/products` and `GET /api/creators`
-(§1e), the cart and checkout, the API's first writes (§5), saved recipes (§6), writing and deleting a review (§7), CORS for the Angular dev server, and an OpenAPI
+(§1e), the cart and checkout, the API's first writes (§5), saved recipes (§6), writing and deleting a review (§7), shopping lists (§8), CORS for the Angular dev server, and an OpenAPI
 description at `/openapi/v1.json` in Development.
 
 **How it is checked.** Each endpoint is tested over HTTP against what the reference queries in
@@ -58,7 +58,7 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Tests | 693, all passing: Domain 68, Application 112, Integration 513 |
+| Tests | 754, all passing: Domain 93, Application 112, Integration 549 |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 35 tests; SQL verified in `docs/Queries.md` §2, with the 2026-11-21 changes noted there |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
@@ -73,6 +73,7 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Cart, `GET /api/me/cart`, `PUT` and `DELETE /api/me/cart/{productId}`, `DELETE /api/me/cart` | Done: the buy rule in `Domain/Access/BuyAccess` (16 Domain tests), 15 service tests, 17 HTTP tests; each change answers with the cart; described in `docs/Queries.md` §5 |
 | Checkout, `POST /api/me/checkout` | Done: one transaction writes the Paid order, its lines and their recipe snapshots and empties the cart; 5 service tests, 10 HTTP tests; described in `docs/Queries.md` §5 |
 | Writing a review, `POST /api/products/{id}/reviews` and `DELETE /api/products/{id}/reviews/mine` | Done: allowed exactly when the reviews page shows the caller the form (`ReviewAccess`); 13 service tests, 18 HTTP tests; described in `docs/Queries.md` §7 |
+| Shopping lists, `/api/me/trips` | Done: one list in use at a time, made by "Shop this recipe" or "Shop this plan"; lines computed with the shopping list's arithmetic; Have it, people, start, done, delete; the rules in `Domain/ShoppingList/TripRules` (25 Domain tests) and 23 HTTP tests; described in `docs/Queries.md` §8 |
 | Saved recipes, `GET /api/me/saves`, `PUT` and `DELETE /api/me/saves/{recipeId}` | Done: who may save in `Domain/Access/RecipeAccess.CanSave` (7 Domain tests), 9 service tests, 17 HTTP tests against Q6 and Q16; the database's trigger keeps `save_count`; described in `docs/Queries.md` §6 |
 | Reset to the seed, `POST /api/dev/reset` | Done: Development only, for demonstrations and the browser tests; 2 tests |
 | Accounts for the sign-in picker, `GET /api/accounts` | Done: Development only (`Accounts:PickerEnabled`), no email or password data; 6 tests |

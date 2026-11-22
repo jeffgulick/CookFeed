@@ -47,6 +47,15 @@
     @if (deciding()) {
       <p data-price-note class="meta mt-2">{{ words.priceNote }}</p>
     }
+    @if (state() === 'owned') {
+      <!-- A buyer shops the plan as they bought it: every recipe goes on their one shopping list. -->
+      <p data-shop-plan class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <button type="button" class="btn btn-primary btn-small" [disabled]="shopping()" (click)="shopPlan()">Shop this plan</button>
+        @if (shopped()) {
+          <a routerLink="/list" class="font-semibold">Open your shopping list <span aria-hidden="true">&rarr;</span></a>
+        }
+      </p>
+    }
   </section>
 
   @if (deciding()) {

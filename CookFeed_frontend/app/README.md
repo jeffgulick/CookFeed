@@ -14,7 +14,11 @@ in place until the last page is done. A page that is not converted yet says so.
 
 ## Run it
 
-Start the API first (from `CookFeed_api`: `docker compose up -d --wait`, then `dotnet run --project src/Cookfeed.Api`).
+Start the API first. On a fresh clone that takes the one-time steps in
+[`CookFeed_api/README.md`, "Getting started"](../../CookFeed_api/README.md#getting-started): copy `.env.example` to
+`.env`, start the database, and create its tables with `dotnet ef database update`. After that, from `CookFeed_api`:
+`docker compose up -d --wait`, then `dotnet run --project src/Cookfeed.Api`.
+
 Then, from this folder:
 
 ```bash
@@ -45,7 +49,7 @@ npm run test:smoke
 ```
 
 They start the API and the app themselves when neither is already running; the database container has to be up
-(`docker compose up -d --wait` in `CookFeed_api`). To test an app that is already running at another address,
+(`docker compose up -d --wait` in `CookFeed_api`) and its tables created (the one-time steps above). To test an app that is already running at another address,
 set `COOKFEED_APP_URL` (for example `COOKFEED_APP_URL=http://localhost:4201 npm run test:smoke`); the tests
 then start nothing.
 
@@ -69,6 +73,7 @@ change data sign in as accounts no other spec uses. What they check:
 | `kitchen.spec.ts` | My kitchen: the plans a cook bought and the recipes they saved, a cook who has bought nothing, a visitor and the admin |
 | `saves.spec.ts` | saving a recipe from its page, finding it in My kitchen, and unsaving it there; the count every visitor sees follows. It runs after all the other specs, because a save changes that count |
 | `review-write.spec.ts` | writing a review: the form under the buyer's name, what it says is missing, posting, everyone seeing it, and deleting it after confirming. It runs after all the other specs, because a review changes a plan's rating |
+| `shopping-list.spec.ts` | the shopping list: Shop this recipe makes it; Have it and put back; the people for a recipe; Start shopping, ticking, and Done shopping; the kitchen's list and past lists |
 | `creator.spec.ts` | a creator's storefront: who they are, their recipes sorted two ways, what is for sale, and a buy area that changes with who is looking; signing in to buy comes back to the page; a handle nobody has says so |
 | `plan.spec.ts` | a plan's page for someone deciding (price, pitch, recipes locked), a buyer (recipes opened, the list to buy), its creator, the admin, a retired plan, and an address that names no plan |
 | `recipe.spec.ts` | a recipe: ingredients that rescale for the people cooked for, steps that jump the video, the way back to a plan; a premium recipe names its plan to someone who has not bought it; a draft stays private |

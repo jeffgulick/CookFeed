@@ -62,3 +62,9 @@ export function dayAndMeal(dayOffset: number, slot: string | null): string {
 export function orderNumber(id: number): string {
   return 'CF-' + String(id).padStart(5, '0');
 }
+
+/** A day as the API reads it, "2026-11-21", by the calendar where the reader is, not by UTC. */
+export function isoDay(date: Date): string {
+  const two = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
+}

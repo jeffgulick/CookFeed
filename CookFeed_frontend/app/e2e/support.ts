@@ -27,6 +27,7 @@ export const BUILT_PAGES = [
   '/cart',
   '/orders',
   '/kitchen',
+  '/list',
   '/creators/kenji-kitchen',
   '/plans/3',
   '/plans/3/reviews',

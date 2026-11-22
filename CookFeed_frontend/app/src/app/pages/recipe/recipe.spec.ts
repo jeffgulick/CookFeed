@@ -8,6 +8,7 @@ import axe from 'axe-core';
 import { Account, ProductDetail, RecipeDetail, RecipeLocked } from '../../core/api-types';
 import { Notices } from '../../core/notices';
 import { Session } from '../../core/session';
+import { isoDay } from '../../ui/format';
 import { RecipePage } from './recipe';
 
 /* A recipe's page (the prototype's recipe.html?id=): what goes in, for however many people, and how to make it,
@@ -255,6 +256,45 @@ describe('Recipe page', () => {
     expect(notice?.kind).toBe('problem');
     expect(notice?.text).toBe('There is no recipe with that id that you can save.');
     expect(text('[data-save-area]')).toBe('Save recipe');
+  });
+
+  it('shops the recipe for the people on the page, says so, and leads to the list', async () => {
+    await show(tamagoyaki, alex);
+    await typePeople('6');
+
+    button('Shop this recipe').click();
+    const request = http.expectOne('/api/me/trips/items');
+    expect(request.request.method).toBe('POST');
+    // The cook's own day goes with it, so a list made late in the evening is named for today, not tomorrow.
+    expect(request.request.body).toEqual({ recipeId: 16, servings: 6, today: isoDay(new Date()) });
+    request.flush({ tripId: 7, tripName: 'Shopping list, November 21', created: true, added: 1, alreadyOnList: 0 });
+    await harness.fixture.whenStable();
+
+    expect(TestBed.inject(Notices).message()?.text).toBe('Tamagoyaki is on your shopping list.');
+    const link = page.querySelector('[data-shop-area] a');
+    expect(link?.textContent).toContain('Open your shopping list');
+    expect(link?.getAttribute('href')).toBe('/list');
+  });
+
+  it('says so when the recipe was on the list already', async () => {
+    await show(tamagoyaki, alex);
+
+    button('Shop this recipe').click();
+    http
+      .expectOne('/api/me/trips/items')
+      .flush({ tripId: 7, tripName: 'Shopping list, November 21', created: false, added: 0, alreadyOnList: 1 });
+    await harness.fixture.whenStable();
+
+    expect(TestBed.inject(Notices).message()?.text).toBe('Tamagoyaki is already on your shopping list.');
+  });
+
+  it('offers Shop this recipe only to a cook who could save the recipe', async () => {
+    await show(tamagoyaki);
+    expect(button('Shop this recipe')).toBeUndefined();
+
+    TestBed.resetTestingModule();
+    await show(tamagoyaki, admin);
+    expect(button('Shop this recipe')).toBeUndefined();
   });
 
   it('offers no Save on a draft, which cannot be saved even by its creator', async () => {

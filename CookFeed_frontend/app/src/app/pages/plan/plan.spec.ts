@@ -6,7 +6,9 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import axe from 'axe-core';
 import { Account, ProductDetail, ProductRecipe, ProductShoppingList } from '../../core/api-types';
+import { Notices } from '../../core/notices';
 import { Session } from '../../core/session';
+import { isoDay } from '../../ui/format';
 import { PlanPage } from './plan';
 
 /* A meal plan or collection's page (the prototype's product.html?id=). What it shows follows where the viewer
@@ -315,5 +317,28 @@ describe('Plan page', () => {
     const results = await axe.run(page, { rules: { 'color-contrast': { enabled: false }, region: { enabled: false } } });
 
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+  });
+
+  it('lets a buyer shop the whole plan, says how many recipes went on the list, and leads to it', async () => {
+    await show(owned, { lines: [], fromRecipes: [], lockedRecipes: [] } as unknown as ProductShoppingList, alex);
+    const shop = Array.from(page.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Shop this plan')!;
+
+    shop.click();
+    const request = http.expectOne('/api/me/trips/items');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ productId: owned.id, today: isoDay(new Date()) });
+    request.flush({ tripId: 7, tripName: 'Shopping list, November 21', created: true, added: 3, alreadyOnList: 0 });
+    await harness.fixture.whenStable();
+    await new Promise((done) => setTimeout(done));
+    await harness.fixture.whenStable();
+
+    expect(TestBed.inject(Notices).message()?.text).toBe(`3 recipes from ${owned.title} are on your shopping list.`);
+    expect(page.querySelector('[data-shop-plan] a')?.getAttribute('href')).toBe('/list');
+  });
+
+  it('offers Shop this plan only to someone who owns the plan', async () => {
+    await show({ ...owned, ownedByViewer: false }, { lines: [], fromRecipes: [], lockedRecipes: [] } as unknown as ProductShoppingList, alex);
+
+    expect(Array.from(page.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Shop this plan')).toBe(false);
   });
 });

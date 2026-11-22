@@ -60,6 +60,17 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/kitchen/kitchen').then((m) => m.KitchenPage),
   },
   {
+    // /list is the list in use; /list/7 is one list, such as a finished one. The page renames the tab.
+    path: 'list',
+    title: 'Shopping list | Cookfeed',
+    loadComponent: () => import('./pages/list/list').then((m) => m.ListPage),
+  },
+  {
+    path: 'list/:id',
+    title: 'Shopping list | Cookfeed',
+    loadComponent: () => import('./pages/list/list').then((m) => m.ListPage),
+  },
+  {
     path: 'orders',
     title: 'Your orders | Cookfeed',
     loadComponent: () => import('./pages/orders/orders').then((m) => m.OrdersPage),
