@@ -5,6 +5,10 @@ namespace Cookfeed.Contracts.Recipes;
 /// <param name="PublishedAt">Null only for a draft, which only its creator can open.</param>
 /// <param name="SavedByViewer">False when the request names no viewer.</param>
 /// <param name="ViewerIsCreator">True when the viewer made this recipe; such a viewer may be looking at a draft.</param>
+/// <param name="OwnedThrough">
+/// The title of the viewer's Paid purchase whose snapshot holds this recipe, for "Yours through <i>plan</i>"; null
+/// when no purchase does. It comes from the purchase, so it is still named after the plan leaves the store.
+/// </param>
 /// <param name="IncludedIn">
 /// Every placement of this recipe in an active product, in product order. A meal plan that serves it twice (Family
 /// Week's oats) lists it twice, once per day and slot.
@@ -26,6 +30,7 @@ public sealed record RecipeDetailDto(
     RecipeCreatorDto Creator,
     bool SavedByViewer,
     bool ViewerIsCreator,
+    string? OwnedThrough,
     IReadOnlyList<RecipeIngredientDto> Ingredients,
     IReadOnlyList<RecipeStepDto> Steps,
     IReadOnlyList<RecipePlacementDto> IncludedIn);

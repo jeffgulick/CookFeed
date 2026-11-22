@@ -5,14 +5,17 @@ import { Observable, catchError, distinctUntilChanged, map, of, switchMap } from
 
 /**
  * Where the reading of something from the API stands. "missing" is the API's 404: the address names nothing, which
- * a page says differently from "could not be loaded".
+ * a page says differently from "could not be loaded". "refused" is its 403: the thing exists and this viewer may not
+ * have it; what the API said about it is in <code>refusal</code>.
  */
-export type LoadState = 'loading' | 'ready' | 'failed' | 'missing';
+export type LoadState = 'loading' | 'ready' | 'failed' | 'missing' | 'refused';
 
 /** One thing read from the API, and where the reading stands. The value is null until the first read succeeds. */
 export interface LoadedValue<T> {
   readonly value: Signal<T | null>;
   readonly state: Signal<LoadState>;
+  /** The body of the API's 403 when the state is "refused"; null otherwise. */
+  readonly refusal: Signal<unknown>;
 }
 
 /** A list read from the API, and where the reading stands. The list is empty until the first read succeeds. */
@@ -21,11 +24,11 @@ export interface LoadedList<T> {
   readonly state: Signal<LoadState>;
 }
 
-type Outcome<T> = { state: 'ready'; value: T } | { state: 'failed' | 'missing' };
+type Outcome<T> = { state: 'ready'; value: T } | { state: 'failed' | 'missing' } | { state: 'refused'; refusal: unknown };
 
 /**
- * Reads one thing from the API for a page, and reports whether it is still loading, ready, missing (404) or
- * failed, so the page can say which. Give it <code>reloadWhen</code> to read again each time that value changes:
+ * Reads one thing from the API for a page, and reports whether it is still loading, ready, missing (404), refused
+ * (403) or failed, so the page can say which. Give it <code>reloadWhen</code> to read again each time that value changes:
  * a page that depends on who is signed in, or on the address, passes those. A failed read does not stop a later
  * one, and the last value stays until a newer one arrives.
  *
@@ -35,6 +38,7 @@ type Outcome<T> = { state: 'ready'; value: T } | { state: 'failed' | 'missing' }
 export function loadValue<T>(read: () => Observable<T>, reloadWhen?: Signal<unknown>): LoadedValue<T> {
   const value = signal<T | null>(null);
   const state = signal<LoadState>('loading');
+  const refusal = signal<unknown>(null);
   const when = reloadWhen === undefined ? of(null) : toObservable(reloadWhen).pipe(distinctUntilChanged());
 
   when
@@ -43,9 +47,7 @@ export function loadValue<T>(read: () => Observable<T>, reloadWhen?: Signal<unkn
       switchMap(() =>
         read().pipe(
           map((result): Outcome<T> => ({ state: 'ready', value: result })),
-          catchError((error: unknown) =>
-            of<Outcome<T>>({ state: error instanceof HttpErrorResponse && error.status === 404 ? 'missing' : 'failed' }),
-          ),
+          catchError((error: unknown) => of(outcomeOf<T>(error))),
         ),
       ),
       takeUntilDestroyed(),
@@ -54,10 +56,22 @@ export function loadValue<T>(read: () => Observable<T>, reloadWhen?: Signal<unkn
       if (outcome.state === 'ready') {
         value.set(outcome.value);
       }
+      refusal.set(outcome.state === 'refused' ? outcome.refusal : null);
       state.set(outcome.state);
     });
 
-  return { value: value.asReadonly(), state: state.asReadonly() };
+  return { value: value.asReadonly(), state: state.asReadonly(), refusal: refusal.asReadonly() };
+}
+
+/** What a failed read means: the API's 404 and 403 are answers; anything else is a failure. */
+function outcomeOf<T>(error: unknown): Outcome<T> {
+  if (error instanceof HttpErrorResponse && error.status === 404) {
+    return { state: 'missing' };
+  }
+  if (error instanceof HttpErrorResponse && error.status === 403) {
+    return { state: 'refused', refusal: error.error };
+  }
+  return { state: 'failed' };
 }
 
 /** loadValue for a list: the same states, with an empty list until the first read succeeds. */

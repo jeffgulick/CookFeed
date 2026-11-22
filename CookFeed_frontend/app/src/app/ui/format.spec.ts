@@ -1,4 +1,4 @@
-import { amount, joinWithAnd, longDate, plural, price } from './format';
+import { amount, clockTime, dayAndMeal, joinWithAnd, longDate, plural, price } from './format';
 
 /* The two small wordings every page shares (the prototype's plural and formatPrice in common.js). */
 describe('format', () => {
@@ -31,5 +31,18 @@ describe('format', () => {
     expect(amount(2.5)).toBe('2.5');
     expect(amount(0.666)).toBe('0.67');
     expect(amount(500)).toBe('500');
+  });
+
+  it('writes seconds the way a video player shows them', () => {
+    expect(clockTime(0)).toBe('0:00');
+    expect(clockTime(8)).toBe('0:08');
+    expect(clockTime(76)).toBe('1:16');
+    expect(clockTime(600)).toBe('10:00');
+  });
+
+  it('names the day and meal a plan puts a recipe on', () => {
+    expect(dayAndMeal(0, 'Dinner')).toBe('Monday dinner');
+    expect(dayAndMeal(6, 'Breakfast')).toBe('Sunday breakfast');
+    expect(dayAndMeal(2, null)).toBe('Wednesday dinner');
   });
 });

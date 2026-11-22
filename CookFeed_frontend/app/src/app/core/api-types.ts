@@ -203,3 +203,108 @@ export interface ProductShoppingList {
   /** The recipes left off because the viewer may not open them yet. */
   lockedRecipes: string[];
 }
+
+/** One ingredient line of a recipe, as the creator wrote it. */
+export interface RecipeIngredient {
+  sortOrder: number;
+  quantity: number;
+  /** The unit's abbreviation: "g", "tbsp". */
+  unit: string;
+  ingredient: string;
+  displayText: string | null;
+  /** How it is prepared ("for the pan"); null when the recipe does not say. */
+  preparation: string | null;
+  isOptional: boolean;
+}
+
+/** One numbered step of a recipe. */
+export interface RecipeStep {
+  stepNumber: number;
+  instruction: string;
+  /** Where the step starts in the video, for "Watch at 0:16"; null when it is not marked. */
+  videoTimestampSeconds: number | null;
+}
+
+/** One place a recipe appears in a product a cook can buy. */
+export interface RecipePlacement {
+  productId: number;
+  productTitle: string;
+  productType: ProductType;
+  dayOffset: number | null;
+  slot: MealSlot | null;
+  ownedByViewer: boolean;
+}
+
+/** One recipe in full (GET /api/recipes/{id}). */
+export interface RecipeDetail {
+  id: number;
+  title: string;
+  description: string | null;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  servings: number;
+  prepMinutes: number | null;
+  cookMinutes: number | null;
+  totalMinutes: number | null;
+  saveCount: number;
+  /** False for a draft, or a recipe taken out of the store; only its creator or its buyers see it then. */
+  isPublished: boolean;
+  visibility: 'Public' | 'ProductOnly';
+  publishedAt: string | null;
+  creator: { handle: string; displayName: string; avatarUrl: string | null; isVerified: boolean };
+  savedByViewer: boolean;
+  viewerIsCreator: boolean;
+  /** The title of the viewer's purchase that holds this recipe, for "Yours through ..."; null when none does. */
+  ownedThrough: string | null;
+  ingredients: RecipeIngredient[];
+  steps: RecipeStep[];
+  includedIn: RecipePlacement[];
+}
+
+/** What the API says about a premium recipe the viewer has not bought: the body of its 403. */
+export interface RecipeLocked {
+  title: string;
+  /** The products for sale that hold the recipe; empty when none is for sale any more. */
+  availableIn: { productId: number; title: string; type: ProductType }[];
+}
+
+/** Where a viewer stands with reviewing a product; the API works it out (the prototype's reviewState). */
+export type ReviewFormState =
+  | 'SignIn'
+  | 'NoShop'
+  | 'YourOwn'
+  | 'AlreadyReviewed'
+  | 'HiddenReview'
+  | 'RefundedReview'
+  | 'MustBuy'
+  | 'CanReview';
+
+/** One review of a product. */
+export interface Review {
+  id: number;
+  reviewerName: string;
+  /** 1 to 5 stars. */
+  rating: number;
+  recommends: boolean;
+  body: string;
+  createdAt: string;
+  isMine: boolean;
+  /** Hidden by the admin: sent only to the admin and to its author. */
+  isHidden: boolean;
+  /** False when it is hidden or its author's order was refunded: it is not in the rating. */
+  counts: boolean;
+  reviewerIsCreator: boolean;
+}
+
+/** A product's reviews, as one viewer sees them (GET /api/products/{id}/reviews). */
+export interface ProductReviews {
+  productId: number;
+  type: ProductType;
+  title: string;
+  creator: { handle: string; displayName: string; isVerified: boolean };
+  /** Over the reviews that count. starCounts[0] is the number of one-star reviews. */
+  summary: { reviewCount: number; average: number | null; percentRecommend: number | null; starCounts: number[] };
+  formState: ReviewFormState;
+  /** Newest first. */
+  reviews: Review[];
+}

@@ -6,10 +6,12 @@ import {
   FeedPage,
   FeedSort,
   ProductDetail,
+  ProductReviews,
   ProductShoppingList,
   ProductSort,
   ProductTile,
   ProductType,
+  RecipeDetail,
   Storefront,
 } from './api-types';
 
@@ -49,6 +51,19 @@ export class CookfeedApi {
   /** "What you'll buy" for a plan: the ingredients of the recipes the caller may open, as written. */
   productShoppingList(id: string): Observable<ProductShoppingList> {
     return this.http.get<ProductShoppingList>(`/api/products/${encodeURIComponent(id)}/shopping-list`);
+  }
+
+  /** A plan's reviews, the rating, and where the caller stands with reviewing it (GET /api/products/{id}/reviews). */
+  productReviews(id: string): Observable<ProductReviews> {
+    return this.http.get<ProductReviews>(`/api/products/${encodeURIComponent(id)}/reviews`);
+  }
+
+  /**
+   * One recipe in full (GET /api/recipes/{id}). A 403 is a premium recipe the caller has not bought, with a
+   * RecipeLocked body; a 404 is an id that names no recipe the caller may know about.
+   */
+  recipe(id: string): Observable<RecipeDetail> {
+    return this.http.get<RecipeDetail>(`/api/recipes/${encodeURIComponent(id)}`);
   }
 
   /** Every creator, in the order they joined (GET /api/creators). */

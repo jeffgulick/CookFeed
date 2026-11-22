@@ -24,6 +24,18 @@ const SHOTS = [
   { name: 'sign-in', path: '/sign-in', user: null },
   { name: 'creator-guest', path: '/creators/kenji-kitchen', user: null },
   { name: 'plan-deciding', path: '/plans/3', user: null },
+  { name: 'recipe-free', path: '/recipes/16', user: null },
+  { name: 'recipe-from-plan', path: '/recipes/5?product=3', user: 1 },
+  { name: 'recipe-locked', path: '/recipes/5', user: null, only: 'desktop' },
+  { name: 'reviews', path: '/plans/3/reviews', user: null },
+  { name: 'reviews-buyer', path: '/plans/3/reviews', user: 1, only: 'desktop' },
+  {
+    name: 'recipe-ingredients',
+    path: '/recipes/16',
+    user: null,
+    only: 'phone',
+    before: (page) => page.getByRole('heading', { name: /Ingredients/ }).scrollIntoViewIfNeeded(),
+  },
   { name: 'plan-buyer', path: '/plans/3', user: 1 },
   { name: 'plan-creator', path: '/plans/3', user: 4, only: 'desktop' },
   {

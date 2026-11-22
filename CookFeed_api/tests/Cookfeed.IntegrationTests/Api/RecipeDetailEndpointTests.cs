@@ -9,8 +9,10 @@ namespace Cookfeed.IntegrationTests.Api;
 
 /// <summary>
 /// <c>GET /api/recipes/{id}</c> over HTTP, against the database <c>DbSeeder</c> builds. The ingredient lines are held to
-/// <c>docs/sql/queries.sql</c> Q4 and who may open a ProductOnly recipe to Q14, run on the same database. Anything the
-/// viewer may not open is a 404, the same as an id that does not exist. These tests only read.
+/// <c>docs/sql/queries.sql</c> Q4 and who may open a ProductOnly recipe to Q14, run on the same database. A published
+/// premium recipe the viewer has not bought is a 403 that names it and the plans selling it, as the prototype's recipe
+/// page does; a draft that is not the viewer's is a 404, the same as an id that does not exist. The test that changes
+/// rows builds its own database.
 /// </summary>
 public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyncDisposable
 {
@@ -66,15 +68,17 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
     public async Task Every_viewer_opens_a_product_only_recipe_exactly_when_Q14_or_authorship_allows()
     {
         var connection = await ConnectionStringAsync();
-        var recipeIds = (await Sql.QueryAsync(connection, "SELECT title, id, creator_id FROM recipes"))
-            .ToDictionary(row => row[0]!, row => (Id: int.Parse(row[1]!), CreatorId: int.Parse(row[2]!)));
+        var recipeIds = (await Sql.QueryAsync(connection, "SELECT title, id, creator_id, is_published FROM recipes"))
+            .ToDictionary(row => row[0]!, row => (Id: int.Parse(row[1]!), CreatorId: int.Parse(row[2]!), IsPublished: bool.Parse(row[3]!)));
         var userIds = (await Sql.QueryAsync(connection, "SELECT display_name, id FROM users"))
             .ToDictionary(row => row[0]!, row => int.Parse(row[1]!));
 
         foreach (var row in await Sql.QueryAsync(connection, SqlFiles.Query(14)))
         {
             var (recipe, viewer, q14) = (recipeIds[row[0]!], userIds[row[1]!], bool.Parse(row[2]!));
-            var expected = q14 || viewer == recipe.CreatorId ? HttpStatusCode.OK : HttpStatusCode.NotFound;
+            // Locked, not hidden: a published premium recipe says which plan it comes with. A draft stays a 404.
+            var expected = q14 || viewer == recipe.CreatorId ? HttpStatusCode.OK
+                : recipe.IsPublished ? HttpStatusCode.Forbidden : HttpStatusCode.NotFound;
 
             var response = await SendAsync($"/api/recipes/{recipe.Id}", viewer.ToString(CultureInfo.InvariantCulture));
 
@@ -83,11 +87,44 @@ public sealed class RecipeDetailEndpointTests(DatabaseFixture databases) : IAsyn
     }
 
     [Fact]
-    public async Task A_product_only_recipe_is_404_to_a_signed_out_visitor()
+    public async Task A_premium_recipe_the_viewer_has_not_bought_is_403_naming_it_and_the_plans_selling_it()
     {
         var response = await SendAsync($"/api/recipes/{Onigiri}");
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var locked = System.Text.Json.JsonSerializer.Deserialize<RecipeLockedDto>(body, System.Text.Json.JsonSerializerOptions.Web)!;
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("Onigiri Three Ways", locked.Title);
+        Assert.Equal([(3, "Three Weeknights in Japan")], locked.AvailableIn.Select(p => (p.ProductId, p.Title)));
+        // Nothing of the recipe itself is given away.
+        Assert.DoesNotContain("ingredient", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("instruction", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task A_locked_recipe_names_only_the_plans_that_are_for_sale()
+    {
+        // With Three Weeknights retired, the onigiri is still locked, and no plan is offered for it.
+        var connection = await databases.CreateMigratedDatabaseAsync("lockedrecipe");
+        await DatabaseFixture.SeedWithDbSeederAsync(connection);
+        await Sql.ExecuteAsync(connection, "UPDATE products SET is_active = FALSE WHERE id = 3");
+        await using var api = new CookfeedApiFactory(connection);
+
+        var response = await api.CreateClient().GetAsync($"/api/recipes/{Onigiri}", TestContext.Current.CancellationToken);
+        var locked = await response.Content.ReadFromJsonAsync<RecipeLockedDto>(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(locked!.AvailableIn);
+    }
+
+    [Theory]
+    [InlineData(Alex, Teriyaki, "Three Weeknights in Japan")]   // Alex bought the plan that holds it
+    [InlineData(Kenji, Teriyaki, null)]                          // its creator did not buy it
+    [InlineData(Alex, CacioEPepe, null)]                         // a free recipe is in no purchase
+    [InlineData(null, CacioEPepe, null)]
+    public async Task Owned_through_names_the_viewers_purchase_that_holds_the_recipe(int? viewer, int recipeId, string? through)
+    {
+        Assert.Equal(through, (await GetRecipeAsync(recipeId, viewer)).OwnedThrough);
     }
 
     [Fact]

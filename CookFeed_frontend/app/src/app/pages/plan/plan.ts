@@ -9,11 +9,19 @@ import { BuyState, buyState } from '../../core/buy-state';
 import { loadValue } from '../../core/load';
 import { Session } from '../../core/session';
 import { BuyArea } from '../../ui/buy-area';
-import { amount, joinWithAnd, plural, price, productCounts, productNoun, productTypeLabel } from '../../ui/format';
+import {
+  amount,
+  dayAndMeal,
+  dayName,
+  joinWithAnd,
+  plural,
+  price,
+  productCounts,
+  productNoun,
+  productTypeLabel,
+} from '../../ui/format';
 import { LoadStateMessage } from '../../ui/load-state';
 import { PlanRecipeCard } from './plan-recipe-card';
-
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 /** One line of the pitch: a lead in bold, then the rest of the sentence. */
 interface PitchItem {
@@ -90,7 +98,7 @@ export class PlanPage {
       recipes: product.recipes.map((recipe) => ({
         recipe,
         // "Monday dinner" for a meal plan's placement; nothing for a collection.
-        label: recipe.dayOffset === null ? undefined : `${DAY_NAMES[recipe.dayOffset]} ${(recipe.slot ?? 'Dinner').toLowerCase()}`,
+        label: recipe.dayOffset === null ? undefined : dayAndMeal(recipe.dayOffset, recipe.slot),
       })),
     };
   });
@@ -148,7 +156,7 @@ function pitch(product: ProductDetail, noun: 'plan' | 'collection'): PitchItem[]
   ];
   if (product.type === 'MealPlan') {
     // The distinct days of the plan, in order: "Monday, Wednesday and Thursday".
-    const days = [...new Set(product.recipes.map((recipe) => DAY_NAMES[recipe.dayOffset ?? 0]))];
+    const days = [...new Set(product.recipes.map((recipe) => dayName(recipe.dayOffset ?? 0)))];
     items.push(
       {
         lead: `Every ingredient for all ${plural(product.mealCount ?? 0, 'meal', 'meals')},`,
