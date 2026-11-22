@@ -74,6 +74,24 @@ test('a buyer sees the recipes opened and everything to buy, with no price or pi
   await expect(list.locator('tbody tr').first()).toContainText('Beverages');
 });
 
+test('a buyer opens a recipe by pressing anywhere on its card, not only its title', async ({ page }) => {
+  await openAs(page, 'alex', '/plans/3');
+
+  // A press on the picture, in the card's top corner.
+  await page.locator('[data-included] [data-plan-recipe]').first().click({ position: { x: 24, y: 24 } });
+
+  await expect(page).toHaveURL('/recipes/5?product=3');
+});
+
+test('a locked recipe card leads nowhere', async ({ page }) => {
+  await openAs(page, 'guest', '/plans/3');
+
+  // A press on the picture, in the card's top corner.
+  await page.locator('[data-included] [data-plan-recipe]').first().click({ position: { x: 24, y: 24 } });
+
+  await expect(page).toHaveURL('/plans/3');
+});
+
 test('a cook who can open only some of a collection is told what is not on the list yet', async ({ page }) => {
   // Alex owns the focaccia through the Roman Pasta Collection, and has not bought the ciabatta.
   await openAs(page, 'alex', '/plans/2');

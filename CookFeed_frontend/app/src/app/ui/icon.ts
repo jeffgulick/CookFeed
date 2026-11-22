@@ -19,6 +19,7 @@ const ICONS = {
   check: ['M5 12l5 5L20 7'],
   close: ['M6 6l12 12', 'M18 6L6 18'],
   arrow: ['M5 12h14', 'M13 6l6 6-6 6'],
+  back: ['M19 12H5', 'M11 6l-6 6 6 6'],
   chevron: ['M6 9l6 6 6-6'],
   play: ['M8 5v14l11-7z'],
   list: ['M8 6h12', 'M8 12h12', 'M8 18h12', 'M4 6h.01', 'M4 12h.01', 'M4 18h.01'],
