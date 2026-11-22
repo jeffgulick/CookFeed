@@ -10,6 +10,7 @@ import { Cart } from '../../core/cart';
 import { loadValue } from '../../core/load';
 import { Notices, problemText } from '../../core/notices';
 import { Session } from '../../core/session';
+import { ShopLists } from '../../core/shop-lists';
 import { BuyArea } from '../../ui/buy-area';
 import {
   amount,
@@ -48,13 +49,14 @@ interface PitchItem {
 })
 export class PlanPage {
   private readonly api = inject(CookfeedApi);
+  private readonly shopLists = inject(ShopLists);
   private readonly session = inject(Session);
   private readonly cart = inject(Cart);
   private readonly title = inject(Title);
   private readonly notices = inject(Notices);
 
-  /** True once the plan has been put on the shopping list from this page, so the page offers the way to the list. */
-  protected readonly shopped = signal(false);
+  /** The list the plan was put on from this page, so the page offers the way to it; null until then. */
+  protected readonly shoppedTo = signal<number | null>(null);
 
   /** True while the plan is being put on the list, so a second press does nothing. */
   protected readonly shopping = signal(false);
@@ -145,7 +147,8 @@ export class PlanPage {
 
   /**
    * "Shop this plan": every recipe of the purchase goes on the cook's shopping list, each for the people it is
-   * written for; one that is served twice goes on once, for both meals. The list is made if there is none.
+   * written for; one that is served twice goes on once, for both meals. With no list in use one is made; with
+   * lists in use the cook is asked which, or a new one, and may cancel.
    */
   protected async shopPlan(): Promise<void> {
     const plan = this.product.value();
@@ -154,8 +157,11 @@ export class PlanPage {
     }
     this.shopping.set(true);
     try {
-      const result = await firstValueFrom(this.api.shop({ productId: plan.id }));
-      this.shopped.set(true);
+      const result = await this.shopLists.shop({ productId: plan.id });
+      if (result === null) {
+        return;
+      }
+      this.shoppedTo.set(result.tripId);
       this.notices.say(
         result.added > 0
           ? `${plural(result.added, 'recipe', 'recipes')} from ${plan.title} ${result.added === 1 ? 'is' : 'are'} on your shopping list.`

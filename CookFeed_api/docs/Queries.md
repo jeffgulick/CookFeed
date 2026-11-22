@@ -1178,9 +1178,10 @@ life (DesignDocument.md §3.9). Its lines are computed from those recipes every 
 
 | Route | Answer |
 |---|---|
-| `GET /api/me/trips` | the list in use (being built or shopped), if any, and the finished ones, newest first |
+| `GET /api/me/trips` | `open`: every list in use (being built or shopped); `active`: the newest of them, if any; `past`: the finished ones. Newest first |
 | `GET /api/me/trips/{id}` | one list: its recipes, its lines by aisle, and what was taken off with "Have it" |
-| `POST /api/me/trips/items` with `{ recipeId, servings? }` or `{ productId }` | "Shop this recipe" or "Shop this plan": onto the list in use, made if there is none |
+| `POST /api/me/trips/items` with `{ recipeId, servings? }` or `{ productId }`, and optionally `tripId` or `newList: true` | "Shop this recipe" or "Shop this plan": onto the list named, or a new list when asked for; with neither, the newest list in use, made if there is none |
+| `POST /api/me/trips/{id}/again` | "Shop again": a new list from a finished one, with the same recipes, people and Have its; the finished list stays as it was |
 | `PUT` / `DELETE /api/me/trips/{id}/items/{recipeId}` | change the people for a recipe, or take it off |
 | `PUT` / `DELETE /api/me/trips/{id}/skips/{ingredientId}` | "Have it", and putting it back |
 | `POST /api/me/trips/{id}/start`, `/done` | Building to Shopping, Shopping to Done |
@@ -1191,10 +1192,16 @@ life (DesignDocument.md §3.9). Its lines are computed from those recipes every 
 
 **Rules**
 
-- Only a home cook has lists (403 otherwise). One list is in use at a time, so nothing asks which.
+- Only a home cook has lists (403 otherwise). A cook can keep several lists in use. A request that names no list
+  adds to the newest, so the first press needs no question; the app asks which list once one is in use. A list
+  named must be the caller's (404) and in use (409); naming a list and asking for a new one together is a 400.
+- A new list is named for the cook's day, and numbered when a list in use already has that name
+  ("Shopping list, November 21 (2)").
+- Only a finished list is shopped again (409 otherwise). A recipe the cook can no longer open is left out; with
+  none left, nothing is written (404).
 - A recipe goes on only if the caller could save it (`RecipeAccess.CanSave`); a plan is shopped from the caller's
   purchase snapshot. With nothing left to add, nothing is written, so no empty list is left behind (404).
-- A recipe is never on a list twice. One asked for twice in a single request, as a plan with the oats on two
+- A recipe is never on the same list twice; it may be on two lists. One asked for twice in a single request, as a plan with the oats on two
   mornings, becomes one item for the people of both, up to 50.
 - A list changes while it is Building or Shopping; a done list is read-only (409).
 
@@ -1207,8 +1214,8 @@ in. Skipped ingredients are filtered out of the lines afterwards and listed on t
 repeat; people, status and deletes are one `UPDATE` or `DELETE` each (`ExecuteUpdateAsync`,
 `ExecuteDeleteAsync`); deleting a list takes its items and skips with it through `ON DELETE CASCADE`.
 
-**Not built:** sending a list to a delivery partner (the `Sent` status), "Shop again" from a past list, and adding
-recipes from inside the list page. `TripService` has no fake-repository unit tests; its behavior is tested over
+**Not built:** sending a list to a delivery partner (the `Sent` status), and adding recipes from inside the list
+page. `TripService` has no fake-repository unit tests; its behavior is tested over
 HTTP.
 
 **Tests:**
@@ -1218,7 +1225,9 @@ HTTP.
 - `tests/Cookfeed.IntegrationTests/Api/TripsEndpointTests.cs`, over HTTP, each on its own database: shopping a
   recipe makes the list; a second recipe joins it and none is on twice; the lines are the recipe's ingredients and
   double when the people double; Have it and put back; shopping a plan from the purchase; each refusal with no
-  list left behind; the list's life; deleting; and that nobody reads or changes another cook's list.
+  list left behind; the list's life; deleting; that nobody reads or changes another cook's list; a second list
+  beside the first; adding to the list named; each refusal of a named list; and Shop again, with what it leaves
+  out and when it is refused.
 
 ## Write paths worth noting
 

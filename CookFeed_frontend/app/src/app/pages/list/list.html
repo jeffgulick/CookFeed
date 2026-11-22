@@ -47,6 +47,11 @@
       }
     </div>
   }
+  @if (list.status === 'Done') {
+    <div class="mt-5 flex flex-wrap gap-2">
+      <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="shopAgain()">Shop again</button>
+    </div>
+  }
   <p data-hint class="meta mt-3 max-w-prose">{{ words.hint }}</p>
 
   <section data-to-buy aria-labelledby="toBuyHeading" class="card mt-6 max-w-3xl p-4 md:p-6">

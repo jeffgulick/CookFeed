@@ -29,8 +29,8 @@ public class MyTripsController(TripService trips) : ControllerBase
     public async Task<ActionResult<TripDto>> Get(int id, [FromCallerHeader] int callerId, CancellationToken cancellationToken) =>
         Answer(await trips.GetTripAsync(callerId, id, cancellationToken));
 
-    // "Shop this recipe" and "Shop this plan": onto the list in use, which is made when there is none, so the app
-    // never has to ask which list.
+    // "Shop this recipe" and "Shop this plan": onto the list the cook names, a new one when asked for, and otherwise
+    // the newest list in use, which is made when there is none.
     [HttpPost("items")]
     [ProducesResponseType<ShopResultDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -45,8 +45,27 @@ public class MyTripsController(TripService trips) : ControllerBase
             return ValidationProblem(ModelState);
         }
 
+        if (request.TripId is not null && request.NewList)
+        {
+            ModelState.AddModelError(nameof(request.TripId), "Name a list to add to, or ask for a new one, not both.");
+            return ValidationProblem(ModelState);
+        }
+
         var result = await trips.ShopAsync(callerId, request.RecipeId, request.ProductId, request.Servings, request.Today,
-            cancellationToken);
+            request.TripId, request.NewList, cancellationToken);
+        return result.Outcome == TripOutcome.Done ? result.Shopped! : Refuse(result.Outcome);
+    }
+
+    // "Shop again": a new list from a finished one, which stays as it was.
+    [HttpPost("{id:int}/again")]
+    [ProducesResponseType<ShopResultDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ShopResultDto>> ShopAgain(int id, [FromBody] ShopAgainRequest request,
+        [FromCallerHeader] int callerId, CancellationToken cancellationToken)
+    {
+        var result = await trips.ShopAgainAsync(callerId, id, request.Today, cancellationToken);
         return result.Outcome == TripOutcome.Done ? result.Shopped! : Refuse(result.Outcome);
     }
 
@@ -97,7 +116,7 @@ public class MyTripsController(TripService trips) : ControllerBase
         TripOutcome.NoShop => Problem(statusCode: StatusCodes.Status403Forbidden, title: "This account does not shop",
             detail: "Shopping lists belong to home cooks. The admin account holds no shopping role."),
         TripOutcome.NotNow => Problem(statusCode: StatusCodes.Status409Conflict, title: "Not now",
-            detail: "This list cannot do that where it is: a finished list is kept as a record and cannot change."),
+            detail: "This list cannot do that where it is: a finished list is kept as a record and cannot change, and only a finished list is shopped again."),
         _ => Problem(statusCode: StatusCodes.Status404NotFound, title: "Not found",
             detail: "There is no such list, or nothing there that you can cook from."),
     };

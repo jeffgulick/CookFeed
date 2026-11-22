@@ -1,6 +1,7 @@
 /* The shopping list, end to end: a cook shops a recipe from its page, which makes their list; takes off what they
    already have; changes the people; starts shopping and ticks things off; and finishes, after which the list is
-   kept under Past lists. Signed in as Noor, whose lists no other spec reads; the tests run in order, each building
+   kept under Past lists. Then the cook shops the finished list again, starts a second list beside it, and picks
+   which list a recipe goes on. Signed in as Noor, whose lists no other spec reads; the tests run in order, each building
    on the one before. The run starts from the seed (global-setup.ts), where nobody has a list. */
 import { PHONE, contentWidth, expect, openAs, test, violations } from './support';
 
@@ -20,8 +21,9 @@ test('Shop this recipe makes the list and puts the recipe on it', async ({ page 
   await page.getByRole('button', { name: 'Shop this recipe' }).click();
   await expect(page.locator('[data-toast]')).toContainText('Sheet-Pan Chicken and Vegetables is on your shopping list.');
 
+  // The link leads to the list the recipe went on.
   await page.locator('main').getByRole('link', { name: 'Open your shopping list' }).click();
-  await expect(page).toHaveURL('/list');
+  await expect(page).toHaveURL(/\/list\/\d+$/);
   await expect(page.locator('main h1')).toContainText('Shopping list, ');
   await expect(page.locator('[data-status]')).toHaveText('Building');
   await expect(page.locator('[data-list-recipe]')).toHaveCount(1);
@@ -32,10 +34,30 @@ test('Shop this recipe makes the list and puts the recipe on it', async ({ page 
   await expect(page.getByRole('checkbox')).toHaveCount(0);
 });
 
-test('shopping the same recipe again does not put it on twice', async ({ page }) => {
+test('with a list in use, Shop this recipe asks which list; Cancel adds nothing', async ({ page }) => {
   await openAs(page, 'noor', '/recipes/18');
 
   await page.getByRole('button', { name: 'Shop this recipe' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add to which shopping list?' });
+
+  await expect(dialog).toBeVisible();
+  // The list in use, picked to begin with, and the way to start another.
+  await expect(dialog.getByRole('radio')).toHaveCount(2);
+  await expect(dialog.getByRole('radio').first()).toBeChecked();
+  await expect(dialog.getByRole('radio').first()).toHaveAccessibleName(/^Shopping list, .* 1 recipe · Building$/);
+  await expect(dialog.getByRole('radio').last()).toHaveAccessibleName(/^A new list/);
+  expect(await violations(page)).toEqual([]);
+
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('[data-toast] p')).toHaveCount(0);
+});
+
+test('shopping the same recipe onto the same list does not put it on twice', async ({ page }) => {
+  await openAs(page, 'noor', '/recipes/18');
+
+  await page.getByRole('button', { name: 'Shop this recipe' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Add to list' }).click();
 
   await expect(page.locator('[data-toast]')).toContainText('is already on your shopping list.');
 });
@@ -99,7 +121,8 @@ test('the kitchen shows the list in use, and leads to it', async ({ page }) => {
   await expect(page.locator('[data-your-list]')).toContainText('Shopping list, ');
   await expect(page.locator('[data-your-list]')).toContainText('1 recipe');
   await page.locator('[data-your-list]').getByRole('link', { name: 'Open list' }).click();
-  await expect(page).toHaveURL('/list');
+  await expect(page).toHaveURL(/\/list\/\d+$/);
+  await expect(page.locator('[data-status]')).toHaveText('Shopping');
 });
 
 test('Done shopping finishes the list after confirming, and it is kept under Past lists', async ({ page }) => {
@@ -121,6 +144,77 @@ test('Done shopping finishes the list after confirming, and it is kept under Pas
   await past.getByRole('link').click();
   await expect(page).toHaveURL(/\/list\/\d+$/);
   await expect(page.locator('[data-status]')).toContainText('Done');
+});
+
+test('Shop again makes a new list from a finished one, which stays in Past lists', async ({ page }) => {
+  await openAs(page, 'noor', '/kitchen');
+
+  await page.locator('[data-past-lists] tbody tr').getByRole('button', { name: /^Shop again/ }).click();
+
+  await expect(page).toHaveURL(/\/list\/\d+$/);
+  await expect(page.locator('[data-toast]')).toContainText('1 recipe is on a new list.');
+  await expect(page.locator('[data-status]')).toHaveText('Building');
+  // The same recipe for the same people as the finished list (12, set in an earlier test).
+  await expect(page.locator('[data-list-recipe]')).toHaveCount(1);
+  await expect(page.getByLabel('People for Sheet-Pan Chicken and Vegetables')).toHaveValue('12');
+
+  await openAs(page, 'noor', '/kitchen');
+  await expect(page.locator('[data-your-list] [data-open-list]')).toHaveCount(1);
+  await expect(page.locator('[data-past-lists] tbody tr')).toHaveCount(1);
+});
+
+test('a finished list offers Shop again on its own page too', async ({ page }) => {
+  await openAs(page, 'noor', '/kitchen');
+  await page.locator('[data-past-lists] tbody tr').getByRole('link').click();
+
+  await expect(page.locator('[data-status]')).toContainText('Done');
+  await expect(page.locator('[data-hint]')).toHaveText('This list is done and kept as a record. Shop again makes a new list from it.');
+  await expect(page.locator('main').getByRole('button', { name: 'Shop again' })).toBeVisible();
+});
+
+test('a cook starts a second list beside the first, and the kitchen shows both, each leading to its own', async ({ page }) => {
+  await openAs(page, 'noor', '/recipes/15');
+
+  await page.getByRole('button', { name: 'Shop this recipe' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add to which shopping list?' });
+  await dialog.getByRole('radio', { name: /^A new list/ }).check();
+  await dialog.getByRole('button', { name: 'Add to list' }).click();
+  await expect(page.locator('[data-toast]')).toContainText('Caprese Salad is on your shopping list.');
+
+  await openAs(page, 'noor', '/kitchen');
+  await expect(page.locator('[data-your-list] h2')).toHaveText('Your shopping lists');
+  const lists = page.locator('[data-your-list] [data-open-list]');
+  await expect(lists).toHaveCount(2);
+  // Newest first; a second list made the same day is numbered.
+  await expect(lists.first()).toContainText('(2)');
+  await expect(lists.first()).toContainText('1 recipe · Building');
+  expect(await violations(page)).toEqual([]);
+
+  await lists.first().getByRole('link', { name: 'Open list' }).click();
+  await expect(page.locator('main h1')).toContainText('(2)');
+  await expect(page.locator('[data-list-recipe]')).toHaveText(/Caprese Salad/);
+  await expect(page.locator('[data-list-recipe]')).toHaveCount(1);
+
+  await openAs(page, 'noor', '/kitchen');
+  await lists.last().getByRole('link', { name: 'Open list' }).click();
+  await expect(page.locator('[data-list-recipe]')).toHaveText(/Sheet-Pan Chicken and Vegetables/);
+});
+
+test('a recipe goes on the list the cook picks, not the newest', async ({ page }) => {
+  await openAs(page, 'noor', '/recipes/16');
+
+  await page.getByRole('button', { name: 'Shop this recipe' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Add to which shopping list?' });
+  // Two lists in use, newest first, and A new list.
+  await expect(dialog.getByRole('radio')).toHaveCount(3);
+  await dialog.getByRole('radio').nth(1).check();
+  await dialog.getByRole('button', { name: 'Add to list' }).click();
+  await expect(page.locator('[data-toast]')).toContainText('Tamagoyaki is on your shopping list.');
+
+  await page.locator('main').getByRole('link', { name: 'Open your shopping list' }).click();
+  await expect(page.locator('main h1')).not.toContainText('(2)');
+  await expect(page.locator('[data-list-recipe]')).toHaveCount(2);
+  await expect(page.locator('[data-list-recipe]').last()).toContainText('Tamagoyaki');
 });
 
 test('a visitor is asked to sign in, and the admin is told admins do not shop', async ({ page }) => {

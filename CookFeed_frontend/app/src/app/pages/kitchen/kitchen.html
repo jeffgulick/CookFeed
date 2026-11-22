@@ -12,25 +12,37 @@
   <p data-kitchen-summary class="meta mt-2">Your shopping list, the plans you bought and the recipes you saved.</p>
 
   <section data-your-list aria-labelledby="listHeading" class="mt-8 md:mt-10">
-    <h2 id="listHeading" class="text-2xl font-bold md:text-3xl">Your shopping list</h2>
+    <h2 id="listHeading" class="text-2xl font-bold md:text-3xl">
+      {{ openLists().length > 1 ? 'Your shopping lists' : 'Your shopping list' }}
+    </h2>
     <app-load-state [state]="lists.state()" what="shopping list" />
     @if (lists.state() === 'ready') {
-      <div class="card mt-4 max-w-prose p-4 md:p-5">
-        @if (activeList(); as list) {
-          <p>
-            <strong>{{ list.name }}</strong>
-          </p>
-          <p class="meta mt-1">{{ list.about }}</p>
-          <p class="mt-3">
-            <a routerLink="/list" class="btn btn-primary btn-small">Open list <span aria-hidden="true">&rarr;</span></a>
-          </p>
-        } @else {
+      @if (openLists().length === 0) {
+        <div class="card mt-4 max-w-prose p-4 md:p-5">
           <p><strong>You have no shopping list yet.</strong></p>
           <p class="meta mt-1">
             Press <strong>Shop this recipe</strong> on a recipe, or <strong>Shop this plan</strong> on a plan you own.
           </p>
-        }
-      </div>
+        </div>
+      } @else {
+        <!-- Every list in use, newest first. A cook can keep several going: one for the week, one for a dinner. -->
+        <ul class="mt-4 grid max-w-3xl gap-3 sm:grid-cols-2">
+          @for (list of openLists(); track list.id) {
+            <li data-open-list class="card p-4 md:p-5">
+              <p>
+                <strong>{{ list.name }}</strong>
+              </p>
+              <p class="meta mt-1">{{ list.about }}</p>
+              <p class="mt-3">
+                <!-- The list's name is in the link for a screen reader, which may read the links on their own. -->
+                <a [routerLink]="['/list', list.id]" class="btn btn-primary btn-small"
+                  >Open list<span class="sr-only">: {{ list.name }}</span><span aria-hidden="true">&rarr;</span></a
+                >
+              </p>
+            </li>
+          }
+        </ul>
+      }
     }
   </section>
 
@@ -114,7 +126,7 @@
       @if (pastLists().length === 0) {
         <p class="meta mt-3">Lists you finish are kept here.</p>
       } @else {
-        <!-- A table of four short columns; it scrolls sideways inside its own box on a narrow phone. -->
+        <!-- A table of short columns; it scrolls sideways inside its own box on a narrow phone. -->
         <div class="card mt-4 max-w-3xl overflow-x-auto">
           <table class="w-full text-left">
             <thead>
@@ -123,6 +135,7 @@
                 <th scope="col" class="p-3 font-semibold">Made</th>
                 <th scope="col" class="p-3 font-semibold">Recipes</th>
                 <th scope="col" class="p-3 font-semibold">Status</th>
+                <th scope="col" class="p-3"><span class="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-line">
@@ -132,6 +145,16 @@
                   <td class="p-3 whitespace-nowrap">{{ list.made }}</td>
                   <td class="p-3">{{ list.recipes }}</td>
                   <td class="p-3 whitespace-nowrap">{{ list.status }}</td>
+                  <td class="p-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-small"
+                      [attr.aria-label]="'Shop again: ' + list.name"
+                      (click)="shopAgain(list)"
+                    >
+                      Shop again
+                    </button>
+                  </td>
                 </tr>
               }
             </tbody>

@@ -405,10 +405,13 @@ export interface TripSummary {
   recipeCount: number;
 }
 
-/** The signed-in cook's shopping lists (GET /api/me/trips): the one in use, if any, and the finished ones. */
+/** The signed-in cook's shopping lists (GET /api/me/trips), newest first. */
 export interface Trips {
+  /** The newest list in use, which /list shows; null when none is in use. */
   active: TripSummary | null;
-  /** Newest first. */
+  /** Every list in use: being built or shopped. A cook can keep several. */
+  open: TripSummary[];
+  /** The finished ones. */
   past: TripSummary[];
 }
 
@@ -429,7 +432,7 @@ export interface Trip {
   skipped: { ingredientId: number; ingredient: string }[];
 }
 
-/** What "Shop this recipe" or "Shop this plan" did (POST /api/me/trips/items). */
+/** What "Shop this recipe", "Shop this plan" or "Shop again" did: which list, and how many recipes went on. */
 export interface ShopResult {
   tripId: number;
   tripName: string;

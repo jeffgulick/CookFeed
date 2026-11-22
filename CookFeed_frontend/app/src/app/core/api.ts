@@ -164,12 +164,21 @@ export class CookfeedApi {
   }
 
   /**
-   * "Shop this recipe" or "Shop this plan" (POST /api/me/trips/items): onto the list in use, which is made when
-   * there is none. A 404 when nothing asked for is something the caller may cook from.
+   * "Shop this recipe" or "Shop this plan" (POST /api/me/trips/items): onto the list named, or a new one when
+   * asked for; with neither, the newest list in use, which is made when there is none. A 404 when nothing asked
+   * for is something the caller may cook from.
    */
-  shop(what: { recipeId: number; servings?: number } | { productId: number }): Observable<ShopResult> {
+  shop(
+    what: { recipeId: number; servings?: number } | { productId: number },
+    where: { tripId: number } | { newList: true } | null = null,
+  ): Observable<ShopResult> {
     // The cook's own day names a new list: late in the evening the server's UTC day is already tomorrow.
-    return this.http.post<ShopResult>('/api/me/trips/items', { ...what, today: isoDay(new Date()) });
+    return this.http.post<ShopResult>('/api/me/trips/items', { ...what, today: isoDay(new Date()), ...where });
+  }
+
+  /** "Shop again" (POST /api/me/trips/{id}/again): a new list from a finished one, which stays as it was. */
+  shopAgain(tripId: number): Observable<ShopResult> {
+    return this.http.post<ShopResult>(`/api/me/trips/${tripId}/again`, { today: isoDay(new Date()) });
   }
 
   /** Changes the people a recipe on a list is cooked for (PUT /api/me/trips/{id}/items/{recipeId}). */

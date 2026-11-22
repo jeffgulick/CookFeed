@@ -17,8 +17,11 @@ public enum TripStatus
     Done,
 }
 
-/// <summary>The caller's lists: the one in use, if any, and the finished ones, newest first.</summary>
-public sealed record TripsDto(TripSummaryDto? Active, IReadOnlyList<TripSummaryDto> Past);
+/// <summary>The caller's lists, newest first.</summary>
+/// <param name="Active">The newest list in use, where a recipe goes when the cook does not say which; null when none is in use.</param>
+/// <param name="Open">Every list in use: being built or shopped. A cook can keep several.</param>
+/// <param name="Past">The finished ones.</param>
+public sealed record TripsDto(TripSummaryDto? Active, IReadOnlyList<TripSummaryDto> Open, IReadOnlyList<TripSummaryDto> Past);
 
 /// <summary>One list in a few words, for My kitchen.</summary>
 public sealed record TripSummaryDto(int Id, string Name, TripStatus Status, DateTimeOffset CreatedAt,
@@ -47,7 +50,14 @@ public sealed record TripSkippedDto(int IngredientId, string Ingredient);
 /// <summary>"Shop this recipe" or "Shop this plan": exactly one of the two ids.</summary>
 /// <param name="Servings">The people to cook the recipe for; left out, the number the recipe is written for.</param>
 /// <param name="Today">The date where the cook is (yyyy-MM-dd), to name a new list for their day rather than the server's.</param>
-public sealed record ShopRequest(int? RecipeId, int? ProductId, [Range(1, 50)] int? Servings, DateOnly? Today = null);
+/// <param name="TripId">The list in use to add to. Left out, with <paramref name="NewList"/> false: the newest list in use, made if there is none.</param>
+/// <param name="NewList">True to start a new list even though one is in use. Not together with <paramref name="TripId"/>.</param>
+public sealed record ShopRequest(int? RecipeId, int? ProductId, [Range(1, 50)] int? Servings, DateOnly? Today = null,
+    int? TripId = null, bool NewList = false);
+
+/// <summary>"Shop again", from a finished list.</summary>
+/// <param name="Today">The date where the cook is (yyyy-MM-dd), to name the new list for their day.</param>
+public sealed record ShopAgainRequest(DateOnly? Today = null);
 
 /// <summary>What shopping did: which list, whether it was made just now, and how many recipes went on.</summary>
 /// <param name="AlreadyOnList">Recipes asked for that were on the list already; a recipe is never on it twice.</param>

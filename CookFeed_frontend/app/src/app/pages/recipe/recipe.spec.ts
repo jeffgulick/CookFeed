@@ -7,6 +7,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import axe from 'axe-core';
 import { Account, ProductDetail, RecipeDetail, RecipeLocked } from '../../core/api-types';
 import { Notices } from '../../core/notices';
+import { ShopLists } from '../../core/shop-lists';
 import { Session } from '../../core/session';
 import { isoDay } from '../../ui/format';
 import { RecipePage } from './recipe';
@@ -263,26 +264,54 @@ describe('Recipe page', () => {
     await typePeople('6');
 
     button('Shop this recipe').click();
+    // The page first asks which lists the cook has in use: none, so a list is made without a question.
+    http.expectOne('/api/me/trips').flush({ active: null, open: [], past: [] });
+    await new Promise((done) => setTimeout(done));
     const request = http.expectOne('/api/me/trips/items');
     expect(request.request.method).toBe('POST');
     // The cook's own day goes with it, so a list made late in the evening is named for today, not tomorrow.
     expect(request.request.body).toEqual({ recipeId: 16, servings: 6, today: isoDay(new Date()) });
     request.flush({ tripId: 7, tripName: 'Shopping list, November 21', created: true, added: 1, alreadyOnList: 0 });
+    await new Promise((done) => setTimeout(done));
     await harness.fixture.whenStable();
 
     expect(TestBed.inject(Notices).message()?.text).toBe('Tamagoyaki is on your shopping list.');
+    // The link leads to the list the recipe went on.
     const link = page.querySelector('[data-shop-area] a');
     expect(link?.textContent).toContain('Open your shopping list');
-    expect(link?.getAttribute('href')).toBe('/list');
+    expect(link?.getAttribute('href')).toBe('/list/7');
+  });
+
+  it('asks which list when the cook has one in use, and adds nothing when they cancel', async () => {
+    await show(tamagoyaki, alex);
+    const inUse = { id: 7, name: 'Shopping list, November 21', status: 'Building', createdAt: '2026-11-21T12:00:00+00:00', completedAt: null, recipeCount: 1 };
+
+    button('Shop this recipe').click();
+    http.expectOne('/api/me/trips').flush({ active: inUse, open: [inUse], past: [] });
+    await new Promise((done) => setTimeout(done));
+    const question = TestBed.inject(ShopLists).question();
+    expect(question?.lists).toEqual([inUse]);
+
+    question!.settle(null);
+    await new Promise((done) => setTimeout(done));
+    await harness.fixture.whenStable();
+
+    http.expectNone('/api/me/trips/items');
+    expect(TestBed.inject(Notices).message()).toBeNull();
+    expect(page.querySelector('[data-shop-area] a')).toBeNull();
+    expect(button('Shop this recipe').disabled).toBe(false);
   });
 
   it('says so when the recipe was on the list already', async () => {
     await show(tamagoyaki, alex);
 
     button('Shop this recipe').click();
+    http.expectOne('/api/me/trips').flush({ active: null, open: [], past: [] });
+    await new Promise((done) => setTimeout(done));
     http
       .expectOne('/api/me/trips/items')
       .flush({ tripId: 7, tripName: 'Shopping list, November 21', created: false, added: 0, alreadyOnList: 1 });
+    await new Promise((done) => setTimeout(done));
     await harness.fixture.whenStable();
 
     expect(TestBed.inject(Notices).message()?.text).toBe('Tamagoyaki is already on your shopping list.');

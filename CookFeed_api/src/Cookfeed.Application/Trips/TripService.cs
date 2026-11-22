@@ -35,9 +35,10 @@ public sealed record TripResult(TripOutcome Outcome, TripDto? Trip = null, Trips
     ShopResultDto? Shopped = null);
 
 /// <summary>
-/// The caller's shopping lists (DesignDocument.md §3.9). There is one list in use at a time, so nothing asks which:
-/// "Shop this recipe" and "Shop this plan" add straight to it and make it when there is none. A list's lines are
-/// worked out from its recipes each time it is read, with the shopping list's arithmetic (§7.5), never stored.
+/// The caller's shopping lists (DesignDocument.md §3.9). "Shop this recipe" and "Shop this plan" add to the newest
+/// list in use and make one when there is none; a cook who wants several lists going names the list to add to, or
+/// asks for a new one. A list's lines are worked out from its recipes each time it is read, with the shopping list's
+/// arithmetic (§7.5), never stored.
 /// </summary>
 public class TripService(ITripRepository trips, TimeProvider clock)
 {
@@ -49,10 +50,11 @@ public class TripService(ITripRepository trips, TimeProvider clock)
         }
 
         var all = await trips.GetTripsAsync(callerId, cancellationToken);
-        // The list in use is the one being built or shopped; a sent or done list is not it.
-        var active = all.FirstOrDefault(t => TripRules.CanChange(t.Status));
+        // A list in use is one being built or shopped; a sent or done list is not. Newest first, as they are read.
+        var open = all.Where(t => TripRules.CanChange(t.Status)).Select(Summary).ToList();
         return new TripResult(TripOutcome.Done, Trips: new TripsDto(
-            active is null ? null : Summary(active),
+            open.FirstOrDefault(),
+            open,
             [.. all.Where(t => !TripRules.CanChange(t.Status)).Select(Summary)]));
     }
 
@@ -60,12 +62,13 @@ public class TripService(ITripRepository trips, TimeProvider clock)
         WithTripAsync(callerId, tripId, _ => true, _ => Task.CompletedTask, cancellationToken);
 
     /// <summary>
-    /// Puts a recipe, or every recipe of a plan the caller owns, on their list, making the list when there is none.
-    /// A recipe the caller may not cook from is left out; when nothing is left, nothing is written, so no empty list
-    /// is left behind.
+    /// Puts a recipe, or every recipe of a plan the caller owns, on a list: the one named by
+    /// <paramref name="tripId"/>, a new one when <paramref name="newList"/> is true, and otherwise the newest list in
+    /// use, made when there is none. A recipe the caller may not cook from is left out; when nothing is left, nothing
+    /// is written, so no empty list is left behind.
     /// </summary>
     public async Task<TripResult> ShopAsync(int callerId, int? recipeId, int? productId, int? servings,
-        DateOnly? cooksDay, CancellationToken cancellationToken)
+        DateOnly? cooksDay, int? tripId, bool newList, CancellationToken cancellationToken)
     {
         if (!await trips.CanShopAsync(callerId, cancellationToken))
         {
@@ -94,23 +97,98 @@ public class TripService(ITripRepository trips, TimeProvider clock)
         }
 
         var all = await trips.GetTripsAsync(callerId, cancellationToken);
-        var active = all.FirstOrDefault(t => TripRules.CanChange(t.Status));
-        var now = clock.GetUtcNow();
-        var name = active?.Name
-            ?? TripRules.ListName(TripRules.ListDay(cooksDay, DateOnly.FromDateTime(now.UtcDateTime)));
-        var tripId = active?.Id ?? await trips.CreateAsync(callerId, name, now, cancellationToken);
+        TripRow? target;
+        if (tripId is { } named)
+        {
+            // The caller's id is part of the read, so another cook's list is simply not found.
+            target = all.FirstOrDefault(t => t.Id == named);
+            if (target is null)
+            {
+                return new TripResult(TripOutcome.NotFound);
+            }
 
-        var onList = active is null
+            if (!TripRules.CanChange(target.Status))
+            {
+                return new TripResult(TripOutcome.NotNow);
+            }
+        }
+        else
+        {
+            target = newList ? null : all.FirstOrDefault(t => TripRules.CanChange(t.Status));
+        }
+
+        var (id, name) = target is null
+            ? await NewListAsync(callerId, cooksDay, all, cancellationToken)
+            : (target.Id, target.Name);
+        var onList = target is null
             ? []
-            : (await trips.GetTripAsync(callerId, tripId, cancellationToken))!.Items.Select(i => i.RecipeId).ToList();
+            : (await trips.GetTripAsync(callerId, id, cancellationToken))!.Items.Select(i => i.RecipeId).ToList();
         var toAdd = TripRules.Combine(wanted, onList);
         if (toAdd.Count > 0)
         {
-            await trips.AddItemsAsync(tripId, toAdd, cancellationToken);
+            await trips.AddItemsAsync(id, toAdd, cancellationToken);
         }
 
-        return new TripResult(TripOutcome.Done, Shopped: new ShopResultDto(tripId, name, Created: active is null,
+        return new TripResult(TripOutcome.Done, Shopped: new ShopResultDto(id, name, Created: target is null,
             Added: toAdd.Count, AlreadyOnList: wanted.Select(w => w.RecipeId).Distinct().Count() - toAdd.Count));
+    }
+
+    /// <summary>
+    /// "Shop again": a new list made from a finished one, with the same recipes for the same people, and without what
+    /// the cook had at home last time (the skips come along; they can put a line back). A recipe the cook can no
+    /// longer open is left out; when none is left, nothing is written. The finished list stays as it was.
+    /// </summary>
+    public async Task<TripResult> ShopAgainAsync(int callerId, int tripId, DateOnly? cooksDay,
+        CancellationToken cancellationToken)
+    {
+        if (!await trips.CanShopAsync(callerId, cancellationToken))
+        {
+            return new TripResult(TripOutcome.NoShop);
+        }
+
+        var finished = await trips.GetTripAsync(callerId, tripId, cancellationToken);
+        if (finished is null)
+        {
+            return new TripResult(TripOutcome.NotFound);
+        }
+
+        if (!TripRules.CanShopAgain(finished.Status))
+        {
+            return new TripResult(TripOutcome.NotNow);
+        }
+
+        var recipes = await trips.GetRecipesAsync(callerId, [.. finished.Items.Select(i => i.RecipeId)], cancellationToken);
+        var items = finished.Items
+            .Where(i => recipes.TryGetValue(i.RecipeId, out var recipe)
+                && RecipeAccess.CanSave(recipe.Access, callerId, viewerCanShop: true))
+            .Select(i => new TripItem(i.RecipeId, i.Servings))
+            .ToList();
+        if (items.Count == 0)
+        {
+            return new TripResult(TripOutcome.NotFound);
+        }
+
+        var all = await trips.GetTripsAsync(callerId, cancellationToken);
+        var (id, name) = await NewListAsync(callerId, cooksDay, all, cancellationToken);
+        await trips.AddItemsAsync(id, items, cancellationToken);
+        foreach (var ingredientId in finished.SkippedIngredientIds)
+        {
+            await trips.SetSkipAsync(id, ingredientId, skipped: true, cancellationToken);
+        }
+
+        return new TripResult(TripOutcome.Done,
+            Shopped: new ShopResultDto(id, name, Created: true, Added: items.Count, AlreadyOnList: 0));
+    }
+
+    /// <summary>Makes an empty list named for the cook's day, numbered when a list in use already has that name.</summary>
+    private async Task<(int Id, string Name)> NewListAsync(int callerId, DateOnly? cooksDay, IReadOnlyList<TripRow> all,
+        CancellationToken cancellationToken)
+    {
+        var now = clock.GetUtcNow();
+        var name = TripRules.ListName(
+            TripRules.ListDay(cooksDay, DateOnly.FromDateTime(now.UtcDateTime)),
+            [.. all.Where(t => TripRules.CanChange(t.Status)).Select(t => t.Name)]);
+        return (await trips.CreateAsync(callerId, name, now, cancellationToken), name);
     }
 
     public Task<TripResult> SetServingsAsync(int callerId, int tripId, int recipeId, int servings,

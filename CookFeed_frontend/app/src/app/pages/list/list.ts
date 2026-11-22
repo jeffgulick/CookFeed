@@ -9,6 +9,7 @@ import { loadValue } from '../../core/load';
 import { Notices, problemText } from '../../core/notices';
 import { PEOPLE_MAX, PEOPLE_MIN, peopleProblem } from '../../core/people';
 import { Session } from '../../core/session';
+import { onNewList } from '../../core/shop-lists';
 import { Confirm } from '../../ui/confirm';
 import { amount, longDate, plural } from '../../ui/format';
 import { LoadStateMessage } from '../../ui/load-state';
@@ -17,7 +18,8 @@ import { LoadStateMessage } from '../../ui/load-state';
  * One shopping list, for one visit to the store, readable on a phone (/list is the list in use; /list/7 is one
  * list, such as a finished one). What to buy is under the aisle each thing is found in. "Have it" takes off what is
  * already at home. The recipes the list cooks can be cooked for more or fewer people, or taken off. The list is
- * built, then shopped, with a box to tick as each thing goes in the basket, then done and kept as a record.
+ * built, then shopped, with a box to tick as each thing goes in the basket, then done and kept as a record, from
+ * which Shop again makes a new list.
  *
  * The API works the lines out from the recipes and answers every change with the whole list. The ticks are a
  * convenience of this device, kept in the browser, not sent to the API.
@@ -105,7 +107,7 @@ export class ListPage {
           ? 'Press Have it on anything you already have at home. Then start shopping.'
           : trip.status === 'Shopping'
             ? 'Tick each thing as it goes in your basket. You can still change the list.'
-            : 'This list is done and kept as a record.',
+            : 'This list is done and kept as a record. Shop again makes a new list from it.',
     };
   });
 
@@ -159,6 +161,24 @@ export class ListPage {
     await this.change((trip) => this.api.moveTrip(trip.id, 'done'), 'The list is done. It stays in your past lists.');
     if (tripId !== undefined) {
       forgetTicks(tripId);
+    }
+  }
+
+  /** "Shop again": a new list with this finished list's recipes and people; this one stays as it is. */
+  protected async shopAgain(): Promise<void> {
+    const trip = this.trip();
+    if (trip === null || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    try {
+      const result = await firstValueFrom(this.api.shopAgain(trip.id));
+      this.notices.say(onNewList(result.added));
+      await this.router.navigate(['/list', result.tripId]);
+    } catch (error) {
+      this.notices.problem(problemText(error, 'A new list could not be made. Please try again.'));
+    } finally {
+      this.busy.set(false);
     }
   }
 

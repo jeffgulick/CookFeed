@@ -27,6 +27,9 @@ public static class TripRules
     /// <summary>Done shopping, or the sent items arrived.</summary>
     public static bool CanFinish(TripStatus status) => status is TripStatus.Shopping or TripStatus.Sent;
 
+    /// <summary>A finished list can be shopped again: a new list is made from it, and it stays as it was.</summary>
+    public static bool CanShopAgain(TripStatus status) => status == TripStatus.Done;
+
     public static bool IsPeople(int people) => people is >= MinPeople and <= MaxPeople;
 
     /// <summary>
@@ -40,6 +43,27 @@ public static class TripRules
     /// <summary>A new list is named for the day it was made: "Shopping list, November 21".</summary>
     public static string ListName(DateOnly today) =>
         "Shopping list, " + today.ToString("MMMM d", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// The name for a new list when the cook has other lists in use: named for the day, and numbered when a list in
+    /// use already has that name ("Shopping list, November 21 (2)"), so two lists made the same day can be told apart.
+    /// </summary>
+    public static string ListName(DateOnly today, IReadOnlyCollection<string> namesInUse)
+    {
+        var name = ListName(today);
+        if (!namesInUse.Contains(name))
+        {
+            return name;
+        }
+
+        var number = 2;
+        while (namesInUse.Contains($"{name} ({number})"))
+        {
+            number++;
+        }
+
+        return $"{name} ({number})";
+    }
 
     /// <summary>
     /// What to add to a list: a recipe already on it is left out, and a recipe asked for twice (a plan with the oats
