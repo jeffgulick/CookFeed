@@ -24,7 +24,12 @@ export const routes: Routes = [
   { path: 'plans/:id', ...notBuiltYet('Plan') },
   { path: 'recipes', ...notBuiltYet('Recipes') },
   { path: 'recipes/:id', ...notBuiltYet('Recipe') },
-  { path: 'creators/:handle', ...notBuiltYet('Creator') },
+  {
+    // The page renames the tab after the creator once the storefront has loaded.
+    path: 'creators/:handle',
+    title: 'Creator | Cookfeed',
+    loadComponent: () => import('./pages/creator/creator').then((m) => m.CreatorPage),
+  },
   { path: 'kitchen', ...notBuiltYet('My kitchen') },
   { path: 'orders', ...notBuiltYet('Your orders') },
   { path: 'cart', ...notBuiltYet('Cart') },

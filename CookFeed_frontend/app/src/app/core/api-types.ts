@@ -79,3 +79,51 @@ export interface CreatorTile {
   avatarUrl: string | null;
   isVerified: boolean;
 }
+
+/** One free recipe on a creator's storefront. */
+export interface StorefrontRecipe {
+  id: number;
+  title: string;
+  thumbnailUrl: string | null;
+  servings: number;
+  /** Prep plus cook time; null when the recipe gives neither. */
+  totalMinutes: number | null;
+  saveCount: number;
+  publishedAt: string;
+}
+
+/** One plan or collection a creator has for sale. */
+export interface StorefrontProduct {
+  id: number;
+  type: ProductType;
+  title: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  priceCents: number;
+  currency: string;
+  recipeCount: number;
+  /** Scheduled meals, for a meal plan; null for a collection. */
+  mealCount: number | null;
+  /** True when the viewer has a paid order for it. */
+  ownedByViewer: boolean;
+  inCart: boolean;
+}
+
+/** A creator's storefront (GET /api/creators/{handle}). */
+export interface Storefront {
+  handle: string;
+  displayName: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  isVerified: boolean;
+  /** True while Cookfeed has the creator suspended: the page says so, and nothing is for sale. */
+  isSuspended: boolean;
+  recipeCount: number;
+  totalSaves: number;
+  /** True when the viewer is this creator. */
+  viewerIsCreator: boolean;
+  /** Published free recipes, newest first. */
+  recipes: StorefrontRecipe[];
+  /** For sale only. */
+  products: StorefrontProduct[];
+}

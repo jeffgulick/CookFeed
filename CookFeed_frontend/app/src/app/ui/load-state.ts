@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { LoadState } from '../core/load-list';
+import { LoadState } from '../core/load';
 
 /**
  * What a list says while it is being read, and when the read failed, so a page never shows an empty space with no
- * explanation. It shows nothing once the list is ready; the page draws the list itself.
+ * explanation. It shows nothing once the list is ready, or when the address names nothing (the page says that
+ * itself); the page draws the list.
  */
 @Component({
   selector: 'app-load-state',

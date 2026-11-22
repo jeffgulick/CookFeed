@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { Account } from '../../core/api-types';
 import { Session } from '../../core/session';
 import { SignInPage } from './sign-in';
@@ -107,4 +108,45 @@ describe('Sign-in page', () => {
     expect(page.querySelector('[role="alert"]')?.textContent).toContain('could not be loaded');
     expect(page.querySelector('[data-group]')).toBeNull();
   });
+});
+
+/* "Sign in to buy" on a plan sends the visitor here with the page they were on (the prototype's ?next=). Once they
+   have picked an account, the way back is the first thing offered. Only a page of this app counts. */
+describe('Sign-in page, reached from another page', () => {
+  const alex: Account = { id: 1, displayName: 'Alex Rivera', roles: ['HomeCook'], handle: null };
+
+  async function open(address: string): Promise<HTMLElement> {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [provideRouter([{ path: 'sign-in', component: SignInPage }]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const session = TestBed.inject(Session);
+    session.accounts.set([alex]);
+    session.signIn(alex.id);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl(address, SignInPage);
+    return harness.routeNativeElement as HTMLElement;
+  }
+
+  it('offers the way back to that page first', async () => {
+    const page = await open('/sign-in?next=%2Fcreators%2Fkenji-kitchen');
+
+    const first = page.querySelector('[role="status"] a');
+    expect(first?.textContent).toContain('Back to the page you were on');
+    expect(first?.getAttribute('href')).toBe('/creators/kenji-kitchen');
+  });
+
+  it('offers no way back when it was opened on its own', async () => {
+    const page = await open('/sign-in');
+
+    expect(page.querySelector('[role="status"]')?.textContent).not.toContain('Back to the page you were on');
+  });
+
+  for (const next of ['https://example.com/', '//example.com/', '/sign-in', 'creators/kenji-kitchen']) {
+    it(`ignores a way back that is not a page of this app: ${next}`, async () => {
+      const page = await open('/sign-in?next=' + encodeURIComponent(next));
+
+      expect(page.querySelector('[role="status"]')?.textContent).not.toContain('Back to the page you were on');
+    });
+  }
 });

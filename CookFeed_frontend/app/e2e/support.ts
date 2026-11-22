@@ -1,6 +1,6 @@
-/* Shared by the smoke specs: a test() that fails on any page or console error, signing in as a seeded account, and
-   the small measurements several specs need. Every test gets a fresh browser context, so the signed-in account
-   never carries over between tests. */
+/* Shared by the smoke specs: a test() that fails on any page or console error it did not declare, signing in as a
+   seeded account, and the small measurements several specs need. Every test gets a fresh browser context, so the
+   signed-in account never carries over between tests. */
 import { AxeBuilder } from '@axe-core/playwright';
 import { Page, test as base, expect } from '@playwright/test';
 
@@ -11,15 +11,19 @@ export const ACCOUNTS = { guest: null, alex: 1, priya: 2, kenji: 4, admin: 6, sa
 export type AccountName = keyof typeof ACCOUNTS;
 
 /** The pages converted from the prototype so far. Add each page here as it is built. */
-export const BUILT_PAGES = ['/', '/sign-in'];
+export const BUILT_PAGES = ['/', '/sign-in', '/creators/kenji-kitchen'];
 
 /** Addresses that still show the "being built" placeholder. Move each to BUILT_PAGES as it is converted. */
 export const PLACEHOLDER_PAGES = ['/plans', '/recipes', '/kitchen', '/orders', '/cart', '/help', '/studio', '/admin'];
 
 export const PHONE = { width: 375, height: 760 };
 
-export const test = base.extend({
-  page: async ({ page }, use) => {
+export const test = base.extend<{ expectedErrors: RegExp[] }>({
+  /* The console errors a test means to cause, such as the browser's own line for a 404 it asked for on purpose.
+     Set with test.use({ expectedErrors: [...] }). Each must happen, and nothing else may. */
+  expectedErrors: [[], { option: true }],
+
+  page: async ({ page, expectedErrors }, use) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('console', (message) => {
@@ -28,7 +32,10 @@ export const test = base.extend({
       }
     });
     await use(page);
-    expect(errors, 'errors raised while the test ran').toEqual([]);
+    const unexpected = errors.filter((error) => !expectedErrors.some((pattern) => pattern.test(error)));
+    const missing = expectedErrors.filter((pattern) => !errors.some((error) => pattern.test(error)));
+    expect(unexpected, 'errors raised while the test ran').toEqual([]);
+    expect(missing, 'expected errors that never happened').toEqual([]);
   },
 });
 

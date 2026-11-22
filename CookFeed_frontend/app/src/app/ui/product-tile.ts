@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ProductTile as ProductTileData } from '../core/api-types';
-import { plural, price } from './format';
+import { plural, price, productCounts, productTypeLabel } from './format';
 import { Icon } from './icon';
 
 /**
@@ -61,14 +61,9 @@ export class ProductTile {
   /** The API sends a path such as images/products/4.svg; the app serves those from its own /images folder. */
   protected readonly imageUrl = computed(() => '/' + (this.product().coverImageUrl ?? 'images/products/new.svg'));
 
-  protected readonly typeLabel = computed(() => (this.product().type === 'MealPlan' ? 'Meal plan' : 'Recipe collection'));
+  protected readonly typeLabel = computed(() => productTypeLabel(this.product().type));
 
-  /** "5 recipes, 6 meals" for a plan that serves a recipe more than once; otherwise just "3 recipes". */
-  protected readonly counts = computed(() => {
-    const { recipeCount, mealCount } = this.product();
-    const recipes = plural(recipeCount, 'recipe', 'recipes');
-    return mealCount !== null && mealCount !== recipeCount ? `${recipes}, ${plural(mealCount, 'meal', 'meals')}` : recipes;
-  });
+  protected readonly counts = computed(() => productCounts(this.product().recipeCount, this.product().mealCount));
 
   /** The average to one decimal ("4.0"), or null when nobody has reviewed it yet. */
   protected readonly average = computed(() => this.product().rating.average?.toFixed(1) ?? null);

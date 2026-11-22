@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreatorTile, FeedPage, FeedSort, ProductSort, ProductTile, ProductType } from './api-types';
+import { CreatorTile, FeedPage, FeedSort, ProductSort, ProductTile, ProductType, Storefront } from './api-types';
 
 /**
  * The Cookfeed API, one method per endpoint. Paths are relative (/api/...): in development the Angular dev server
@@ -34,5 +34,10 @@ export class CookfeedApi {
   /** Every creator, in the order they joined (GET /api/creators). */
   creators(): Observable<CreatorTile[]> {
     return this.http.get<CreatorTile[]>('/api/creators');
+  }
+
+  /** One creator's storefront (GET /api/creators/{handle}); a 404 when nobody has the handle. */
+  storefront(handle: string): Observable<Storefront> {
+    return this.http.get<Storefront>(`/api/creators/${encodeURIComponent(handle)}`);
   }
 }

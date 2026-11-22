@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router, RouterLink, UrlTree } from '@angular/router';
+import { map } from 'rxjs';
 import { Account, Role } from '../../core/api-types';
 import { Session } from '../../core/session';
 import { Icon } from '../../ui/icon';
@@ -25,6 +27,17 @@ interface AccountGroup {
 })
 export class SignInPage {
   protected readonly session = inject(Session);
+  private readonly router = inject(Router);
+
+  /**
+   * The page the visitor was on when they followed a "Sign in to ..." link (?next=), or null. Only a page of
+   * this app counts: a path that starts with one slash. Anything else, such as another site's address someone
+   * put in the link, is ignored.
+   */
+  protected readonly next = toSignal(
+    inject(ActivatedRoute).queryParamMap.pipe(map((query) => this.pageOfThisApp(query.get('next')))),
+    { requireSync: true },
+  );
 
   /** The admin holds no other role, a creator is also a home cook, and everyone else is a home cook. */
   protected readonly groups = computed<AccountGroup[]>(() => {
@@ -53,6 +66,11 @@ export class SignInPage {
       },
     ];
   });
+
+  private pageOfThisApp(next: string | null): UrlTree | null {
+    const isOwnPage = next !== null && /^\/[^/\\]/.test(next) && !next.startsWith('/sign-in');
+    return isOwnPage ? this.router.parseUrl(next) : null;
+  }
 
   /** "Home cook + Creator". */
   protected roleText(account: Account): string {

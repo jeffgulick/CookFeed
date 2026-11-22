@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { CookfeedApi } from '../../core/api';
-import { loadList } from '../../core/load-list';
+import { loadList } from '../../core/load';
 import { Session } from '../../core/session';
 import { CreatorTile } from '../../ui/creator-tile';
 import { Icon } from '../../ui/icon';

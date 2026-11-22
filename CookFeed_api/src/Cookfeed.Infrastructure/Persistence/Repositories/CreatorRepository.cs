@@ -32,6 +32,7 @@ public class CreatorRepository(CookfeedDbContext db) : ICreatorRepository
                 c.Bio,
                 c.AvatarUrl,
                 c.IsVerified,
+                IsSuspended = c.SuspendedAt != null,
                 ViewerIsCreator = viewerId != null && c.UserId == viewerId,
 
                 // Only published Public recipes are listed; ProductOnly recipes are for buyers (§3.3).
@@ -42,14 +43,16 @@ public class CreatorRepository(CookfeedDbContext db) : ICreatorRepository
                         r.Id,
                         r.Title,
                         r.ThumbnailUrl,
+                        r.Servings,
                         r.PrepMinutes == null && r.CookMinutes == null ? null : (r.PrepMinutes ?? 0) + (r.CookMinutes ?? 0),
                         r.SaveCount,
                         r.PublishedAt!.Value))
                     .ToList(),
 
-                // Retired products stay in the table for the orders that refer to them, but are no longer sold.
-                Products = c.Products
-                    .Where(p => p.IsActive)
+                // Only what is for sale: a retired product, a suspended creator's, or one holding a recipe that
+                // was taken down stays in the table for the orders that refer to it, but is not listed (§3.8).
+                Products = c.Products.AsQueryable()
+                    .Where(ProductQueries.IsForSale)
                     .OrderBy(p => p.CreatedAt).ThenBy(p => p.Id)
                     .Select(p => new StorefrontProductDto(
                         p.Id,
@@ -65,7 +68,8 @@ public class CreatorRepository(CookfeedDbContext db) : ICreatorRepository
                         p.Type == Domain.Enums.ProductType.MealPlan ? p.Recipes.Count() : null,
                         // Owning means a Paid order for the product; a cancelled or refunded one does not count.
                         viewerId != null && db.OrderItems.Any(oi =>
-                            oi.ProductId == p.Id && oi.Order.UserId == viewerId && oi.Order.Status == OrderStatus.Paid)))
+                            oi.ProductId == p.Id && oi.Order.UserId == viewerId && oi.Order.Status == OrderStatus.Paid),
+                        viewerId != null && db.CartItems.Any(ci => ci.ProductId == p.Id && ci.UserId == viewerId)))
                     .ToList(),
             })
             .SingleOrDefaultAsync(cancellationToken);
@@ -83,6 +87,7 @@ public class CreatorRepository(CookfeedDbContext db) : ICreatorRepository
             storefront.Bio,
             storefront.AvatarUrl,
             storefront.IsVerified,
+            storefront.IsSuspended,
             storefront.Recipes.Count,
             storefront.Recipes.Sum(r => r.SaveCount),
             storefront.ViewerIsCreator,

@@ -30,7 +30,7 @@ public class ProductRepository(CookfeedDbContext db) : IProductRepository
                 p.Creator.IsVerified,
                 // rules.js isForSale (DesignDocument.md §3.8): retired, a suspended creator, no recipes, or a recipe
                 // that was taken down all stop the sale. Nobody pays for something they could not open.
-                // GetForSaleAsync filters by the same rule; a test holds the two to each other.
+                // The same rule as ProductQueries.IsForSale, which the two lists filter by; tests hold them together.
                 IsForSale = p.IsActive && p.Creator.SuspendedAt == null
                     && p.Recipes.Any() && p.Recipes.All(pr => pr.Recipe.IsPublished),
                 // The viewer's Paid order line for this product, if any. Owning means a Paid order; a cancelled or
@@ -154,10 +154,8 @@ public class ProductRepository(CookfeedDbContext db) : IProductRepository
     public async Task<IReadOnlyList<ProductTile>> GetForSaleAsync(Contracts.Storefront.ProductType? type,
         ProductSort sort, int? viewerId, CancellationToken cancellationToken)
     {
-        // For sale, by the rule GetPageAsync reports as IsForSale (rules.js isForSale, DesignDocument.md §3.8).
-        var forSale = db.Products.AsNoTracking()
-            .Where(p => p.IsActive && p.Creator.SuspendedAt == null
-                && p.Recipes.Any() && p.Recipes.All(pr => pr.Recipe.IsPublished));
+        // For sale, by the rule GetPageAsync reports as IsForSale.
+        var forSale = db.Products.AsNoTracking().Where(ProductQueries.IsForSale);
 
         if (type is { } wanted)
         {

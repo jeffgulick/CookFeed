@@ -57,9 +57,9 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Tests | 498, all passing: Domain 40, Application 65, Integration 393 |
+| Tests | 509, all passing: Domain 40, Application 65, Integration 404 |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
-| Creator storefront, `GET /api/creators/{handle}` | Done: 24 tests; SQL verified in `docs/Queries.md` §2 |
+| Creator storefront, `GET /api/creators/{handle}` | Done: 35 tests; SQL verified in `docs/Queries.md` §2, with the 2026-11-21 changes noted there |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
 | Shopping list, `GET /api/me/shopping-list` | Done: 26 tests, incl. 14 Domain tests for `ShoppingListAggregator`; SQL verified in `docs/Queries.md` §3 |
 | Recipe detail, `GET /api/recipes/{id}` | Done: the access rule in `Domain/Access/RecipeAccess` (15 Domain tests), 4 service tests, 21 HTTP tests against Q4 and Q14; SQL verified in `docs/Queries.md` §1b |

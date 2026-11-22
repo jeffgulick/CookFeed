@@ -1,11 +1,25 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FeedItem } from '../core/api-types';
 import { Icon } from './icon';
+
+/** What a recipe card shows. The feed's recipes and a storefront's both fit. */
+export interface RecipeCardData {
+  id: number;
+  title: string;
+  thumbnailUrl: string | null;
+  servings: number;
+  /** Prep plus cook time; null when the recipe gives neither. */
+  totalMinutes: number | null;
+  saveCount: number;
+  /** Who made it, for the "by ..." line. Left out where the page already says so. */
+  creatorHandle?: string;
+  creatorIsVerified?: boolean;
+}
 
 /**
  * One free recipe as a card: its picture, title, who made it, how long it takes, how many it serves, and how many
  * cooks saved it. The whole card leads to the recipe; the title is the link a keyboard or screen reader lands on.
+ * A page that already says who made the recipes passes a line of its own instead, such as when it was published.
  */
 @Component({
   selector: 'app-recipe-card',
@@ -33,12 +47,16 @@ import { Icon } from './icon';
           recipe().title
         }}</a>
       </h3>
-      <p class="meta text-sm sm:text-[0.9375rem]">
-        by {{ recipe().creatorHandle }}
-        @if (recipe().creatorIsVerified) {
-          <span class="tag-good ml-1 align-middle"><app-icon name="check" [size]="14" /> Verified</span>
-        }
-      </p>
+      @if (label(); as line) {
+        <p class="meta text-sm sm:text-[0.9375rem]">{{ line }}</p>
+      } @else if (recipe().creatorHandle; as handle) {
+        <p class="meta text-sm sm:text-[0.9375rem]">
+          by {{ handle }}
+          @if (recipe().creatorIsVerified) {
+            <span class="tag-good ml-1 align-middle"><app-icon name="check" [size]="14" /> Verified</span>
+          }
+        </p>
+      }
       <p class="meta mt-auto flex flex-wrap items-center gap-x-3 gap-y-0.5 pt-1 text-sm sm:gap-x-4 sm:text-[0.9375rem]">
         <span class="inline-flex items-center gap-1"
           ><app-icon name="servings" [size]="16" /> Serves {{ recipe().servings }}</span
@@ -54,7 +72,10 @@ import { Icon } from './icon';
   `,
 })
 export class RecipeCard {
-  readonly recipe = input.required<FeedItem>();
+  readonly recipe = input.required<RecipeCardData>();
+
+  /** A line shown in place of "by ...", such as "Published August 20, 2026". */
+  readonly label = input<string>();
 
   /** The API sends a path such as images/recipes/5.svg; the app serves those from its own /images folder. */
   protected readonly imageUrl = computed(() => '/' + (this.recipe().thumbnailUrl ?? 'images/recipes/new.svg'));

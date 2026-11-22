@@ -22,6 +22,16 @@ const SHOTS = [
   { name: 'discover-guest', path: '/', user: null },
   { name: 'discover-home-cook', path: '/', user: 1 },
   { name: 'sign-in', path: '/sign-in', user: null },
+  { name: 'creator-guest', path: '/creators/kenji-kitchen', user: null },
+  { name: 'creator-buyer', path: '/creators/maria-cooks', user: 1 },
+  { name: 'creator-own-storefront', path: '/creators/kenji-kitchen', user: 4, only: 'desktop' },
+  {
+    name: 'creator-for-sale',
+    path: '/creators/maria-cooks',
+    user: 2,
+    only: 'phone',
+    before: (page) => page.getByRole('heading', { name: 'For sale' }).scrollIntoViewIfNeeded(),
+  },
   { name: 'sign-in-creator', path: '/sign-in', user: 4 },
   {
     name: 'discover-plans',

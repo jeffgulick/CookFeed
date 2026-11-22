@@ -12,7 +12,9 @@
       >.
     </p>
     <div class="mt-3 flex flex-wrap items-center gap-3">
-      @if (session.isAdmin()) {
+      @if (next(); as back) {
+        <a [routerLink]="back" class="btn btn-primary">Back to the page you were on <app-icon name="arrow" [size]="18" /></a>
+      } @else if (session.isAdmin()) {
         <a routerLink="/admin" class="btn btn-primary">Open the Admin console <app-icon name="arrow" [size]="18" /></a>
       } @else if (session.isCreator()) {
         <a routerLink="/studio" class="btn btn-primary">Open My studio <app-icon name="arrow" [size]="18" /></a>

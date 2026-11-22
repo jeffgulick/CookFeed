@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using Cookfeed.Contracts.Products;
 using Cookfeed.Contracts.Storefront;
 using Cookfeed.IntegrationTests.Support;
 
@@ -8,11 +9,13 @@ namespace Cookfeed.IntegrationTests.Api;
 
 /// <summary>
 /// <c>GET /api/creators/{handle}</c> over HTTP, against the database <c>DbSeeder</c> builds. Counts and product
-/// lines are held to <c>docs/sql/queries.sql</c> Q2 and Q5 run on the same database. These tests only read.
+/// lines are held to <c>docs/sql/queries.sql</c> Q2 and Q5 run on the same database. The tests that change rows
+/// (a suspended creator, a recipe taken down) build their own database.
 /// </summary>
 public sealed class StorefrontEndpointTests(DatabaseFixture databases) : IAsyncDisposable
 {
     private CookfeedApiFactory? _api;
+    private string? _changed;
 
     public static TheoryData<string> Handles => ["maria-cooks", "kenji-kitchen", "dan-meal-preps"];
 
@@ -166,6 +169,98 @@ public sealed class StorefrontEndpointTests(DatabaseFixture databases) : IAsyncD
         var response = await SendAsync("/api/creators/maria-cooks", viewerHeader: "alex");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Each_recipe_card_carries_its_servings()
+    {
+        var expected = await Sql.QueryLinesAsync(await ConnectionStringAsync(), """
+            SELECT r.id, r.servings FROM recipes r JOIN creator_profiles c ON r.creator_id = c.user_id
+            WHERE c.handle = 'kenji-kitchen' AND r.is_published AND r.visibility = 'Public'
+            ORDER BY r.published_at DESC, r.id DESC
+            """);
+
+        var s = await GetStorefrontAsync("kenji-kitchen");
+
+        Assert.NotEmpty(expected);
+        Assert.Equal(expected, s.Recipes.Select(r => $"{r.Id} | {r.Servings}"));
+    }
+
+    [Theory]
+    [MemberData(nameof(Handles))]
+    public async Task No_seeded_creator_is_suspended(string handle)
+    {
+        Assert.False((await GetStorefrontAsync(handle)).IsSuspended);
+    }
+
+    [Fact]
+    public async Task A_suspended_creator_keeps_the_storefront_and_its_recipes_and_sells_nothing()
+    {
+        // DesignDocument.md §3.8: the page still opens and says so, the free recipes stay, and nothing is for sale.
+        await using var api = new CookfeedApiFactory(await ChangedDatabaseAsync());
+
+        var s = await GetStorefrontAsync(api, "dan-meal-preps");
+
+        Assert.True(s.IsSuspended);
+        Assert.NotEmpty(s.Recipes);
+        Assert.Empty(s.Products);
+    }
+
+    [Theory]
+    [InlineData("maria-cooks", new[] { 1, 2 })]
+    [InlineData("kenji-kitchen", new int[0])]      // Three Weeknights holds the onigiri that was taken down
+    [InlineData("dan-meal-preps", new int[0])]     // suspended
+    public async Task The_storefront_lists_exactly_the_products_whose_own_page_says_for_sale(string handle, int[] expected)
+    {
+        // One rule, read in three places: the storefront, the list of plans, and each plan's page.
+        await using var api = new CookfeedApiFactory(await ChangedDatabaseAsync());
+
+        var listed = (await GetStorefrontAsync(api, handle)).Products.Select(p => p.Id).ToList();
+
+        Assert.Equal(expected, listed);
+        foreach (var id in listed)
+        {
+            var page = await api.CreateClient().GetFromJsonAsync<ProductDetailDto>($"/api/products/{id}",
+                TestContext.Current.CancellationToken);
+            Assert.True(page!.IsForSale, $"product {id}");
+        }
+    }
+
+    [Theory]
+    [InlineData(2, new[] { "The Bread Box" })]   // Priya's seeded cart
+    [InlineData(1, new string[0])]               // Alex's cart is empty
+    [InlineData(null, new string[0])]            // a visitor has no cart
+    public async Task A_product_says_whether_it_is_in_the_viewers_cart(int? viewer, string[] inCart)
+    {
+        var s = await GetStorefrontAsync("maria-cooks", viewer);
+
+        Assert.Equal(inCart, s.Products.Where(p => p.InCart).Select(p => p.Title));
+    }
+
+    // The seed with Dan suspended and the onigiri (recipe 6, in Three Weeknights) taken down.
+    private async Task<string> ChangedDatabaseAsync()
+    {
+        _changed ??= await CreateChangedDatabaseAsync();
+        return _changed;
+    }
+
+    private async Task<string> CreateChangedDatabaseAsync()
+    {
+        var connection = await databases.CreateMigratedDatabaseAsync("storefront");
+        await DatabaseFixture.SeedWithDbSeederAsync(connection);
+        await Sql.ExecuteAsync(connection, """
+            UPDATE creator_profiles SET suspended_at = now() WHERE user_id = 5;
+            UPDATE recipes SET is_published = FALSE WHERE id = 6;
+            """);
+        return connection;
+    }
+
+    private static async Task<StorefrontDto> GetStorefrontAsync(CookfeedApiFactory api, string handle)
+    {
+        var response = await api.CreateClient().GetAsync($"/api/creators/{handle}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return (await response.Content.ReadFromJsonAsync<StorefrontDto>(TestContext.Current.CancellationToken))!;
     }
 
     private async Task<StorefrontDto> GetStorefrontAsync(string handle, int? viewerId = null)
