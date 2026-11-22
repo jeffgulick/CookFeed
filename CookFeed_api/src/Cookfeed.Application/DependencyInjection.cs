@@ -9,6 +9,7 @@ using Cookfeed.Application.Reviews;
 using Cookfeed.Application.Saves;
 using Cookfeed.Application.ShoppingList;
 using Cookfeed.Application.Storefront;
+using Cookfeed.Application.Trips;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Cookfeed.Application;
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<CartService>();
         services.AddScoped<CheckoutService>();
         services.AddScoped<SaveService>();
+        services.AddScoped<TripService>();
         // The clock the services read the time from, so a test can set it.
         services.AddSingleton(TimeProvider.System);
         return services;

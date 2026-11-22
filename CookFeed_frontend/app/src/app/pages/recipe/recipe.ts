@@ -169,6 +169,7 @@ export class RecipePage {
         this.people.set(recipe.servings);
         this.playing.set(null);
         this.saved.set(recipe.savedByViewer);
+        this.shopped.set(false);
         this.saveCount.set(recipe.saveCount);
       }
     });
@@ -197,6 +198,29 @@ export class RecipePage {
       this.notices.say(state.saved ? `${recipe.title} is saved in My kitchen.` : `${recipe.title} is no longer saved.`);
     } catch (error) {
       this.notices.problem(problemText(error, 'That could not be saved. Please try again.'));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  /** True once this recipe has been put on the shopping list from this page, so the page offers the way to the list. */
+  protected readonly shopped = signal(false);
+
+  /** Puts the recipe on the cook's shopping list, for the people chosen on this page. The list is made if there is none. */
+  protected async shop(): Promise<void> {
+    const recipe = this.recipe.value();
+    if (recipe === null) {
+      return;
+    }
+    this.saving.set(true);
+    try {
+      const result = await firstValueFrom(this.api.shop({ recipeId: recipe.id, servings: this.people() }));
+      this.shopped.set(true);
+      this.notices.say(
+        result.added > 0 ? `${recipe.title} is on your shopping list.` : `${recipe.title} is already on your shopping list.`,
+      );
+    } catch (error) {
+      this.notices.problem(problemText(error, 'That could not be put on your shopping list. Please try again.'));
     } finally {
       this.saving.set(false);
     }

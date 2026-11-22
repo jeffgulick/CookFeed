@@ -62,6 +62,29 @@ const SHOTS = [
   { name: 'orders', path: '/orders', user: 1 },
   { name: 'kitchen', path: '/kitchen', user: 1 },
   { name: 'reviews-form', path: '/plans/4/reviews', user: 2 },
+  {
+    // Noor shops a recipe, so there is a list to show. The database is put back to the seed when the script ends.
+    name: 'list',
+    path: '/list',
+    user: 8,
+    before: async (page) => {
+      await page.request.post(base + '/api/me/trips/items', { headers: { 'X-User-Id': '8' }, data: { recipeId: 18 } });
+      await page.request.post(base + '/api/me/trips/items', { headers: { 'X-User-Id': '8' }, data: { recipeId: 15 } });
+      await page.reload({ waitUntil: 'networkidle' });
+    },
+  },
+  {
+    name: 'list-shopping',
+    path: '/list',
+    user: 8,
+    only: 'phone',
+    before: async (page) => {
+      await page.getByRole('button', { name: 'Start shopping' }).click();
+      await page.getByRole('checkbox').first().check();
+      await page.getByRole('checkbox').nth(1).check();
+    },
+  },
+  { name: 'kitchen-with-list', path: '/kitchen', user: 8, only: 'desktop' },
   { name: 'recipe-saved', path: '/recipes/16', user: 7, only: 'desktop' },
   { name: 'creator-guest', path: '/creators/kenji-kitchen', user: null },
   { name: 'plan-deciding', path: '/plans/3', user: null },

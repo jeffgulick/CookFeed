@@ -26,6 +26,7 @@ test('each built page names itself in the browser tab', async ({ page }) => {
     ['/cart', 'Cart | Cookfeed'],
     ['/orders', 'Your orders | Cookfeed'],
     ['/kitchen', 'My kitchen | Cookfeed'],
+    ['/list', 'Shopping list | Cookfeed'],
     ['/creators/kenji-kitchen', 'kenji-kitchen | Cookfeed'],
     ['/plans/3', 'Three Weeknights in Japan | Cookfeed'],
     ['/recipes/16', 'Tamagoyaki | Cookfeed'],

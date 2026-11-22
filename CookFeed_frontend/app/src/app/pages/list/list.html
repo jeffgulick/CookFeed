@@ -1,0 +1,183 @@
+@let list = trip();
+@let words = view();
+
+<p data-back class="meta">
+  <a routerLink="/kitchen" class="font-semibold"><span aria-hidden="true">&larr;</span> My kitchen</a>
+</p>
+<span class="pill mt-3">Shopping list</span>
+
+@if (session.user() === null) {
+  <h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Shopping list</h1>
+  <!-- next carries this page's address, so the sign-in page can offer the way back. -->
+  <p data-no-list-here class="card mt-6 max-w-prose p-4 md:p-5">
+    <a routerLink="/sign-in" [queryParams]="{ next: '/list' }" class="font-semibold">Sign in to see your shopping list</a>
+  </p>
+} @else if (!session.canShop()) {
+  <h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Shopping list</h1>
+  <p data-no-list-here class="card mt-6 max-w-prose p-4 md:p-5">Admin accounts do not shop, so there is no shopping list.</p>
+} @else if (state() === 'missing') {
+  <h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">List not found</h1>
+  <p class="meta mt-3 max-w-prose">There is no shopping list of yours at this address.</p>
+  <p class="mt-6"><a routerLink="/kitchen" class="btn btn-secondary">Back to My kitchen</a></p>
+} @else if (list && words) {
+  <h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">{{ list.name }}</h1>
+  <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+    <!-- The word says where the list is in its life; the color only repeats it. -->
+    <span
+      data-status
+      [class]="
+        list.status === 'Done'
+          ? 'rounded-full border border-line-strong bg-fill px-2.5 py-0.5 text-[0.8125rem] font-semibold text-ink-soft'
+          : list.status === 'Shopping'
+            ? 'tag-good'
+            : 'pill'
+      "
+      >{{ words.status }}</span
+    >
+    <span data-summary class="meta">{{ words.summary }}</span>
+  </p>
+
+  @if (list.canChange) {
+    <div class="mt-5 flex flex-wrap gap-2">
+      @if (list.status === 'Building') {
+        <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="start()">Start shopping</button>
+      }
+      @if (list.status === 'Shopping') {
+        <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="finish()">Done shopping</button>
+      }
+    </div>
+  }
+  <p data-hint class="meta mt-3 max-w-prose">{{ words.hint }}</p>
+
+  <section data-to-buy aria-labelledby="toBuyHeading" class="card mt-6 max-w-3xl p-4 md:p-6">
+    <h2 id="toBuyHeading" class="text-2xl font-bold">{{ words.heading }}</h2>
+    @if (words.shopping) {
+      <p data-progress aria-live="polite" class="mt-1 font-semibold">{{ words.progress }}</p>
+    }
+
+    @for (aisle of words.aisles; track aisle.name) {
+      <h3 class="mt-5 border-b border-line pb-1 font-sans text-sm font-bold tracking-wide text-brand-dark uppercase">
+        {{ aisle.name }}
+      </h3>
+      <ul class="divide-y divide-line">
+        @for (line of aisle.lines; track line.key) {
+          <li data-line class="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 py-2">
+            @if (words.shopping) {
+              <!-- A tall box to tick in the store: in the basket, or not yet. -->
+              <input
+                type="checkbox"
+                class="size-6 shrink-0 accent-brand"
+                [attr.aria-label]="'In my basket: ' + line.ingredient"
+                [checked]="line.ticked"
+                (change)="tick(line.key, $any($event.target).checked)"
+              />
+            }
+            <span data-line-name class="min-w-0 flex-1" [class.line-through]="line.ticked" [class.text-muted]="line.ticked">{{
+              line.ingredient
+            }}</span>
+            <span data-line-amount class="font-semibold tabular-nums">{{ line.amount }}</span>
+            @if (list.canChange) {
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [attr.aria-label]="'Have it: ' + line.ingredient"
+                [disabled]="busy()"
+                (click)="setSkip(line.ingredientId, true)"
+              >
+                Have it
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    } @empty {
+      <p class="meta mt-3">Nothing to buy yet.{{ list.canChange ? ' Shop a recipe or a plan to add to this list.' : '' }}</p>
+    }
+
+    @if (list.skipped.length > 0) {
+      <p data-skipped class="mt-5 rounded-xl bg-fill p-3 text-sm">
+        Already at home, off the list:
+        @for (item of list.skipped; track item.ingredientId) {
+          <span class="inline-flex items-center gap-1">
+            {{ item.ingredient }}
+            @if (list.canChange) {
+              <button
+                type="button"
+                class="font-semibold text-brand-dark underline"
+                [attr.aria-label]="'Put back: ' + item.ingredient"
+                (click)="setSkip(item.ingredientId, false)"
+              >
+                put back</button
+              >
+            }
+            {{ $last ? '' : ',' }}
+          </span>
+        }
+      </p>
+    }
+  </section>
+
+  <section data-cooks aria-labelledby="cooksHeading" class="mt-10 max-w-3xl">
+    <h2 id="cooksHeading" class="text-2xl font-bold md:text-3xl">What this list cooks</h2>
+    @if (list.canChange) {
+      <p class="meta mt-1">Change the people for a recipe, or take one off. The list above follows.</p>
+    }
+    <div class="card mt-4 p-4 md:p-5">
+      <ul class="divide-y divide-line">
+        @for (item of list.items; track item.recipeId) {
+          <li data-list-recipe class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+            <a [routerLink]="['/recipes', item.recipeId]" class="min-w-0 flex-1 font-semibold">{{ item.title }}</a>
+            @if (list.canChange) {
+              <span class="inline-flex items-center gap-2">
+                <span aria-hidden="true" class="meta">for</span>
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  [min]="minPeople"
+                  [max]="maxPeople"
+                  step="1"
+                  class="min-h-11 w-16 rounded-lg border border-line-strong bg-card px-2 text-center"
+                  [attr.aria-label]="'People for ' + item.title"
+                  [value]="item.servings"
+                  (change)="setPeople(item, $any($event.target).value)"
+                />
+                <span aria-hidden="true" class="meta">people</span>
+              </span>
+              <button
+                type="button"
+                class="font-semibold text-brand underline"
+                [attr.aria-label]="'Take off list: ' + item.title"
+                (click)="takeOff(item)"
+              >
+                Take off list
+              </button>
+            } @else {
+              <span class="meta">for {{ item.servings }} people</span>
+            }
+          </li>
+        } @empty {
+          <li class="meta py-2">No recipes on this list yet.</li>
+        }
+      </ul>
+      <p data-people-error role="alert" class="mt-2 text-sm font-semibold text-bad">{{ peopleError() }}</p>
+      <p class="mt-3">
+        <button type="button" class="font-semibold text-brand underline" (click)="deleteList()">Delete this list</button>
+      </p>
+    </div>
+  </section>
+} @else if (state() === 'ready') {
+  <h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Shopping list</h1>
+  <div data-no-list class="card mt-6 max-w-prose p-4 md:p-5">
+    <p><strong>You have no shopping list yet.</strong></p>
+    <p class="meta mt-1">
+      Press <strong>Shop this recipe</strong> on a recipe, or <strong>Shop this plan</strong> on a plan you own, and it
+      goes straight onto your list.
+    </p>
+    <p class="mt-2">
+      <a routerLink="/recipes" class="font-semibold">Browse the recipes <span aria-hidden="true">&rarr;</span></a>
+    </p>
+  </div>
+} @else {
+  <h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Shopping list</h1>
+  <app-load-state [state]="state()" what="shopping list" />
+}

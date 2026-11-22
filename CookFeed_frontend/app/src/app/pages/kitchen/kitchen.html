@@ -9,7 +9,30 @@
 } @else if (!session.canShop()) {
   <p data-no-kitchen class="card mt-6 max-w-prose p-4 md:p-5">Admin accounts do not save recipes or shop.</p>
 } @else {
-  <p data-kitchen-summary class="meta mt-2">The plans you bought and the recipes you saved.</p>
+  <p data-kitchen-summary class="meta mt-2">Your shopping list, the plans you bought and the recipes you saved.</p>
+
+  <section data-your-list aria-labelledby="listHeading" class="mt-8 md:mt-10">
+    <h2 id="listHeading" class="text-2xl font-bold md:text-3xl">Your shopping list</h2>
+    <app-load-state [state]="lists.state()" what="shopping list" />
+    @if (lists.state() === 'ready') {
+      <div class="card mt-4 max-w-prose p-4 md:p-5">
+        @if (activeList(); as list) {
+          <p>
+            <strong>{{ list.name }}</strong>
+          </p>
+          <p class="meta mt-1">{{ list.about }}</p>
+          <p class="mt-3">
+            <a routerLink="/list" class="btn btn-primary btn-small">Open list <span aria-hidden="true">&rarr;</span></a>
+          </p>
+        } @else {
+          <p><strong>You have no shopping list yet.</strong></p>
+          <p class="meta mt-1">
+            Press <strong>Shop this recipe</strong> on a recipe, or <strong>Shop this plan</strong> on a plan you own.
+          </p>
+        }
+      </div>
+    }
+  </section>
 
   <section data-your-plans aria-labelledby="plansHeading" class="mt-8 md:mt-10">
     <h2 id="plansHeading" class="text-2xl font-bold md:text-3xl">Your plans</h2>
@@ -78,6 +101,41 @@
               </button>
             </app-recipe-card>
           }
+        </div>
+      }
+    }
+  </section>
+}
+
+@if (session.canShop()) {
+  <section data-past-lists aria-labelledby="pastHeading" class="mt-10 md:mt-14">
+    <h2 id="pastHeading" class="text-2xl font-bold md:text-3xl">Past lists</h2>
+    @if (lists.state() === 'ready') {
+      @if (pastLists().length === 0) {
+        <p class="meta mt-3">Lists you finish are kept here.</p>
+      } @else {
+        <!-- A table of four short columns; it scrolls sideways inside its own box on a narrow phone. -->
+        <div class="card mt-4 max-w-3xl overflow-x-auto">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-line text-sm text-ink-soft">
+                <th scope="col" class="p-3 font-semibold">List</th>
+                <th scope="col" class="p-3 font-semibold">Made</th>
+                <th scope="col" class="p-3 font-semibold">Recipes</th>
+                <th scope="col" class="p-3 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              @for (list of pastLists(); track list.id) {
+                <tr>
+                  <td class="p-3"><a [routerLink]="['/list', list.id]" class="font-semibold">{{ list.name }}</a></td>
+                  <td class="p-3 whitespace-nowrap">{{ list.made }}</td>
+                  <td class="p-3">{{ list.recipes }}</td>
+                  <td class="p-3 whitespace-nowrap">{{ list.status }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
       }
     }

@@ -1169,6 +1169,57 @@ exactly when the page would offer it, so the form a cook sees and the write the 
   everyone then sees it and the rating; each refusal's status with nothing written; the 400s; delete, then
   post again; a hidden review cannot be deleted.
 
+## 8. Shopping lists ("trips") — *built 2026-11-21; generated SQL not yet captured here*
+
+A shopping list is the recipes a cook means to cook, each for a number of people, and where the list is in its
+life (DesignDocument.md §3.9). Its lines are computed from those recipes every time it is read, never stored.
+
+**Endpoints**, under `/api/me/trips`; a list that is someone else's answers 404, like one that does not exist:
+
+| Route | Answer |
+|---|---|
+| `GET /api/me/trips` | the list in use (being built or shopped), if any, and the finished ones, newest first |
+| `GET /api/me/trips/{id}` | one list: its recipes, its lines by aisle, and what was taken off with "Have it" |
+| `POST /api/me/trips/items` with `{ recipeId, servings? }` or `{ productId }` | "Shop this recipe" or "Shop this plan": onto the list in use, made if there is none |
+| `PUT` / `DELETE /api/me/trips/{id}/items/{recipeId}` | change the people for a recipe, or take it off |
+| `PUT` / `DELETE /api/me/trips/{id}/skips/{ingredientId}` | "Have it", and putting it back |
+| `POST /api/me/trips/{id}/start`, `/done` | Building to Shopping, Shopping to Done |
+| `DELETE /api/me/trips/{id}` | deletes the list with everything on it |
+
+**Code:** `MyTripsController` → `TripService` → `TripRepository`, with the rules in
+`Domain/ShoppingList/TripRules` (the prototype's `tripEditable`, `addTripItems` and `listName`).
+
+**Rules**
+
+- Only a home cook has lists (403 otherwise). One list is in use at a time, so nothing asks which.
+- A recipe goes on only if the caller could save it (`RecipeAccess.CanSave`); a plan is shopped from the caller's
+  purchase snapshot. With nothing left to add, nothing is written, so no empty list is left behind (404).
+- A recipe is never on a list twice. One asked for twice in a single request, as a plan with the oats on two
+  mornings, becomes one item for the people of both, up to 50.
+- A list changes while it is Building or Shopping; a done list is read-only (409).
+
+**The lines** use the arithmetic of §3: `TripRepository.GetIngredientTotalsAsync` builds the recipes at their
+scale (`servings / recipe.servings`) and hands them to the same grouped sum the week's list uses
+(`ShoppingListRepository.Totals`, now shared), and `ShoppingListAggregator` converts and picks the unit to shop
+in. Skipped ingredients are filtered out of the lines afterwards and listed on their own.
+
+**Writes:** adding a skip is `INSERT ... SELECT ... ON CONFLICT (trip_id, ingredient_id) DO NOTHING`, safe to
+repeat; people, status and deletes are one `UPDATE` or `DELETE` each (`ExecuteUpdateAsync`,
+`ExecuteDeleteAsync`); deleting a list takes its items and skips with it through `ON DELETE CASCADE`.
+
+**Not built:** sending a list to a delivery partner (the `Sent` status), "Shop again" from a past list, and adding
+recipes from inside the list page. `TripService` has no fake-repository unit tests; its behavior is tested over
+HTTP.
+
+**Tests:**
+
+- `tests/Cookfeed.Domain.Tests/ShoppingList/TripRulesTests.cs`: when a list can change, start or finish; its name;
+  combining what is asked for; the people a recipe can be cooked for.
+- `tests/Cookfeed.IntegrationTests/Api/TripsEndpointTests.cs`, over HTTP, each on its own database: shopping a
+  recipe makes the list; a second recipe joins it and none is on twice; the lines are the recipe's ingredients and
+  double when the people double; Have it and put back; shopping a plan from the purchase; each refusal with no
+  list left behind; the list's life; deleting; and that nobody reads or changes another cook's list.
+
 ## Write paths worth noting
 
 The writes that keep the denormalized columns correct are described where they are built: the cart and

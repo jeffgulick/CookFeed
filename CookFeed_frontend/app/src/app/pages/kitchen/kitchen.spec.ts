@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import axe from 'axe-core';
-import { Account, Purchase, SavedRecipe } from '../../core/api-types';
+import { Account, Purchase, SavedRecipe, Trips } from '../../core/api-types';
 import { Notices } from '../../core/notices';
 import { Session } from '../../core/session';
 import { KitchenPage } from './kitchen';
@@ -38,12 +38,14 @@ describe('Kitchen page', () => {
     savedAt: '2026-08-17T12:00:00+00:00',
   });
 
+  const noLists: Trips = { active: null, past: [] };
+
   let fixture: ComponentFixture<KitchenPage>;
   let page: HTMLElement;
   let http: HttpTestingController;
   let session: Session;
 
-  async function show(signedInAs: Account | null, plans?: Purchase[], recipes?: SavedRecipe[]): Promise<void> {
+  async function show(signedInAs: Account | null, plans?: Purchase[], recipes?: SavedRecipe[], lists?: Trips): Promise<void> {
     localStorage.clear();
     TestBed.configureTestingModule({
       imports: [KitchenPage],
@@ -59,13 +61,14 @@ describe('Kitchen page', () => {
     await fixture.whenStable();
     page = fixture.nativeElement as HTMLElement;
     if (plans !== undefined && recipes !== undefined) {
-      await answer(plans, recipes);
+      await answer(plans, recipes, lists);
     }
   }
 
-  async function answer(plans: Purchase[], recipes: SavedRecipe[]): Promise<void> {
+  async function answer(plans: Purchase[], recipes: SavedRecipe[], lists: Trips = noLists): Promise<void> {
     http.expectOne('/api/me/purchases').flush(plans);
     http.expectOne('/api/me/saves').flush(recipes);
+    http.expectOne('/api/me/trips').flush(lists);
     await fixture.whenStable();
   }
 
@@ -78,8 +81,8 @@ describe('Kitchen page', () => {
 
     expect(page.querySelectorAll('h1').length).toBe(1);
     expect(text('h1')).toBe('Your kitchen');
-    expect(text('[data-kitchen-summary]')).toBe('The plans you bought and the recipes you saved.');
-    expect(titles('h2')).toEqual(['Your plans', 'Saved recipes']);
+    expect(text('[data-kitchen-summary]')).toBe('Your shopping list, the plans you bought and the recipes you saved.');
+    expect(titles('h2')).toEqual(['Your shopping list', 'Your plans', 'Saved recipes', 'Past lists']);
   });
 
   it('lists the plans the cook bought, as they were titled then, each leading to its page', async () => {
@@ -149,6 +152,41 @@ describe('Kitchen page', () => {
     expect(TestBed.inject(Notices).message()?.text).toBe('Caprese Salad is no longer saved.');
   });
 
+  it('shows the list in use with how many recipes it cooks, and leads to it', async () => {
+    await show(alex, [], [], {
+      active: { id: 7, name: 'Shopping list, November 21', status: 'Shopping', createdAt: '2026-11-21T12:00:00+00:00', completedAt: null, recipeCount: 2 },
+      past: [],
+    });
+
+    expect(text('[data-your-list]')).toContain('Shopping list, November 21');
+    expect(text('[data-your-list]')).toContain('2 recipes · Shopping');
+    const link = page.querySelector('[data-your-list] a');
+    expect(link?.textContent?.trim()).toContain('Open list');
+    expect(link?.getAttribute('href')).toBe('/list');
+  });
+
+  it('tells a cook with no list how to start one', async () => {
+    await show(alex, [], []);
+
+    expect(text('[data-your-list]')).toContain('You have no shopping list yet.');
+    expect(text('[data-your-list]')).toContain('Press Shop this recipe on a recipe, or Shop this plan on a plan you own.');
+    expect(text('[data-past-lists]')).toContain('Lists you finish are kept here.');
+  });
+
+  it('keeps the finished lists in a table, each leading to its list', async () => {
+    await show(alex, [], [], {
+      active: null,
+      past: [
+        { id: 7, name: 'Shopping list, November 21', status: 'Done', createdAt: '2026-11-21T12:00:00+00:00', completedAt: '2026-11-22T12:00:00+00:00', recipeCount: 2 },
+      ],
+    });
+
+    expect(titles('[data-past-lists] th')).toEqual(['List', 'Made', 'Recipes', 'Status']);
+    const cells = titles('[data-past-lists] tbody td');
+    expect(cells).toEqual(['Shopping list, November 21', 'November 21, 2026', '2', 'Done November 22, 2026']);
+    expect(page.querySelector('[data-past-lists] tbody a')?.getAttribute('href')).toBe('/list/7');
+  });
+
   it('asks a visitor to sign in, and says where to come back to', async () => {
     await show(null);
 
@@ -183,6 +221,7 @@ describe('Kitchen page', () => {
 
     http.expectOne('/api/me/purchases').flush('down', { status: 503, statusText: 'Service Unavailable' });
     http.expectOne('/api/me/saves').flush([saved(15, 'Caprese Salad')]);
+    http.expectOne('/api/me/trips').flush(noLists);
     await fixture.whenStable();
 
     expect(page.querySelector('[data-your-plans] [role="alert"]')?.textContent).toContain('could not be loaded');

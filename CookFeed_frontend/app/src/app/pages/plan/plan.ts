@@ -1,13 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { map } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { CookfeedApi } from '../../core/api';
 import { ProductDetail } from '../../core/api-types';
 import { BuyState, buyState } from '../../core/buy-state';
 import { Cart } from '../../core/cart';
 import { loadValue } from '../../core/load';
+import { Notices, problemText } from '../../core/notices';
 import { Session } from '../../core/session';
 import { BuyArea } from '../../ui/buy-area';
 import {
@@ -50,6 +51,13 @@ export class PlanPage {
   private readonly session = inject(Session);
   private readonly cart = inject(Cart);
   private readonly title = inject(Title);
+  private readonly notices = inject(Notices);
+
+  /** True once the plan has been put on the shopping list from this page, so the page offers the way to the list. */
+  protected readonly shopped = signal(false);
+
+  /** True while the plan is being put on the list, so a second press does nothing. */
+  protected readonly shopping = signal(false);
 
   protected readonly id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((params) => params.get('id') ?? '')), {
     requireSync: true,
@@ -134,6 +142,31 @@ export class PlanPage {
             `ingredients are added when you buy the ${noun}.`,
     };
   });
+
+  /**
+   * "Shop this plan": every recipe of the purchase goes on the cook's shopping list, each for the people it is
+   * written for; one that is served twice goes on once, for both meals. The list is made if there is none.
+   */
+  protected async shopPlan(): Promise<void> {
+    const plan = this.product.value();
+    if (plan === null) {
+      return;
+    }
+    this.shopping.set(true);
+    try {
+      const result = await firstValueFrom(this.api.shop({ productId: plan.id }));
+      this.shopped.set(true);
+      this.notices.say(
+        result.added > 0
+          ? `${plural(result.added, 'recipe', 'recipes')} from ${plan.title} ${result.added === 1 ? 'is' : 'are'} on your shopping list.`
+          : `Everything in ${plan.title} is already on your shopping list.`,
+      );
+    } catch (error) {
+      this.notices.problem(problemText(error, 'That could not be put on your shopping list. Please try again.'));
+    } finally {
+      this.shopping.set(false);
+    }
+  }
 
   constructor() {
     // The tab is named after the plan once it is known, as the prototype did.

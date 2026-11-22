@@ -49,8 +49,17 @@ public class ShoppingListRepository(CookfeedDbContext db) : IShoppingListReposit
         // Explicit joins, not navigations: with ri.Unit.ToBaseFactor and the like inside the grouped rows, EF Core
         // turned every SUM into a correlated subquery that re-ran the whole recipe set once per line
         // (docs/Queries.md §3).
+        return await Totals(db, planned.Concat(savedNotPlanned)).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Every non-optional ingredient line of the given recipes at their scale, summed per (ingredient, unit category)
+    /// in the category's base unit. Shared by the week's shopping list and a shopping trip, so both add up the same.
+    /// </summary>
+    internal static IQueryable<IngredientTotal> Totals(CookfeedDbContext db, IQueryable<RecipeAtScale> recipes)
+    {
         var totals =
-            from source in planned.Concat(savedNotPlanned)
+            from source in recipes
             join ri in db.RecipeIngredients on source.RecipeId equals ri.RecipeId
             join unit in db.Units on ri.UnitId equals unit.Id
             join i in db.Ingredients on ri.IngredientId equals i.Id
@@ -83,7 +92,7 @@ public class ShoppingListRepository(CookfeedDbContext db) : IShoppingListReposit
                 // a gram or millilitre is far below the two the list shows.
                 g.Sum(x => Math.Round(x.Quantity * x.Scale * x.ToBaseFactor, 6)));
 
-        return await totals.ToListAsync(cancellationToken);
+        return totals;
     }
 
     public async Task<IReadOnlyDictionary<int, IReadOnlyList<WrittenIngredientLine>>> GetWrittenLinesAsync(
@@ -108,7 +117,7 @@ public class ShoppingListRepository(CookfeedDbContext db) : IShoppingListReposit
     }
 
     /// <summary>A recipe going onto the list and how many times its quantities count (1 = as written).</summary>
-    private sealed class RecipeAtScale
+    internal sealed class RecipeAtScale
     {
         public int RecipeId { get; init; }
 
