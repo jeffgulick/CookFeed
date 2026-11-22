@@ -10,12 +10,23 @@ namespace Cookfeed.Infrastructure.Persistence.Repositories;
 public class RecipeRepository(CookfeedDbContext db) : IRecipeRepository
 {
     public async Task<IReadOnlyList<FeedItemDto>> GetFeedAsync(FeedSort sort, int skip, int take, int? viewerId,
-        CancellationToken cancellationToken)
+        string? search, CancellationToken cancellationToken)
     {
         // Only published Public recipes reach the feed; ProductOnly recipes are for buyers (DesignDocument.md §3.3).
         // AsNoTracking: this is a read, so EF Core does not need to watch the rows for changes.
         var recipes = db.Recipes.AsNoTracking()
             .Where(r => r.IsPublished && r.Visibility == RecipeVisibility.Public);
+
+        if (search is not null)
+        {
+            // ILIKE is LIKE without regard to letter case. The text is sent as a parameter, never pasted into the
+            // SQL, and %, _ and \ in it are escaped so they are searched for as themselves, not as wildcards.
+            var pattern = "%" + search.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_") + "%";
+            recipes = recipes.Where(r =>
+                EF.Functions.ILike(r.Title, pattern, @"\")
+                || EF.Functions.ILike(r.Creator.Handle, pattern, @"\")
+                || EF.Functions.ILike(r.Creator.User.DisplayName, pattern, @"\"));
+        }
 
         // Each order leads with the column its index is sorted on, so PostgreSQL can read the index in order
         // and stop after one page. The trailing id makes the order total, so pages never overlap or skip a row.

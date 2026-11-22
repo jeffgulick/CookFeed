@@ -56,6 +56,9 @@ then start nothing. What they check:
 | `keyboard.spec.ts` | the skip link, a visible focus ring, where focus goes after moving to another page, the account menu by keyboard |
 | `sign-in.spec.ts` | the picker lists the database's accounts; choosing one changes the navigation, survives a reload, and is sent to the API |
 | `discover.spec.ts` | what a first-time visitor is told; the plans for sale, the trending recipes and the creators, from the database; a signed-in cook is greeted by name and shown what they own |
+| `plans-browse.spec.ts` | the Plans page: everything for sale, narrowed to meal plans or collections, sorted by date, price or rating; what a signed-in cook owns |
+| `recipes-browse.spec.ts` | the Recipes page: every free recipe, sorted two ways; Find matches a title or a creator; a premium recipe is never listed |
+| `help.spec.ts` | the Help page: the common questions, each answered, with links on to the pages the answers name |
 | `creator.spec.ts` | a creator's storefront: who they are, their recipes sorted two ways, what is for sale, and a buy area that changes with who is looking; signing in to buy comes back to the page; a handle nobody has says so |
 | `plan.spec.ts` | a plan's page for someone deciding (price, pitch, recipes locked), a buyer (recipes opened, the list to buy), its creator, the admin, a retired plan, and an address that names no plan |
 | `recipe.spec.ts` | a recipe: ingredients that rescale for the people cooked for, steps that jump the video, the way back to a plan; a premium recipe names its plan to someone who has not bought it; a draft stays private |

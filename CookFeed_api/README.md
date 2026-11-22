@@ -23,7 +23,7 @@ The four endpoints:
 
 | Query | Endpoint | Queries.md |
 |---|---|---|
-| Feed | `GET /api/feed?sort=Newest\|Trending&page=&pageSize=` | §1 |
+| Feed | `GET /api/feed?sort=Newest\|Trending&page=&pageSize=&search=` | §1 |
 | Creator storefront | `GET /api/creators/{handle}` | §2 |
 | Order history | `GET /api/me/orders` | §4 |
 | Shopping-list aggregation | `GET /api/me/shopping-list?weekStart=` | §3 |
@@ -57,7 +57,7 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Tests | 523, all passing: Domain 45, Application 66, Integration 412 |
+| Tests | 540, all passing: Domain 45, Application 70, Integration 425 |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 35 tests; SQL verified in `docs/Queries.md` §2, with the 2026-11-21 changes noted there |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |

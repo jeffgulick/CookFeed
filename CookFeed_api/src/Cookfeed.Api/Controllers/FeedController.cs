@@ -6,12 +6,15 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Cookfeed.Api.Controllers;
 
-/// <summary>The recipe feed: published Public recipes, newest or trending, one page at a time.</summary>
+/// <summary>
+/// The recipe feed: published Public recipes, newest or trending, one page at a time, optionally only those whose
+/// title or creator matches a search.
+/// </summary>
 [ApiController]
 [Route("api/feed")]
 public class FeedController(FeedService feed) : ControllerBase
 {
-    // [ApiController] checks the [Range] attributes, the sort name and the X-User-Id header before this method
+    // [ApiController] checks the [Range] and [MaxLength] attributes, the sort name and the X-User-Id header before this method
     // runs, and answers 400 with a ProblemDetails body naming the bad parameter.
     // X-User-Id is optional here: it only marks the viewer's own saves, so no one else's data is exposed.
     [HttpGet]
@@ -19,7 +22,8 @@ public class FeedController(FeedService feed) : ControllerBase
         [FromQuery] FeedSort sort = FeedSort.Newest,
         [FromQuery, Range(1, FeedService.MaxPage)] int page = 1,
         [FromQuery, Range(1, FeedService.MaxPageSize)] int pageSize = 20,
+        [FromQuery, MaxLength(FeedService.MaxSearchLength)] string? search = null,
         [FromCallerHeader] int? viewerId = null,
         CancellationToken cancellationToken = default) =>
-        feed.GetFeedAsync(sort, page, pageSize, viewerId, cancellationToken);
+        feed.GetFeedAsync(sort, page, pageSize, viewerId, search, cancellationToken);
 }

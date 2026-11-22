@@ -1,0 +1,55 @@
+<span class="pill">Plans</span>
+<h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Meal plans and collections</h1>
+<p class="mt-3 max-w-prose text-lg text-ink-soft md:text-xl">
+  Buy once and keep it: every recipe and its video, ready to plan into your week and shop.
+</p>
+
+<div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+  <!-- The choice in force is dark and says aria-pressed, so it does not rest on color alone. -->
+  <div data-kinds role="group" aria-label="Show" class="flex flex-wrap items-center gap-2">
+    <span aria-hidden="true" class="meta">Show</span>
+    @for (choice of kinds; track choice.value) {
+      <button
+        type="button"
+        class="btn btn-secondary aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-on-dark"
+        [attr.aria-pressed]="kind() === choice.value"
+        (click)="kind.set(choice.value)"
+      >
+        {{ choice.label }}
+      </button>
+    }
+  </div>
+
+  <label for="planSort" class="inline-flex items-center gap-2 font-semibold"
+    >Sort by
+    <select
+      id="planSort"
+      class="min-h-11 rounded-lg border border-line-strong bg-card px-3 font-normal"
+      [value]="sortBy()"
+      (change)="setSort($any($event.target).value)"
+    >
+      <option value="Newest">Newest</option>
+      <option value="Price">Price, low to high</option>
+      <option value="Rating">Best rated</option>
+    </select>
+  </label>
+
+  <p data-showing aria-live="polite" class="meta">{{ showing() }}</p>
+</div>
+
+<section aria-labelledby="forSaleHeading">
+  <h2 id="forSaleHeading" class="sr-only">For sale</h2>
+  <app-load-state [state]="plans.state()" what="plans" />
+  @if (plans.state() === 'ready') {
+    @if (shown().length === 0) {
+      <p class="meta mt-6">Nothing for sale in this group right now.</p>
+    } @else {
+      <!-- One plan across on a phone, so its cover is shown whole; side by side on wider screens. -->
+      <div class="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        @for (plan of shown(); track plan.id) {
+          <app-product-tile [product]="plan" />
+        }
+      </div>
+    }
+  }
+</section>
