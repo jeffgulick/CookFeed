@@ -1,0 +1,138 @@
+@let plan = product.value();
+@let words = view();
+
+@if (product.state() === 'missing') {
+  <span class="pill">Plans</span>
+  <h1 class="mt-3 text-3xl font-bold md:text-4xl">Plan not found</h1>
+  <p class="meta mt-3 max-w-prose">There is no meal plan or collection at this address.</p>
+  <p class="mt-6"><a routerLink="/plans" class="btn btn-secondary">See every plan and collection</a></p>
+} @else if (plan && words && product.state() === 'ready') {
+  <section data-plan-head>
+    <img
+      [src]="words.coverUrl"
+      [alt]="'Cover of ' + plan.title"
+      width="960"
+      height="400"
+      class="aspect-[12/5] w-full rounded-3xl border border-line bg-fill object-cover md:aspect-[3/1]"
+    />
+
+    <span class="pill mt-6">{{ words.typeLabel }}</span>
+    <h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">{{ plan.title }}</h1>
+    <p data-byline class="meta mt-2">
+      by <a [routerLink]="['/creators', plan.creator.handle]" class="font-semibold">{{ plan.creator.handle }}</a>
+      @if (plan.creator.isVerified) {
+        (Verified creator)
+      }
+      &middot;
+      <a [routerLink]="['/plans', plan.id, 'reviews']" class="font-semibold">
+        @if (words.average; as stars) {
+          <span class="sr-only">Rated </span><span aria-hidden="true" class="text-star-text">★</span> {{ stars }}
+          <span class="sr-only">out of 5 </span>({{ words.reviews }})
+        } @else {
+          no reviews yet
+        }
+      </a>
+    </p>
+
+    @if (plan.description) {
+      <p class="mt-4 max-w-prose text-lg text-ink-soft md:text-xl">{{ plan.description }}</p>
+    }
+
+    <div class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+      @if (showPrice()) {
+        <span data-price class="text-3xl font-bold">{{ words.price }}</span>
+      }
+      <app-buy-area [state]="state()" [noun]="words.noun" />
+    </div>
+    @if (deciding()) {
+      <p data-price-note class="meta mt-2">{{ words.priceNote }}</p>
+    }
+  </section>
+
+  @if (deciding()) {
+    <section data-what-you-get aria-labelledby="valueHeading" class="card mt-8 p-5 md:p-7">
+      <h2 id="valueHeading" class="text-2xl font-bold">What your {{ words.price }} gets you</h2>
+      <ul class="mt-4 grid gap-3 md:grid-cols-2 md:gap-x-8">
+        @for (item of words.pitch; track item.lead) {
+          <li class="flex gap-3">
+            <span aria-hidden="true" class="mt-1 text-good">&#10003;</span>
+            <span
+              ><strong>{{ item.lead }}</strong> {{ item.rest }}</span
+            >
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <section data-included aria-labelledby="includedHeading" class="mt-10 md:mt-12">
+    <h2 id="includedHeading" class="text-2xl font-bold md:text-3xl">What is included</h2>
+    @if (words.recipes.length === 0) {
+      <p class="meta mt-4">This {{ words.noun }} has no recipes listed.</p>
+    } @else {
+      <!-- Two across on a phone, like a photo grid; three on a wide screen. -->
+      <div class="mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        @for (item of words.recipes; track $index) {
+          <app-plan-recipe-card [recipe]="item.recipe" [productId]="plan.id" [label]="item.label" [lockText]="words.lockText" />
+        }
+      </div>
+    }
+  </section>
+
+  @if (whatYouBuy(); as buy) {
+    <section data-what-you-buy aria-labelledby="buyHeading" class="mt-10 md:mt-12">
+      <h2 id="buyHeading" class="text-2xl font-bold md:text-3xl">What you'll buy</h2>
+      <div class="card mt-4 p-4 md:p-6">
+        @if (buy.nothingOpen) {
+          <p class="text-ink-soft">{{ buy.preview }}</p>
+        } @else {
+          <p class="meta">{{ buy.from }}</p>
+          <p class="meta">Amounts as each recipe is written.</p>
+          @if (buy.notOnList; as note) {
+            <p data-not-on-list class="meta mt-1 font-semibold text-ink-soft">{{ note }}</p>
+          }
+          <table class="mt-4 w-full border-collapse text-left">
+            <caption class="sr-only">
+              Every ingredient to buy for this {{ words.noun }}, by aisle
+            </caption>
+            <thead>
+              <tr class="border-b border-line-strong text-sm text-muted">
+                <th scope="col" class="py-2 pr-3 font-semibold">Amount</th>
+                <th scope="col" class="py-2 pr-3 font-semibold">Ingredient</th>
+                <!-- On a phone the aisle sits under the ingredient instead of in a third column. -->
+                <th scope="col" class="hidden py-2 font-semibold sm:table-cell">Aisle</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of buy.lines; track line.ingredientId + line.unit) {
+                <tr class="border-b border-line align-top">
+                  <td data-amount class="py-2 pr-3 font-semibold whitespace-nowrap">{{ line.amount }}</td>
+                  <td class="py-2 pr-3">
+                    <span data-ingredient>{{ line.ingredient }}</span>
+                    <span class="meta block text-sm sm:hidden">{{ line.aisle }}</span>
+                  </td>
+                  <td data-aisle class="meta hidden py-2 sm:table-cell">{{ line.aisle }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </section>
+  }
+
+  @if (deciding()) {
+    <section data-reviews-prompt class="mt-10 rounded-3xl border border-brand-line bg-brand-soft p-5 md:p-7">
+      <p class="text-lg"><strong>Not sure yet?</strong> See what other home cooks thought of this {{ words.noun }}.</p>
+      <p class="mt-2">
+        <a [routerLink]="['/plans', plan.id, 'reviews']" class="font-semibold text-brand-dark"
+          >Read the reviews <span aria-hidden="true">&rarr;</span></a
+        >
+      </p>
+    </section>
+  }
+} @else {
+  <span class="pill">Plans</span>
+  <h1 class="mt-3 text-3xl font-bold md:text-4xl">Meal plan</h1>
+  <app-load-state [state]="product.state()" what="plan" />
+}

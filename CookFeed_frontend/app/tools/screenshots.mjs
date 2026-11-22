@@ -23,6 +23,16 @@ const SHOTS = [
   { name: 'discover-home-cook', path: '/', user: 1 },
   { name: 'sign-in', path: '/sign-in', user: null },
   { name: 'creator-guest', path: '/creators/kenji-kitchen', user: null },
+  { name: 'plan-deciding', path: '/plans/3', user: null },
+  { name: 'plan-buyer', path: '/plans/3', user: 1 },
+  { name: 'plan-creator', path: '/plans/3', user: 4, only: 'desktop' },
+  {
+    name: 'plan-what-you-buy',
+    path: '/plans/3',
+    user: 1,
+    only: 'phone',
+    before: (page) => page.getByRole('heading', { name: "What you'll buy" }).scrollIntoViewIfNeeded(),
+  },
   { name: 'creator-buyer', path: '/creators/maria-cooks', user: 1 },
   { name: 'creator-own-storefront', path: '/creators/kenji-kitchen', user: 4, only: 'desktop' },
   {

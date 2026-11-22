@@ -55,6 +55,7 @@ They start the API and the app themselves when neither is already running; the d
 | `sign-in.spec.ts` | the picker lists the database's accounts; choosing one changes the navigation, survives a reload, and is sent to the API |
 | `discover.spec.ts` | what a first-time visitor is told; the plans for sale, the trending recipes and the creators, from the database; a signed-in cook is greeted by name and shown what they own |
 | `creator.spec.ts` | a creator's storefront: who they are, their recipes sorted two ways, what is for sale, and a buy area that changes with who is looking; signing in to buy comes back to the page; a handle nobody has says so |
+| `plan.spec.ts` | a plan's page for someone deciding (price, pitch, recipes locked), a buyer (recipes opened, the list to buy), its creator, the admin, a retired plan, and an address that names no plan |
 | `accessibility.spec.ts` | axe finds no WCAG 2.1 A or AA violation (color contrast included) on any page, on either screen size |
 
 A page being converted is added to `BUILT_PAGES` in `e2e/support.ts`, which puts it under every one of those checks.
