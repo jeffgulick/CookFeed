@@ -114,6 +114,89 @@ public sealed class FeedEndpointTests(DatabaseFixture databases) : IAsyncDisposa
     }
 
     [Theory]
+    [InlineData("CAPRESE")]       // a title, in another letter case
+    [InlineData("kenji")]         // a creator's handle
+    [InlineData("maria conti")]   // a creator's name
+    [InlineData("an")]            // part of a word, in titles and names alike
+    public async Task A_search_finds_free_recipes_by_title_handle_or_creator_name(string search)
+    {
+        var expected = await Sql.QueryAsync(await ConnectionStringAsync(), FreeRecipesMatching(search));
+        Assert.NotEmpty(expected);
+
+        var page = await GetFeedAsync($"/api/feed?search={Uri.EscapeDataString(search)}&pageSize={FeedService.MaxPageSize}");
+
+        Assert.Equal(expected.Select(row => int.Parse(row[0]!)), page.Items.Select(i => i.Id));
+        Assert.False(page.HasMore);
+    }
+
+    [Fact]
+    public async Task A_search_keeps_the_sort_and_the_paging()
+    {
+        var maria = await Sql.QueryAsync(await ConnectionStringAsync(), """
+            SELECT r.id FROM recipes r JOIN creator_profiles c ON r.creator_id = c.user_id
+            WHERE r.is_published AND r.visibility = 'Public' AND c.handle = 'maria-cooks'
+            ORDER BY r.save_count DESC, r.published_at DESC, r.id DESC
+            """);
+        Assert.True(maria.Count >= 2);
+
+        var all = await GetFeedAsync("/api/feed?search=maria-cooks&sort=Trending");
+        var first = await GetFeedAsync("/api/feed?search=maria-cooks&sort=Trending&pageSize=1");
+
+        Assert.Equal(maria.Select(row => int.Parse(row[0]!)), all.Items.Select(i => i.Id));
+        Assert.Equal(all.Items[0].Id, Assert.Single(first.Items).Id);
+        Assert.True(first.HasMore);
+    }
+
+    [Theory]
+    [InlineData("teriyaki")]   // published, but sold inside a plan
+    [InlineData("miso")]       // a draft
+    public async Task A_search_never_finds_a_product_only_recipe_or_a_draft(string search)
+    {
+        var hidden = await Sql.QueryAsync(await ConnectionStringAsync(),
+            $"SELECT id FROM recipes WHERE title ILIKE '%{search}%' AND (NOT is_published OR visibility <> 'Public')");
+        Assert.NotEmpty(hidden);
+
+        var page = await GetFeedAsync($"/api/feed?search={search}");
+
+        Assert.Empty(page.Items);
+        Assert.False(page.HasMore);
+    }
+
+    [Theory]
+    [InlineData("%")]
+    [InlineData("_")]
+    [InlineData("%a%")]
+    public async Task The_wildcard_characters_of_LIKE_are_searched_for_as_themselves(string search)
+    {
+        // No free recipe or creator has % or _ in its name, so a search for one finds nothing; unescaped, % would
+        // match every recipe and _ any one character.
+        var page = await GetFeedAsync($"/api/feed?search={Uri.EscapeDataString(search)}");
+
+        Assert.Empty(page.Items);
+    }
+
+    [Theory]
+    [InlineData("/api/feed?search=")]
+    [InlineData("/api/feed?search=%20%20")]
+    public async Task A_blank_search_is_the_whole_feed(string url)
+    {
+        var whole = await GetFeedAsync("/api/feed");
+
+        var page = await GetFeedAsync(url);
+
+        Assert.Equal(whole.Items.Select(i => i.Id), page.Items.Select(i => i.Id));
+    }
+
+    [Fact]
+    public async Task A_search_longer_than_100_characters_is_refused_with_400()
+    {
+        var response = await (await ClientAsync()).GetAsync($"/api/feed?search={new string('a', 101)}",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
     [InlineData("/api/feed?page=0")]
     [InlineData("/api/feed?page=2147483647&pageSize=50")]   // (page - 1) * pageSize would overflow an int
     [InlineData("/api/feed?pageSize=0")]
@@ -136,6 +219,17 @@ public sealed class FeedEndpointTests(DatabaseFixture databases) : IAsyncDisposa
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    /// <summary>The free recipes whose title, creator handle or creator name holds the text, newest first.</summary>
+    private static string FreeRecipesMatching(string search) => $"""
+        SELECT r.id
+        FROM recipes r
+        JOIN creator_profiles c ON r.creator_id = c.user_id
+        JOIN users u ON c.user_id = u.id
+        WHERE r.is_published AND r.visibility = 'Public'
+          AND (r.title ILIKE '%{search}%' OR c.handle ILIKE '%{search}%' OR u.display_name ILIKE '%{search}%')
+        ORDER BY r.published_at DESC, r.id DESC
+        """;
 
     private async Task<FeedPageDto> GetFeedAsync(string url, int? viewerId = null)
     {

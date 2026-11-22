@@ -22,6 +22,20 @@ const SHOTS = [
   { name: 'discover-guest', path: '/', user: null },
   { name: 'discover-home-cook', path: '/', user: 1 },
   { name: 'sign-in', path: '/sign-in', user: null },
+  { name: 'plans-browse', path: '/plans', user: null },
+  { name: 'plans-browse-owner', path: '/plans', user: 1, only: 'desktop' },
+  { name: 'recipes-browse', path: '/recipes', user: null },
+  {
+    name: 'recipes-search',
+    path: '/recipes',
+    user: null,
+    only: 'desktop',
+    before: async (page) => {
+      await page.getByLabel('Find').fill('kenji');
+      await page.getByText('2 free recipes').waitFor();
+    },
+  },
+  { name: 'help', path: '/help', user: null },
   { name: 'creator-guest', path: '/creators/kenji-kitchen', user: null },
   { name: 'plan-deciding', path: '/plans/3', user: null },
   { name: 'recipe-free', path: '/recipes/16', user: null },

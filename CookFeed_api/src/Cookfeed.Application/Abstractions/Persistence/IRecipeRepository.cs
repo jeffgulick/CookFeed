@@ -10,9 +10,10 @@ public interface IRecipeRepository
     /// <summary>
     /// Published <c>Public</c> recipes in <paramref name="sort"/> order, skipping <paramref name="skip"/> and
     /// returning at most <paramref name="take"/>. <paramref name="viewerId"/>, when given, fills
-    /// <see cref="FeedItemDto.SavedByViewer"/>.
+    /// <see cref="FeedItemDto.SavedByViewer"/>. <paramref name="search"/>, when given, keeps only the recipes whose
+    /// title, creator handle or creator name holds that text, in any letter case.
     /// </summary>
-    Task<IReadOnlyList<FeedItemDto>> GetFeedAsync(FeedSort sort, int skip, int take, int? viewerId,
+    Task<IReadOnlyList<FeedItemDto>> GetFeedAsync(FeedSort sort, int skip, int take, int? viewerId, string? search,
         CancellationToken cancellationToken);
 
     /// <summary>

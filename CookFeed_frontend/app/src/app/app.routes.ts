@@ -20,7 +20,11 @@ export const routes: Routes = [
     title: 'Sign in | Cookfeed',
     loadComponent: () => import('./pages/sign-in/sign-in').then((m) => m.SignInPage),
   },
-  { path: 'plans', ...notBuiltYet('Plans & collections') },
+  {
+    path: 'plans',
+    title: 'Plans & collections | Cookfeed',
+    loadComponent: () => import('./pages/plans/plans').then((m) => m.PlansPage),
+  },
   {
     // The page renames the tab after the plan once it has loaded.
     path: 'plans/:id',
@@ -33,7 +37,11 @@ export const routes: Routes = [
     title: 'Reviews | Cookfeed',
     loadComponent: () => import('./pages/reviews/reviews').then((m) => m.ReviewsPage),
   },
-  { path: 'recipes', ...notBuiltYet('Recipes') },
+  {
+    path: 'recipes',
+    title: 'Recipes | Cookfeed',
+    loadComponent: () => import('./pages/recipes/recipes').then((m) => m.RecipesPage),
+  },
   {
     // The page renames the tab after the recipe once it has loaded.
     path: 'recipes/:id',
@@ -49,7 +57,11 @@ export const routes: Routes = [
   { path: 'kitchen', ...notBuiltYet('My kitchen') },
   { path: 'orders', ...notBuiltYet('Your orders') },
   { path: 'cart', ...notBuiltYet('Cart') },
-  { path: 'help', ...notBuiltYet('Help') },
+  {
+    path: 'help',
+    title: 'Help | Cookfeed',
+    loadComponent: () => import('./pages/help/help').then((m) => m.HelpPage),
+  },
   { path: 'studio', ...notBuiltYet('My studio') },
   { path: 'admin', ...notBuiltYet('Admin') },
   { path: '**', ...notBuiltYet('Page not found') },

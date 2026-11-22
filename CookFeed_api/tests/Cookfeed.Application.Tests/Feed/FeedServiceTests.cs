@@ -23,9 +23,9 @@ public class FeedServiceTests
     {
         Returns(Items(0));
 
-        await Service.GetFeedAsync(FeedSort.Newest, page: 3, pageSize: 20, viewerId: null, CancellationToken.None);
+        await Service.GetFeedAsync(FeedSort.Newest, page: 3, pageSize: 20, viewerId: null, search: null, CancellationToken.None);
 
-        await _recipes.Received(1).GetFeedAsync(FeedSort.Newest, 40, 21, null, Arg.Any<CancellationToken>());
+        await _recipes.Received(1).GetFeedAsync(FeedSort.Newest, 40, 21, null, null, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class FeedServiceTests
     {
         Returns(Items(5));
 
-        var page = await Service.GetFeedAsync(FeedSort.Newest, page: 1, pageSize: 4, viewerId: null, CancellationToken.None);
+        var page = await Service.GetFeedAsync(FeedSort.Newest, page: 1, pageSize: 4, viewerId: null, search: null, CancellationToken.None);
 
         Assert.Equal([1, 2, 3, 4], page.Items.Select(i => i.Id));
         Assert.True(page.HasMore);
@@ -47,7 +47,7 @@ public class FeedServiceTests
     {
         Returns(Items(rowsReturned));
 
-        var page = await Service.GetFeedAsync(FeedSort.Newest, page: 1, pageSize: 4, viewerId: null, CancellationToken.None);
+        var page = await Service.GetFeedAsync(FeedSort.Newest, page: 1, pageSize: 4, viewerId: null, search: null, CancellationToken.None);
 
         Assert.Equal(rowsReturned, page.Items.Count);
         Assert.False(page.HasMore);
@@ -58,7 +58,7 @@ public class FeedServiceTests
     {
         Returns(Items(0));
 
-        var page = await Service.GetFeedAsync(FeedSort.Newest, page: 2, pageSize: 10, viewerId: null, CancellationToken.None);
+        var page = await Service.GetFeedAsync(FeedSort.Newest, page: 2, pageSize: 10, viewerId: null, search: null, CancellationToken.None);
 
         Assert.Equal(2, page.Page);
         Assert.Equal(10, page.PageSize);
@@ -69,13 +69,37 @@ public class FeedServiceTests
     {
         Returns(Items(0));
 
-        await Service.GetFeedAsync(FeedSort.Trending, page: 1, pageSize: 20, viewerId: 7, CancellationToken.None);
+        await Service.GetFeedAsync(FeedSort.Trending, page: 1, pageSize: 20, viewerId: 7, search: null, CancellationToken.None);
 
-        await _recipes.Received(1).GetFeedAsync(FeedSort.Trending, 0, 21, 7, Arg.Any<CancellationToken>());
+        await _recipes.Received(1).GetFeedAsync(FeedSort.Trending, 0, 21, 7, null, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task The_search_is_passed_to_the_repository_without_the_spaces_around_it()
+    {
+        Returns(Items(0));
+
+        await Service.GetFeedAsync(FeedSort.Newest, page: 1, pageSize: 20, viewerId: null, search: "  cacio e pepe ",
+            CancellationToken.None);
+
+        await _recipes.Received(1).GetFeedAsync(FeedSort.Newest, 0, 21, null, "cacio e pepe", Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task A_blank_search_is_no_search(string? search)
+    {
+        Returns(Items(0));
+
+        await Service.GetFeedAsync(FeedSort.Newest, page: 1, pageSize: 20, viewerId: null, search, CancellationToken.None);
+
+        await _recipes.Received(1).GetFeedAsync(FeedSort.Newest, 0, 21, null, null, Arg.Any<CancellationToken>());
     }
 
     private void Returns(IReadOnlyList<FeedItemDto> items) =>
-        _recipes.GetFeedAsync(default, default, default, default, default).ReturnsForAnyArgs(items);
+        _recipes.GetFeedAsync(default, default, default, default, default, default).ReturnsForAnyArgs(items);
 
     private static List<FeedItemDto> Items(int count) =>
         [.. Enumerable.Range(1, count).Select(id => new FeedItemDto(

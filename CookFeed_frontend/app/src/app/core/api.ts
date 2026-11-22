@@ -23,9 +23,16 @@ import {
 export class CookfeedApi {
   private readonly http = inject(HttpClient);
 
-  /** Published free recipes, newest first or most saved first (GET /api/feed). */
-  feed(sort: FeedSort, pageSize: number, page = 1): Observable<FeedPage> {
-    return this.http.get<FeedPage>('/api/feed', { params: { sort, page, pageSize } });
+  /**
+   * The first page of the published free recipes, newest first or most saved first (GET /api/feed). With a search,
+   * only those whose title, creator handle or creator name holds the text, in any letter case.
+   */
+  feed(sort: FeedSort, pageSize: number, search = ''): Observable<FeedPage> {
+    const params: Record<string, string | number> = { sort, page: 1, pageSize };
+    if (search !== '') {
+      params['search'] = search;
+    }
+    return this.http.get<FeedPage>('/api/feed', { params });
   }
 
   /**

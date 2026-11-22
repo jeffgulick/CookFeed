@@ -156,10 +156,38 @@ Nested Loop
 - **At scale.** Keyset pagination (`WHERE (published_at, id) < (@last_published_at, @last_id)`) would
   replace `OFFSET`, so deep pages do not read and discard the rows before them. The same index serves it.
 
+**Search** (*added 2026-11-21, for the Recipes page*). `GET /api/feed?search=kenji` keeps only the recipes whose
+title, creator handle or creator name holds the text, in any letter case, as the prototype's Recipes page does.
+The sort and the paging are unchanged.
+
+- `FeedService` trims the text; nothing but spaces is no search. More than 100 characters is a 400 from a
+  `[MaxLength]` check on the controller.
+- `RecipeRepository.GetFeedAsync` adds one `Where` with `EF.Functions.ILike`. The text travels as a parameter,
+  and `%`, `_` and `\` in it are escaped, so they are searched for as themselves, not as wildcards.
+- Captured from the API's log for `GET /api/feed?search=kenji&sort=Trending` with no viewer:
+
+```sql
+SELECT r.id, r.title, r.video_url, r.thumbnail_url, r.servings, CASE
+    WHEN r.prep_minutes IS NULL AND r.cook_minutes IS NULL THEN NULL
+    ELSE COALESCE(r.prep_minutes, 0) + COALESCE(r.cook_minutes, 0)
+END, r.save_count, r.published_at, c.handle, u.display_name, c.is_verified
+FROM recipes AS r
+INNER JOIN creator_profiles AS c ON r.creator_id = c.user_id
+INNER JOIN users AS u ON c.user_id = u.id
+WHERE r.is_published AND r.visibility = 'Public'
+  AND (r.title ILIKE @pattern ESCAPE '\' OR c.handle ILIKE @pattern0 ESCAPE '\' OR u.display_name ILIKE @pattern1 ESCAPE '\')
+ORDER BY r.save_count DESC, r.published_at DESC, r.id DESC
+LIMIT @p7 OFFSET @p
+```
+
+- **At scale.** A pattern that starts with `%` cannot use a B-tree index, so this reads every published free
+  recipe; fine for a catalogue this size. A `pg_trgm` GIN index on the title, or full-text search, is the next
+  step when it is not.
+
 **Tests:**
 
-- `tests/Cookfeed.Application.Tests/Feed/FeedServiceTests.cs`: the `pageSize + 1` / `hasMore` rule, with a
-  fake repository.
+- `tests/Cookfeed.Application.Tests/Feed/FeedServiceTests.cs`: the `pageSize + 1` / `hasMore` rule, and the
+  search trimmed or dropped when blank, with a fake repository.
 - `tests/Cookfeed.IntegrationTests/Api/FeedEndpointTests.cs`, over HTTP:
   - `Newest` matches `queries.sql` Q1 id for id; `Trending` matches Q3.
   - ProductOnly recipes and drafts are absent.
@@ -167,6 +195,9 @@ Nested Loop
   - `savedByViewer` matches the viewer's `saved_recipes` rows.
   - Out-of-range paging (including a page whose offset would overflow), an unknown sort or a non-numeric
     `X-User-Id` gets a 400.
+  - A search finds free recipes by title, handle or creator name, the same ids as an `ILIKE` query run on
+    the database; it keeps the sort and the paging; it never finds a ProductOnly recipe or a draft; `%` and
+    `_` are plain characters; a blank search is the whole feed; one over 100 characters gets a 400.
 
 ---
 
