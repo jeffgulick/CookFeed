@@ -122,6 +122,7 @@ From this folder, with Docker running (one-time Docker setup is in [`DOCKER.md`]
 cp .env.example .env                   # once: this machine's database password (git-ignored)
 docker compose up -d --wait            # PostgreSQL 16.15 on localhost:5432
 dotnet tool restore                    # installs dotnet-ef
+dotnet restore                         # once per clone: downloads the packages; the next command needs them
 dotnet ef database update --project src/Cookfeed.Infrastructure --startup-project src/Cookfeed.Api
 dotnet run --project src/Cookfeed.Api  # seeds an empty database in Development, then serves the API
 dotnet test --solution Cookfeed.slnx   # all tests

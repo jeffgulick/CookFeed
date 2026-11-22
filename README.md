@@ -25,6 +25,7 @@ cd CookFeed_api
 cp .env.example .env                   # once: a placeholder password for the local database (git ignores .env)
 docker compose up -d --wait            # PostgreSQL 16 on localhost:5432
 dotnet tool restore                    # once: installs dotnet-ef
+dotnet restore                         # once: downloads the packages; the next command needs them
 dotnet ef database update --project src/Cookfeed.Infrastructure --startup-project src/Cookfeed.Api
 dotnet run --project src/Cookfeed.Api  # fills the empty database with the seed data, then serves localhost:5032
 ```
