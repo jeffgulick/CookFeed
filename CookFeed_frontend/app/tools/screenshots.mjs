@@ -24,6 +24,20 @@ const SHOTS = [
   { name: 'sign-in', path: '/sign-in', user: null },
   { name: 'sign-in-creator', path: '/sign-in', user: 4 },
   {
+    name: 'discover-plans',
+    path: '/',
+    user: 1,
+    only: 'phone',
+    before: (page) => page.getByRole('heading', { name: 'Meal plans and collections' }).scrollIntoViewIfNeeded(),
+  },
+  {
+    name: 'discover-creators',
+    path: '/',
+    user: null,
+    only: 'phone',
+    before: (page) => page.getByRole('heading', { name: 'Creators' }).scrollIntoViewIfNeeded(),
+  },
+  {
     name: 'discover-trending',
     path: '/',
     user: 1,

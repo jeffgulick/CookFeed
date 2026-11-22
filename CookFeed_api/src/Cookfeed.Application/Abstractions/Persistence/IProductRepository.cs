@@ -1,4 +1,6 @@
 using Cookfeed.Application.Products;
+using Cookfeed.Contracts.Products;
+using Cookfeed.Contracts.Storefront;
 
 namespace Cookfeed.Application.Abstractions.Persistence;
 
@@ -11,4 +13,12 @@ public interface IProductRepository
     /// the facts <c>RecipeAccess</c> needs, and the service decides what the viewer sees.
     /// </summary>
     Task<ProductPage?> GetPageAsync(int productId, int? viewerId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The products for sale, by the same rule as the page's <c>IsForSale</c>, in the order <paramref name="sort"/>
+    /// names. <paramref name="type"/> keeps one kind, or both when null; <paramref name="viewerId"/>, when given,
+    /// marks the products that viewer owns.
+    /// </summary>
+    Task<IReadOnlyList<ProductTile>> GetForSaleAsync(ProductType? type, ProductSort sort, int? viewerId,
+        CancellationToken cancellationToken);
 }

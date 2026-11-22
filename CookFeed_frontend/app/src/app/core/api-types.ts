@@ -39,3 +39,43 @@ export interface FeedPage {
   pageSize: number;
   hasMore: boolean;
 }
+
+export type ProductType = 'MealPlan' | 'RecipeCollection';
+
+/** The three orders the Plans page offers. */
+export type ProductSort = 'Newest' | 'Price' | 'Rating';
+
+/** A product's reviews in three numbers. Hidden reviews, and those of refunded buyers, are left out. */
+export interface ProductRating {
+  reviewCount: number;
+  /** The mean rating to one decimal; null with no reviews. */
+  average: number | null;
+  /** The share of reviewers who recommend it, as a whole percent; null with no reviews. */
+  percentRecommend: number | null;
+}
+
+/** One meal plan or collection for sale, as a tile (GET /api/products). */
+export interface ProductTile {
+  id: number;
+  type: ProductType;
+  title: string;
+  coverImageUrl: string | null;
+  priceCents: number;
+  currency: string;
+  creatorHandle: string;
+  /** Distinct recipes in the product. */
+  recipeCount: number;
+  /** Scheduled meals, for a meal plan, which may serve a recipe more than once; null for a collection. */
+  mealCount: number | null;
+  rating: ProductRating;
+  /** True when the viewer has a paid order for it. False when the request names no viewer. */
+  ownedByViewer: boolean;
+}
+
+/** One creator, as a tile (GET /api/creators). */
+export interface CreatorTile {
+  handle: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isVerified: boolean;
+}

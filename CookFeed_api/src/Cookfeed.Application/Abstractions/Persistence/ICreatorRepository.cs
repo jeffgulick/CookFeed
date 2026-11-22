@@ -10,4 +10,7 @@ public interface ICreatorRepository
     /// when given, fills the viewer-specific flags.
     /// </summary>
     Task<StorefrontDto?> GetStorefrontAsync(string handle, int? viewerId, CancellationToken cancellationToken);
+
+    /// <summary>Every creator, in the order they joined, with what a tile shows.</summary>
+    Task<IReadOnlyList<CreatorTileDto>> GetTilesAsync(CancellationToken cancellationToken);
 }

@@ -1,16 +1,15 @@
-# Checks the Angular app (CookFeed_frontend/app).
+# Checks the Angular app (CookFeed_frontend/app): the unit tests (Vitest, through `ng test`) and a production
+# build, which also type-checks every template. Quick, so it runs on each pull request, each push to one, and each
+# push to main that touches the app.
 #
-# - test: the unit tests (Vitest, through `ng test`) and a production build, which also type-checks every template.
-#   Quick, so it runs on each pull request and each push to main that touches the app.
-# - smoke: the browser tests (Playwright, Chromium) against the real API and a seeded PostgreSQL. Slower, so it
-#   runs on pull requests only, and also when the API changes, since the app depends on what the API sends.
+# The browser smoke tests are slower and have their own workflow, app-smoke-tests.yml, which runs once, when a
+# pull request is opened.
 name: App tests
 
 on:
   pull_request:
     paths:
       - "CookFeed_frontend/app/**"
-      - "CookFeed_api/**"
       - ".github/workflows/app-tests.yml"
   push:
     branches: [main]
@@ -33,6 +32,8 @@ defaults:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    # About a minute when all is well; the limit stops a stalled step from running for hours.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -53,66 +54,3 @@ jobs:
       # Strict TypeScript and strict templates: a type error anywhere fails the build.
       - name: Build
         run: npm run build
-
-  smoke:
-    # The slow job: pull requests only, never on a push to main.
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-
-    services:
-      # The same PostgreSQL as docker-compose.yml. No password: this server lives only for the run and is reachable
-      # only from it, so it trusts local connections, as in api-tests.yml.
-      postgres:
-        image: postgres:16.15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # The SDK version comes from global.json, the same pin every machine uses.
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: CookFeed_api/global.json
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 26
-          cache: npm
-          cache-dependency-path: CookFeed_frontend/app/package-lock.json
-
-      # Builds the API and creates the cookfeed database from the migrations. The API fills it with the seed data
-      # the first time it starts in Development, which is how Playwright starts it (playwright.config.ts).
-      - name: Build the API and create the database
-        working-directory: CookFeed_api
-        run: |
-          dotnet tool restore
-          dotnet build Cookfeed.slnx
-          dotnet ef database update --no-build --project src/Cookfeed.Infrastructure --startup-project src/Cookfeed.Api
-
-      # The exact versions in package-lock.json, then the Chromium build that this Playwright version expects.
-      - name: Install
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
-
-      # Playwright starts the API and the app's development server itself, waits for both, and stops them after.
-      - name: Smoke tests
-        run: npm run test:smoke
-
-      # The HTML report, with a trace of each failed test, is kept only when something failed.
-      - name: Upload the report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-playwright-report
-          path: CookFeed_frontend/app/playwright-report/
-          retention-days: 14

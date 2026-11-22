@@ -415,6 +415,41 @@ The service does the rest in C#, because each part is a rule rather than a query
 
 ---
 
+## 1e. Plans for sale and the creators — *built 2026-11-21; generated SQL not yet captured here*
+
+**Plans for sale**, `GET /api/products?type=&sort=`, optional header `X-User-Id`: the tiles on Discover and
+on the Plans page. `ProductsController` → `ProductListService` → `ProductRepository.GetForSaleAsync`. One
+statement, one row per product:
+- **For sale** is the rule the product page reports as `isForSale` (§1c, DesignDocument.md §3.8): the
+  product is active, its creator is not suspended, it holds at least one recipe, and none of its recipes
+  was taken down. The list filters by it and the page reports it; a test changes rows and holds the two to
+  each other.
+- **`type`** keeps `MealPlan` or `RecipeCollection`; left out, both.
+- **Counts**: distinct recipes, and placements (a meal plan that serves a recipe twice has more meals than
+  recipes, Q5).
+- **Rating**: the count, the sum and the number recommending, over the reviews Q13 counts (not hidden,
+  author still holds a Paid order). The service turns them into the average and the percent with
+  `ProductRating.From`, the same arithmetic as the product page.
+- **Owned**: whether the viewer has a Paid order for the product.
+- **`sort`**: `Newest` (`created_at DESC, id DESC`, the default), `Price` (`price_cents, id`), or `Rating`
+  (average descending, a product with no reviews below every rated one, then `id`). Every order ends on
+  the id, so it never depends on chance. A `type` or `sort` that is not one of the names is a 400.
+
+The list is not paged: it holds a store's products for sale, a short list by design. If it grows, it takes
+`page` and `pageSize` the way the feed does (§1).
+
+**Creators**, `GET /api/creators`: every creator's handle, display name, picture and verified mark, by
+`user_id`, the order they joined. `CreatorsController` → `CreatorListService` → `CreatorRepository.GetTilesAsync`.
+One statement joining `creator_profiles` to `users` on the shared primary key. A suspended creator is still
+listed: the storefront stays, and only the products leave the store (§3.8).
+
+**Indexes used:** the primary keys; `ix_product_recipes_recipe_id` and the `order_items` indexes for the
+subqueries. No new index is needed.
+
+**To do:** capture the logged SQL and the plans here.
+
+---
+
 ## 2. Creator storefront — *verified 2026-10-11*
 
 **Endpoint:** `GET /api/creators/{handle}`, optional header `X-User-Id`. An unknown handle is 404.
