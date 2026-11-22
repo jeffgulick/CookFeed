@@ -36,6 +36,30 @@ const SHOTS = [
     },
   },
   { name: 'help', path: '/help', user: null },
+  { name: 'plan-add-to-cart', path: '/plans/3', user: 7, only: 'desktop' },
+  { name: 'cart', path: '/cart', user: 2 },
+  {
+    name: 'cart-confirm',
+    path: '/cart',
+    user: 2,
+    only: 'desktop',
+    before: (page) => page.getByRole('button', { name: 'Place order' }).click(),
+  },
+  {
+    // Tomas buys a plan, so the receipt is a real one. The database is put back to the seed when the script ends.
+    name: 'cart-receipt',
+    path: '/cart',
+    user: 9,
+    only: 'desktop',
+    before: async (page) => {
+      await page.request.put(base + '/api/me/cart/3', { headers: { 'X-User-Id': '9' } });
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: 'Place order' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Place order' }).click();
+      await page.getByRole('heading', { name: 'Order confirmed' }).waitFor();
+    },
+  },
+  { name: 'orders', path: '/orders', user: 1 },
   { name: 'creator-guest', path: '/creators/kenji-kitchen', user: null },
   { name: 'plan-deciding', path: '/plans/3', user: null },
   { name: 'recipe-free', path: '/recipes/16', user: null },
@@ -106,7 +130,16 @@ const SHOTS = [
   },
 ];
 
+// Start from the seed, and put it back afterwards: one shot places an order. The API offers this in Development.
+const reset = async () => {
+  const response = await fetch(base + '/api/dev/reset', { method: 'POST' });
+  if (!response.ok) {
+    throw new Error(`Could not reset the database: POST /api/dev/reset answered ${response.status}.`);
+  }
+};
+
 await mkdir(out, { recursive: true });
+await reset();
 const browser = await chromium.launch();
 let violations = 0;
 
@@ -140,5 +173,6 @@ for (const [screen, options] of Object.entries(SCREENS)) {
 }
 
 await browser.close();
+await reset();
 console.log(violations === 0 ? 'No accessibility violations.' : `${violations} accessibility violation(s).`);
 process.exit(violations === 0 ? 0 : 1);

@@ -57,3 +57,8 @@ export function dayName(dayOffset: number): string {
 export function dayAndMeal(dayOffset: number, slot: string | null): string {
   return `${dayName(dayOffset)} ${(slot ?? 'Dinner').toLowerCase()}`;
 }
+
+/** An order's number as a receipt shows it: 7 is "CF-00007". */
+export function orderNumber(id: number): string {
+  return 'CF-' + String(id).padStart(5, '0');
+}

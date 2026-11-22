@@ -1,0 +1,141 @@
+@let order = receipt();
+@let words = view();
+
+<span class="pill">Checkout</span>
+<h1 #heading tabindex="-1" class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">
+  {{ order ? 'Thank you' : 'Your cart' }}
+</h1>
+
+@if (order) {
+  <section data-receipt class="card mt-6 max-w-2xl p-5 md:p-8">
+    <span aria-hidden="true" class="grid size-12 place-items-center rounded-full bg-good-soft text-good">
+      <app-icon name="check" [size]="26" />
+    </span>
+    <h2 #receiptHeading tabindex="-1" class="mt-3 text-2xl font-bold md:text-3xl">Order confirmed</h2>
+    <p class="meta mt-1">Order {{ order.number }}</p>
+    <p class="mt-4">
+      You paid <strong>{{ order.total }}</strong> for {{ order.plans }}:
+    </p>
+    <ul class="mt-3 divide-y divide-line">
+      @for (item of order.items; track item.id) {
+        <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
+          <strong>{{ item.title }}</strong>
+          <a [routerLink]="['/plans', item.id]" class="btn btn-secondary btn-small"
+            >Open your plan<span class="sr-only">, {{ item.title }}</span></a
+          >
+        </li>
+      }
+    </ul>
+    <p class="mt-4">{{ order.keep }} {{ order.next }}</p>
+    <p class="mt-4">
+      <a routerLink="/orders" class="font-semibold">See your orders <span aria-hidden="true">&rarr;</span></a>
+    </p>
+  </section>
+} @else if (session.user() === null) {
+  <!-- next carries this page's address, so the sign-in page can offer the way back. -->
+  <p data-no-cart class="card mt-6 max-w-prose p-4 md:p-5">
+    <a routerLink="/sign-in" [queryParams]="{ next: '/cart' }" class="font-semibold">Sign in to see your cart</a>
+  </p>
+} @else if (!session.canShop()) {
+  <p data-no-cart class="card mt-6 max-w-prose p-4 md:p-5">Admin accounts do not shop, so there is no cart.</p>
+} @else {
+  @if (words) {
+    <p data-item-count class="meta mt-2">{{ words.itemCount }} &middot; digital plans, yours to keep</p>
+  }
+  <app-load-state [state]="cart.state()" what="cart" />
+
+  @if (words) {
+    <div class="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_22rem]">
+      <div>
+        @if (words.unavailable) {
+          <p data-unavailable class="card mb-4 border-brand-line bg-brand-soft p-4">{{ words.unavailable }}</p>
+        }
+
+        @if (words.isEmpty) {
+          <p data-empty class="meta">
+            Your cart is empty.
+            <a routerLink="/plans" class="font-semibold">See the meal plans and collections</a>.
+          </p>
+        } @else {
+          <ul class="grid gap-3">
+            @for (line of words.lines; track line.id) {
+              <li data-cart-line class="card flex gap-3 p-3 sm:gap-4 sm:p-4">
+                <!-- Decorative: the title beside it says what the plan is. -->
+                <img
+                  [src]="line.imageUrl"
+                  alt=""
+                  width="240"
+                  height="100"
+                  class="hidden h-20 w-40 shrink-0 rounded-xl bg-fill object-cover sm:block"
+                />
+                <div class="flex min-w-0 flex-1 flex-col items-start gap-1">
+                  <span class="pill">{{ line.typeLabel }}</span>
+                  <h2 class="font-sans text-lg leading-snug font-bold">
+                    <a [routerLink]="['/plans', line.id]" class="text-ink">{{ line.title }}</a>
+                  </h2>
+                  <p class="meta">{{ line.about }}</p>
+                  <button type="button" class="btn btn-secondary btn-small mt-1" (click)="takeOut(line)">
+                    Take out of cart
+                  </button>
+                </div>
+                <span data-line-price class="text-lg font-bold">{{ line.price }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <section data-totals aria-labelledby="totalsHeading" class="card p-4 md:p-5">
+        <h2 id="totalsHeading" class="sr-only">Order total</h2>
+        <dl class="grid gap-2">
+          <div class="flex justify-between gap-4">
+            <dt>Subtotal</dt>
+            <dd data-subtotal>{{ words.total }}</dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt>Tax</dt>
+            <dd>$0.00</dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt>Delivery</dt>
+            <dd>None, it is digital</dd>
+          </div>
+          <div class="flex justify-between gap-4 border-t border-line pt-3 text-xl font-bold">
+            <dt>Total</dt>
+            <dd data-total>{{ words.total }}</dd>
+          </div>
+        </dl>
+
+        <p role="alert" class="mt-3 text-sm font-semibold text-bad">{{ problem() }}</p>
+
+        <button
+          type="button"
+          class="btn btn-primary mt-2 w-full disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="words.isEmpty || busy()"
+          (click)="placeOrder()"
+        >
+          Place order
+        </button>
+        @if (!words.isEmpty) {
+          <button type="button" class="mt-3 block w-full text-center font-semibold text-brand underline" (click)="empty()">
+            Empty cart
+          </button>
+        }
+        <p class="meta mt-4 text-sm">
+          You buy each plan once, and it stays yours. Cookfeed does not take payment; placing an order shows the
+          confirmation a real checkout would produce.
+        </p>
+      </section>
+    </div>
+
+    @if (!words.isEmpty) {
+      <section data-still-deciding class="mt-10 rounded-3xl border border-brand-line bg-brand-soft p-5 md:p-7">
+        <p class="text-lg"><strong>Still deciding?</strong></p>
+        <p class="mt-2">
+          <a routerLink="/plans" class="font-semibold text-brand-dark">See more plans</a> &middot;
+          <a routerLink="/orders" class="font-semibold text-brand-dark">Your orders</a>
+        </p>
+      </section>
+    }
+  }
+}

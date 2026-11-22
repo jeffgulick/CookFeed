@@ -12,7 +12,7 @@ test('the picker lists the database accounts under what each is for', async ({ p
     'Maria Conti', 'Kenji Watanabe', 'Dan Okafor',
   ]);
   await expect(page.locator('[data-group="admins"] [data-account-name]')).toHaveText(['Cookfeed Admin']);
-  await expect(page.getByRole('status')).toContainText('You are browsing as a guest');
+  await expect(page.locator('main').getByRole('status')).toContainText('You are browsing as a guest');
 });
 
 test('picking a creator signs in, adds their studio to the navigation, and points them to it', async ({ page }) => {
@@ -20,10 +20,10 @@ test('picking a creator signs in, adds their studio to the navigation, and point
 
   await page.getByRole('button', { name: 'Sign in as Kenji Watanabe' }).click();
 
-  await expect(page.getByRole('status')).toContainText('You are signed in as Kenji Watanabe');
+  await expect(page.locator('main').getByRole('status')).toContainText('You are signed in as Kenji Watanabe');
   await expect(page.locator('[data-account-id="4"]')).toContainText('Signed in now');
   await expect(page.locator('nav[data-nav="top"]').getByRole('link', { name: 'My studio' })).toBeVisible();
-  await expect(page.getByRole('status').getByRole('link', { name: 'Open My studio' })).toHaveAttribute('href', '/studio');
+  await expect(page.locator('main').getByRole('status').getByRole('link', { name: 'Open My studio' })).toHaveAttribute('href', '/studio');
 });
 
 test('the choice survives a reload', async ({ page }) => {
@@ -33,7 +33,7 @@ test('the choice survives a reload', async ({ page }) => {
   await page.reload();
 
   await expect(page.getByRole('button', { name: 'Alex Rivera' })).toBeVisible();
-  await expect(page.getByRole('status')).toContainText('You are signed in as Alex Rivera');
+  await expect(page.locator('main').getByRole('status')).toContainText('You are signed in as Alex Rivera');
 });
 
 test('signing out from the account menu goes back to a guest', async ({ page }) => {
@@ -51,7 +51,7 @@ test('signing out on the sign-in page goes back to a guest', async ({ page }) =>
 
   await page.getByRole('button', { name: 'Sign out and browse as a guest' }).click();
 
-  await expect(page.getByRole('status')).toContainText('You are browsing as a guest');
+  await expect(page.locator('main').getByRole('status')).toContainText('You are browsing as a guest');
   await expect(page.locator('nav[data-nav="top"]').getByRole('link', { name: 'My studio' })).toHaveCount(0);
 });
 

@@ -1,9 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { Account } from './core/api-types';
+import { Notices } from './core/notices';
 import { Session } from './core/session';
 
 /* The app shell: one navigation on every page, drawn for whoever is signed in. On a wide screen it is a bar of
@@ -41,6 +42,71 @@ describe('App shell', () => {
   const topLinks = () => labels('[data-nav="top"] a');
   const tabs = () => labels('[data-nav="tabs"] a, [data-nav="tabs"] button');
   const moreLinks = () => labels('[data-nav="more"] a, [data-nav="more"] button');
+
+  /** Answers the shell's request for the signed-in shopper's cart with this many lines. */
+  async function cartHolds(count: number): Promise<void> {
+    const line = (productId: number) => ({
+      productId,
+      type: 'MealPlan',
+      title: `Plan ${productId}`,
+      coverImageUrl: null,
+      creatorHandle: 'kenji-kitchen',
+      recipeCount: 3,
+      mealCount: 3,
+      priceCents: 999,
+    });
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/me/cart')
+      .flush({
+        lines: Array.from({ length: count }, (_, index) => line(index + 1)),
+        totalCents: 999 * count,
+        currency: 'USD',
+        unavailable: [],
+      });
+    await fixture.whenStable();
+  }
+
+  it('counts what is in a shopper\'s cart on the cart link, in words a screen reader can say', async () => {
+    await show(1);
+    await cartHolds(2);
+
+    const cart = page.querySelector('header a[href="/cart"]');
+    expect(cart?.getAttribute('aria-label')).toBe('Cart, 2 items');
+    expect(cart?.querySelector('[data-cart-count]')?.textContent?.trim()).toBe('2');
+    expect(cart?.querySelector('[data-cart-count]')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('counts one item as "1 item"', async () => {
+    await show(1);
+    await cartHolds(1);
+    expect(page.querySelector('header a[href="/cart"]')?.getAttribute('aria-label')).toBe('Cart, 1 item');
+  });
+
+  it('shows no count on an empty cart', async () => {
+    await show(4);
+    await cartHolds(0);
+    expect(page.querySelector('header a[href="/cart"]')?.getAttribute('aria-label')).toBe('Cart');
+    expect(page.querySelector('[data-cart-count]')).toBeNull();
+  });
+
+  it('shows a guest the cart link with no count', async () => {
+    await show(null);
+
+    expect(page.querySelector('header a[href="/cart"]')?.getAttribute('aria-label')).toBe('Cart');
+    expect(page.querySelector('[data-cart-count]')).toBeNull();
+  });
+
+  it('says what just happened in one place every page shares, announced politely', async () => {
+    await show(null);
+    const toast = page.querySelector('[data-toast]');
+    expect(toast?.getAttribute('role')).toBe('status');
+    expect(toast?.textContent?.trim()).toBe('');
+
+    TestBed.inject(Notices).say('The Bread Box added to your cart.');
+    await fixture.whenStable();
+
+    expect(toast?.textContent?.trim()).toBe('The Bread Box added to your cart.');
+  });
 
   it('starts with a link that skips to the page content', async () => {
     await show(null);

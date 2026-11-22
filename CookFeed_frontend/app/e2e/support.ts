@@ -10,6 +10,13 @@ export { expect };
 export const ACCOUNTS = { guest: null, alex: 1, priya: 2, kenji: 4, admin: 6, sam: 7 } as const;
 export type AccountName = keyof typeof ACCOUNTS;
 
+/**
+ * Seeded home cooks that only the specs which change data sign in as, one spec each, so a cart filled or an order
+ * placed by one spec never changes what another spec reads. Every run starts from the seed (global-setup.ts).
+ */
+export const SHOPPERS = { noor: 8, tomas: 9, grace: 10 } as const;
+export type ShopperName = keyof typeof SHOPPERS;
+
 /** The pages converted from the prototype so far. Add each page here as it is built. */
 export const BUILT_PAGES = [
   '/',
@@ -17,6 +24,8 @@ export const BUILT_PAGES = [
   '/plans',
   '/recipes',
   '/help',
+  '/cart',
+  '/orders',
   '/creators/kenji-kitchen',
   '/plans/3',
   '/plans/3/reviews',
@@ -24,7 +33,7 @@ export const BUILT_PAGES = [
 ];
 
 /** Addresses that still show the "being built" placeholder. Move each to BUILT_PAGES as it is converted. */
-export const PLACEHOLDER_PAGES = ['/kitchen', '/orders', '/cart', '/studio', '/admin'];
+export const PLACEHOLDER_PAGES = ['/kitchen', '/studio', '/admin'];
 
 export const PHONE = { width: 375, height: 760 };
 
@@ -50,8 +59,8 @@ export const test = base.extend<{ expectedErrors: RegExp[] }>({
 });
 
 /** Opens an address signed in as the account (the same stored id the sign-in page sets), or as a guest. */
-export async function openAs(page: Page, account: AccountName, address: string): Promise<void> {
-  const id = ACCOUNTS[account];
+export async function openAs(page: Page, account: AccountName | ShopperName, address: string): Promise<void> {
+  const id = { ...ACCOUNTS, ...SHOPPERS }[account];
   if (id !== null) {
     // Runs before the app on every load of this page, but signs in only on the first: a test that then signs out or
     // switches account keeps what it did across a reload. A guest needs nothing: a fresh context stores no account.

@@ -17,7 +17,7 @@ public sealed class OpenApiTests(DatabaseFixture databases) : IAsyncDisposable
     private readonly List<WebApplicationFactory<Program>> _factories = [];
 
     public static TheoryData<string> Routes =>
-        ["/api/feed", "/api/creators", "/api/creators/{handle}", "/api/products", "/api/recipes/{id}", "/api/products/{id}", "/api/products/{id}/shopping-list", "/api/products/{id}/reviews", "/api/me/orders", "/api/me/purchases", "/api/me/shopping-list"];
+        ["/api/feed", "/api/creators", "/api/creators/{handle}", "/api/products", "/api/recipes/{id}", "/api/products/{id}", "/api/products/{id}/shopping-list", "/api/products/{id}/reviews", "/api/me/orders", "/api/me/purchases", "/api/me/shopping-list", "/api/me/cart"];
 
     [Theory]
     [MemberData(nameof(Routes))]
@@ -34,6 +34,7 @@ public sealed class OpenApiTests(DatabaseFixture databases) : IAsyncDisposable
     [InlineData("/api/me/orders", true)]
     [InlineData("/api/me/purchases", true)]
     [InlineData("/api/me/shopping-list", true)]
+    [InlineData("/api/me/cart", true)]
     [InlineData("/api/feed", false)]
     [InlineData("/api/creators/{handle}", false)]
     [InlineData("/api/products", false)]

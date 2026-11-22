@@ -37,8 +37,34 @@ test('the account menu, open', async ({ page }) => {
   expect(await violations(page)).toEqual([]);
 });
 
+test('the cart with a plan in it', async ({ page }) => {
+  // The seed puts The Bread Box in Priya's cart.
+  await openAs(page, 'priya', '/cart');
+  await expect(page.locator('[data-cart-line]')).toHaveCount(1);
+
+  expect(await violations(page)).toEqual([]);
+});
+
+test('the confirmation dialog, open', async ({ page }) => {
+  await openAs(page, 'priya', '/cart');
+
+  await page.getByRole('button', { name: 'Place order' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  expect(await violations(page)).toEqual([]);
+  // Answered no: Priya's cart stays as the seed left it.
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+});
+
 test.describe('on a phone', () => {
   test.use({ viewport: PHONE });
+
+  test('the cart with a plan in it', async ({ page }) => {
+    await openAs(page, 'priya', '/cart');
+    await expect(page.locator('[data-cart-line]')).toHaveCount(1);
+
+    expect(await violations(page)).toEqual([]);
+  });
 
   test('the More sheet, open', async ({ page }) => {
     await openAs(page, 'kenji', '/');

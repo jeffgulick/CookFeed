@@ -2,9 +2,11 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  CartData,
   CreatorTile,
   FeedPage,
   FeedSort,
+  Order,
   ProductDetail,
   ProductReviews,
   ProductShoppingList,
@@ -81,5 +83,38 @@ export class CookfeedApi {
   /** One creator's storefront (GET /api/creators/{handle}); a 404 when nobody has the handle. */
   storefront(handle: string): Observable<Storefront> {
     return this.http.get<Storefront>(`/api/creators/${encodeURIComponent(handle)}`);
+  }
+
+  /** The signed-in cook's cart (GET /api/me/cart). A 403 for an account that does not shop. */
+  cart(): Observable<CartData> {
+    return this.http.get<CartData>('/api/me/cart');
+  }
+
+  /**
+   * Puts a plan in the cart (PUT /api/me/cart/{id}) and answers with the cart. Refused with a sentence in the
+   * body's detail when the plan is the caller's own (400), already owned or not for sale (409).
+   */
+  addToCart(productId: number): Observable<CartData> {
+    return this.http.put<CartData>(`/api/me/cart/${productId}`, null);
+  }
+
+  /** Takes a plan out of the cart (DELETE /api/me/cart/{id}) and answers with the cart. */
+  removeFromCart(productId: number): Observable<CartData> {
+    return this.http.delete<CartData>(`/api/me/cart/${productId}`);
+  }
+
+  /** Empties the cart (DELETE /api/me/cart) and answers with it. */
+  clearCart(): Observable<CartData> {
+    return this.http.delete<CartData>('/api/me/cart');
+  }
+
+  /** Turns the cart into a paid order (POST /api/me/checkout). A 400 when nothing in it can be bought. */
+  checkout(): Observable<Order> {
+    return this.http.post<Order>('/api/me/checkout', null);
+  }
+
+  /** The signed-in cook's orders, newest first, cancelled ones included (GET /api/me/orders). */
+  orders(): Observable<Order[]> {
+    return this.http.get<Order[]>('/api/me/orders');
   }
 }

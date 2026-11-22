@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { CookfeedApi } from '../../core/api';
 import { buyState } from '../../core/buy-state';
+import { Cart } from '../../core/cart';
 import { loadValue } from '../../core/load';
 import { Session } from '../../core/session';
 import { BuyArea } from '../../ui/buy-area';
@@ -27,6 +28,7 @@ import { RecipeCard } from '../../ui/recipe-card';
 export class CreatorPage {
   private readonly api = inject(CookfeedApi);
   private readonly session = inject(Session);
+  private readonly cart = inject(Cart);
   private readonly title = inject(Title);
 
   private readonly handle = toSignal(inject(ActivatedRoute).paramMap.pipe(map((params) => params.get('handle') ?? '')), {
@@ -70,7 +72,8 @@ export class CreatorPage {
         owned: product.ownedByViewer,
         // The storefront lists only what is for sale.
         forSale: true,
-        inCart: product.inCart,
+        // The cart as it is now, once it has been read: Add to cart changes it without reloading the page.
+        inCart: this.cart.has(product.id) ?? product.inCart,
       }),
     }));
   });

@@ -308,3 +308,52 @@ export interface ProductReviews {
   /** Newest first. */
   reviews: Review[];
 }
+
+/** One plan or collection in the cart, as the product is today. */
+export interface CartLine {
+  productId: number;
+  type: ProductType;
+  title: string;
+  coverImageUrl: string | null;
+  creatorHandle: string;
+  recipeCount: number;
+  /** Scheduled meals, for a meal plan; null for a collection. */
+  mealCount: number | null;
+  priceCents: number;
+}
+
+/** The signed-in cook's cart (GET /api/me/cart). Every change to the cart answers with it too. */
+export interface CartData {
+  /** The lines that can be bought now, in the order they were added. */
+  lines: CartLine[];
+  totalCents: number;
+  currency: string;
+  /** Titles of plans that are in the cart but can no longer be bought; checkout leaves them out. */
+  unavailable: string[];
+}
+
+export type OrderStatus = 'Pending' | 'Paid' | 'Refunded' | 'Cancelled';
+
+/** A plan bought in an order, as it was at checkout: the title and price are the ones paid then. */
+export interface OrderItem {
+  productId: number;
+  productTitle: string;
+  unitPriceCents: number;
+  /** Null if that creator no longer has a storefront. */
+  sellerHandle: string | null;
+  type: ProductType;
+  /** Counted from what this purchase holds, not from the plan today. */
+  recipeCount: number;
+  mealCount: number | null;
+}
+
+/** One order (GET /api/me/orders, and the answer to POST /api/me/checkout). */
+export interface Order {
+  id: number;
+  status: OrderStatus;
+  placedAt: string;
+  paidAt: string | null;
+  totalCents: number;
+  currency: string;
+  items: OrderItem[];
+}

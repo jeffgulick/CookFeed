@@ -15,6 +15,8 @@ const appUrl = process.env['COOKFEED_APP_URL'];
 
 export default defineConfig({
   testDir: 'e2e',
+  // Puts the database back to the seed before the run, so the specs that buy and save start clean every time.
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   // CI keeps an HTML report to upload when the job fails; locally the list is enough.

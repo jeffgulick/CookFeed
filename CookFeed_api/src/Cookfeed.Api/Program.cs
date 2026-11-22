@@ -59,6 +59,16 @@ if (!app.Environment.IsDevelopment())
 app.UseCors(CorsPolicy);
 app.UseAuthorization();
 app.MapControllers();
+if (app.Environment.IsDevelopment())
+{
+    // Puts the database back to the seed, for a demonstration or a run of the browser tests. Development only: in
+    // any other environment the address does not exist. Left out of the OpenAPI description, which is the app's API.
+    app.MapPost("/api/dev/reset", async (DbSeeder seeder, CancellationToken cancellationToken) =>
+    {
+        await seeder.ResetAsync(cancellationToken);
+        return Results.NoContent();
+    }).ExcludeFromDescription();
+}
 if (app.Configuration.GetValue<bool>("OpenApi:Enabled"))
 {
     app.MapOpenApi();

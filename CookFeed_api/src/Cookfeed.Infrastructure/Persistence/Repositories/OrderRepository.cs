@@ -1,5 +1,6 @@
 using Cookfeed.Application.Abstractions.Persistence;
 using Cookfeed.Contracts.Orders;
+using Cookfeed.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cookfeed.Infrastructure.Persistence.Repositories;
@@ -7,12 +8,50 @@ namespace Cookfeed.Infrastructure.Persistence.Repositories;
 /// <summary>The EF Core queries over orders. See docs/Queries.md §4 for the SQL.</summary>
 public class OrderRepository(CookfeedDbContext db) : IOrderRepository
 {
-    public async Task<IReadOnlyList<OrderDto>> GetOrderHistoryAsync(int userId, CancellationToken cancellationToken) =>
+    public Task<IReadOnlyList<OrderDto>> GetOrderHistoryAsync(int userId, CancellationToken cancellationToken) =>
+        // Every status is shown, as in queries.sql Q9.
+        ReadAsync(db.Orders.Where(o => o.UserId == userId), cancellationToken);
+
+    public async Task<OrderDto?> GetOrderAsync(int userId, int orderId, CancellationToken cancellationToken) =>
+        // The user id is part of the filter, so an order that is someone else's is simply not found.
+        (await ReadAsync(db.Orders.Where(o => o.UserId == userId && o.Id == orderId), cancellationToken))
+            .SingleOrDefault();
+
+    private async Task<IReadOnlyList<OrderDto>> ReadAsync(IQueryable<Order> orders, CancellationToken cancellationToken)
+    {
         // One statement: orders -> items is a single collection, so joining it multiplies no rows (contrast the
-        // storefront's two sibling lists, which needed AsSplitQuery). Every status is shown, as in queries.sql Q9.
-        await db.Orders.AsNoTracking()
-            .Where(o => o.UserId == userId)
+        // storefront's two sibling lists, which needed AsSplitQuery).
+        var rows = await orders.AsNoTracking()
             .OrderByDescending(o => o.PlacedAt).ThenByDescending(o => o.Id)
+            .Select(o => new
+            {
+                o.Id,
+                o.Status,
+                o.PlacedAt,
+                o.PaidAt,
+                o.TotalCents,
+                o.Currency,
+                Items = o.Items
+                    .OrderBy(i => i.Id)
+                    .Select(i => new
+                    {
+                        // Title, price and seller are the snapshot taken at checkout, not today's product (§6).
+                        i.ProductId,
+                        i.ProductTitle,
+                        i.UnitPriceCents,
+                        // creator_id has no foreign key by design, so the seller's handle is looked up, as Q9 does.
+                        SellerHandle = db.CreatorProfiles
+                            .Where(c => c.UserId == i.CreatorId).Select(c => c.Handle).FirstOrDefault(),
+                        i.Product.Type,
+                        // Counted from the purchase snapshot, not from the product today (§3.3).
+                        RecipeCount = i.Recipes.Select(r => r.RecipeId).Distinct().Count(),
+                        PlacementCount = i.Recipes.Count(),
+                    })
+                    .ToList(),
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows
             .Select(o => new OrderDto(
                 o.Id,
                 ToContract(o.Status),
@@ -21,16 +60,18 @@ public class OrderRepository(CookfeedDbContext db) : IOrderRepository
                 o.TotalCents,
                 o.Currency,
                 o.Items
-                    .OrderBy(i => i.Id)
-                    // Title, price and seller are the snapshot taken at checkout, not today's product (§6).
-                    // creator_id has no foreign key by design, so the seller's handle is looked up, as Q9 does.
                     .Select(i => new OrderItemDto(
                         i.ProductId,
                         i.ProductTitle,
                         i.UnitPriceCents,
-                        db.CreatorProfiles.Where(c => c.UserId == i.CreatorId).Select(c => c.Handle).FirstOrDefault()))
+                        i.SellerHandle,
+                        ContractEnums.ToContract(i.Type),
+                        i.RecipeCount,
+                        // A meal plan may serve one recipe on several days, so recipes and meals differ (§3.2, Q5).
+                        i.Type == Domain.Enums.ProductType.MealPlan ? i.PlacementCount : null))
                     .ToList()))
-            .ToListAsync(cancellationToken);
+            .ToList();
+    }
 
     public async Task<IReadOnlyList<Contracts.Purchases.PurchaseDto>> GetPurchasesAsync(int userId,
         CancellationToken cancellationToken)
@@ -90,8 +131,6 @@ public class OrderRepository(CookfeedDbContext db) : IOrderRepository
             .ToList();
     }
 
-    // Runs in C# on the fetched status, not in SQL: EF Core evaluates the final projection on the client when it
-    // meets a method it cannot translate. Static, so the query does not capture this repository.
     private static OrderStatus ToContract(Domain.Enums.OrderStatus status) => status switch
     {
         Domain.Enums.OrderStatus.Pending => OrderStatus.Pending,

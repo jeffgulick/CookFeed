@@ -9,13 +9,15 @@ namespace Cookfeed.IntegrationTests.Support;
 /// returns an <see cref="HttpClient"/> wired straight to it, so tests exercise routing, model binding,
 /// validation and JSON exactly as the Angular app will.
 /// </summary>
-public sealed class CookfeedApiFactory(string connectionString) : WebApplicationFactory<Program>
+public sealed class CookfeedApiFactory(string connectionString, string environment = "Testing")
+    : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // UseSetting is applied before Program.cs reads its configuration, so this replaces the connection string
-        // from appsettings. "Testing" is not Development, so the startup seeder leaves the database alone.
+        // from appsettings. "Testing" is not Development, so the startup seeder leaves the database alone; a test
+        // of something only Development offers names that environment instead.
         builder.UseSetting("ConnectionStrings:Cookfeed", connectionString);
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(environment);
     }
 }
