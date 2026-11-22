@@ -2,10 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { map, of } from 'rxjs';
+import { firstValueFrom, map, of } from 'rxjs';
 import { CookfeedApi } from '../../core/api';
 import { ProductDetail, RecipeLocked, RecipeStep } from '../../core/api-types';
 import { loadValue } from '../../core/load';
+import { Notices, problemText } from '../../core/notices';
 import { PEOPLE_MAX, PEOPLE_MIN, peopleProblem } from '../../core/people';
 import { Session } from '../../core/session';
 import { amount, clockTime, dayAndMeal, plural, productCounts, productTypeLabel } from '../../ui/format';
@@ -29,6 +30,7 @@ export class RecipePage {
   private readonly api = inject(CookfeedApi);
   private readonly title = inject(Title);
   private readonly route = inject(ActivatedRoute);
+  private readonly notices = inject(Notices);
   protected readonly session = inject(Session);
 
   /** The address of this page, for "Sign in to save" to come back to. */
@@ -59,6 +61,24 @@ export class RecipePage {
   );
 
   protected readonly locked = computed(() => this.recipe.refusal() as RecipeLocked | null);
+
+  /* ---------- saving ---------- */
+
+  /** Whether the viewer has the recipe saved, and how many cooks do: from the recipe, then from each save or unsave. */
+  protected readonly saved = signal(false);
+  private readonly saveCount = signal(0);
+
+  /** True while a save or unsave is on its way, so a second press does nothing. */
+  protected readonly saving = signal(false);
+
+  /**
+   * A cook may save a recipe that is in the store, or one they own through a purchase (the prototype's canSave).
+   * The page is only shown to someone who may open the recipe; a creator's own draft is the one case left out.
+   */
+  protected readonly canSave = computed(() => {
+    const recipe = this.recipe.value();
+    return recipe !== null && this.session.canShop() && (recipe.isPublished || recipe.ownedThrough !== null);
+  });
 
   /* ---------- the people being cooked for ---------- */
 
@@ -133,7 +153,7 @@ export class RecipePage {
       facts: [
         `Serves ${recipe.servings}`,
         recipe.totalMinutes === null ? null : `${recipe.totalMinutes} min total`,
-        `saved by ${plural(recipe.saveCount, 'cook', 'cooks')}`,
+        `saved by ${plural(this.saveCount(), 'cook', 'cooks')}`,
       ]
         .filter((part) => part !== null)
         .join(' · '),
@@ -148,6 +168,8 @@ export class RecipePage {
         this.servingsText.set(String(recipe.servings));
         this.people.set(recipe.servings);
         this.playing.set(null);
+        this.saved.set(recipe.savedByViewer);
+        this.saveCount.set(recipe.saveCount);
       }
     });
 
@@ -159,6 +181,25 @@ export class RecipePage {
         this.title.setTitle(`${name} | Cookfeed`);
       }
     });
+  }
+
+  /** Saves the recipe to My kitchen, or takes it out, and says which. The count every visitor sees follows. */
+  protected async setSaved(save: boolean): Promise<void> {
+    const recipe = this.recipe.value();
+    if (recipe === null) {
+      return;
+    }
+    this.saving.set(true);
+    try {
+      const state = await firstValueFrom(save ? this.api.save(recipe.id) : this.api.unsave(recipe.id));
+      this.saved.set(state.saved);
+      this.saveCount.set(state.saveCount);
+      this.notices.say(state.saved ? `${recipe.title} is saved in My kitchen.` : `${recipe.title} is no longer saved.`);
+    } catch (error) {
+      this.notices.problem(problemText(error, 'That could not be saved. Please try again.'));
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   /** Typing a number rescales the list straight away; anything else says what is wrong and leaves the list as it was. */

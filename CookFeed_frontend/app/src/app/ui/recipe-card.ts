@@ -69,6 +69,9 @@ export interface RecipeCardData {
         <span class="inline-flex items-center gap-1"><app-icon name="saved" [size]="16" /> {{ savedBy() }}</span>
       </p>
     </div>
+    <!-- A page's own controls, such as My kitchen's Unsave. Above the link that covers the card, so they can be
+         pressed; taking no room when a page gives none. -->
+    <div data-card-controls class="relative z-10 flex flex-wrap gap-2 px-3 pb-3 empty:hidden sm:px-4 sm:pb-4"><ng-content /></div>
   `,
 })
 export class RecipeCard {

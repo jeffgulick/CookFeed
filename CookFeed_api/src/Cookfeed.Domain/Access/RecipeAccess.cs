@@ -35,4 +35,12 @@ public static class RecipeAccess
         // Everyone else sees only what is in the store and free: a draft or a ProductOnly recipe stays closed.
         return recipe.IsPublished && recipe.Visibility == RecipeVisibility.Public;
     }
+
+    /// <summary>
+    /// Who may save a recipe to My kitchen (DesignDocument.md §3.4; the prototype's <c>canSave</c>): a home cook who
+    /// may open it, while it is in the store or theirs through a purchase. So a creator's own draft, which they can
+    /// open, cannot be saved; and the admin, who holds no HomeCook role (§3.1), saves nothing.
+    /// </summary>
+    public static bool CanSave(RecipeAccessFacts recipe, int viewerId, bool viewerCanShop) =>
+        viewerCanShop && CanOpen(recipe, viewerId) && (recipe.IsPublished || recipe.ViewerHoldsPaidSnapshot);
 }

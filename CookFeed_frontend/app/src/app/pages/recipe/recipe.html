@@ -90,8 +90,21 @@
       @if (session.user() === null) {
         <!-- next carries this page's address, so the sign-in page can offer the way back. -->
         <a routerLink="/sign-in" [queryParams]="{ next: here }" class="btn btn-secondary btn-small">Sign in to save</a>
-      } @else if (session.canShop() && dish.savedByViewer) {
+      } @else if (canSave() && saved()) {
         <span class="tag-good"><app-icon name="check" [size]="14" /> Saved in My kitchen</span>
+        <button type="button" class="btn btn-secondary btn-small ml-2" [disabled]="saving()" (click)="setSaved(false)">
+          Unsave
+        </button>
+      } @else if (canSave()) {
+        <button
+          type="button"
+          class="btn btn-secondary btn-small"
+          title="Saving keeps this recipe in My kitchen"
+          [disabled]="saving()"
+          (click)="setSaved(true)"
+        >
+          <app-icon name="saved" [size]="16" /> Save recipe
+        </button>
       }
     </span>
   </div>

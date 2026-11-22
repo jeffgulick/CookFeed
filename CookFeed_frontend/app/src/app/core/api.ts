@@ -13,7 +13,10 @@ import {
   ProductSort,
   ProductTile,
   ProductType,
+  Purchase,
   RecipeDetail,
+  SaveState,
+  SavedRecipe,
   Storefront,
 } from './api-types';
 
@@ -111,6 +114,26 @@ export class CookfeedApi {
   /** Turns the cart into a paid order (POST /api/me/checkout). A 400 when nothing in it can be bought. */
   checkout(): Observable<Order> {
     return this.http.post<Order>('/api/me/checkout', null);
+  }
+
+  /** The plans and collections the signed-in cook owns (GET /api/me/purchases). */
+  purchases(): Observable<Purchase[]> {
+    return this.http.get<Purchase[]>('/api/me/purchases');
+  }
+
+  /** The recipes the signed-in cook saved, the newest save first (GET /api/me/saves). */
+  saves(): Observable<SavedRecipe[]> {
+    return this.http.get<SavedRecipe[]>('/api/me/saves');
+  }
+
+  /** Saves a recipe to My kitchen (PUT /api/me/saves/{id}). A 404 for a recipe the caller may not save. */
+  save(recipeId: number): Observable<SaveState> {
+    return this.http.put<SaveState>(`/api/me/saves/${recipeId}`, null);
+  }
+
+  /** Unsaves a recipe (DELETE /api/me/saves/{id}). */
+  unsave(recipeId: number): Observable<SaveState> {
+    return this.http.delete<SaveState>(`/api/me/saves/${recipeId}`);
   }
 
   /** The signed-in cook's orders, newest first, cancelled ones included (GET /api/me/orders). */

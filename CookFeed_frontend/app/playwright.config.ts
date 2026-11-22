@@ -25,7 +25,12 @@ export default defineConfig({
     baseURL: appUrl ?? 'http://localhost:4200',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  // Saving a recipe changes a count and an order that every visitor sees, so saves.spec runs alone, after the
+  // rest have finished; everything else runs in parallel.
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' }, testIgnore: /saves\.spec\.ts/ },
+    { name: 'after', use: { browserName: 'chromium' }, testMatch: /saves\.spec\.ts/, dependencies: ['chromium'] },
+  ],
   webServer: appUrl ? undefined : [
     {
       command: 'dotnet run --project src/Cookfeed.Api',

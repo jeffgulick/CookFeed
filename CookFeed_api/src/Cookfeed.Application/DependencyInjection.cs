@@ -6,6 +6,7 @@ using Cookfeed.Application.Products;
 using Cookfeed.Application.Purchases;
 using Cookfeed.Application.Recipes;
 using Cookfeed.Application.Reviews;
+using Cookfeed.Application.Saves;
 using Cookfeed.Application.ShoppingList;
 using Cookfeed.Application.Storefront;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<AccountPickerService>();
         services.AddScoped<CartService>();
         services.AddScoped<CheckoutService>();
+        services.AddScoped<SaveService>();
         // The clock the services read the time from, so a test can set it.
         services.AddSingleton(TimeProvider.System);
         return services;

@@ -1,0 +1,85 @@
+<span class="pill">My kitchen</span>
+<h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Your kitchen</h1>
+
+@if (session.user() === null) {
+  <!-- next carries this page's address, so the sign-in page can offer the way back. -->
+  <p data-no-kitchen class="card mt-6 max-w-prose p-4 md:p-5">
+    <a routerLink="/sign-in" [queryParams]="{ next: '/kitchen' }" class="font-semibold">Sign in to see your kitchen</a>
+  </p>
+} @else if (!session.canShop()) {
+  <p data-no-kitchen class="card mt-6 max-w-prose p-4 md:p-5">Admin accounts do not save recipes or shop.</p>
+} @else {
+  <p data-kitchen-summary class="meta mt-2">The plans you bought and the recipes you saved.</p>
+
+  <section data-your-plans aria-labelledby="plansHeading" class="mt-8 md:mt-10">
+    <h2 id="plansHeading" class="text-2xl font-bold md:text-3xl">Your plans</h2>
+    <app-load-state [state]="plans.state()" what="plans" />
+    @if (plans.state() === 'ready') {
+      @if (planTiles().length === 0) {
+        <div class="card mt-4 max-w-prose p-4 md:p-5">
+          <p><strong>You have not bought a plan yet.</strong></p>
+          <p class="mt-1">
+            <a routerLink="/plans" class="font-semibold"
+              >See the meal plans and collections <span aria-hidden="true">&rarr;</span></a
+            >
+          </p>
+        </div>
+      } @else {
+        <!-- One plan across on a phone, so its cover is shown whole; side by side on wider screens. -->
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          @for (plan of planTiles(); track plan.id) {
+            <article
+              [attr.data-product-id]="plan.id"
+              class="card group relative flex flex-col overflow-hidden transition-shadow focus-within:shadow-lift hover:shadow-lift"
+            >
+              <!-- Decorative: the title beside it names the plan. -->
+              <img [src]="plan.imageUrl" alt="" width="960" height="400" loading="lazy" class="aspect-[12/5] w-full bg-fill object-cover" />
+              <div class="flex flex-1 flex-col gap-1.5 p-4 sm:gap-2">
+                <span class="pill self-start">{{ plan.typeLabel }}</span>
+                <h3 class="text-base leading-snug font-bold sm:text-lg">
+                  <!-- after:absolute stretches the link over the whole tile, so the tile is one target. -->
+                  <a [routerLink]="['/plans', plan.id]" class="text-ink no-underline after:absolute after:inset-0">{{
+                    plan.title
+                  }}</a>
+                </h3>
+                <p class="meta text-sm">{{ plan.about }}</p>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    }
+  </section>
+
+  <section data-saved-recipes aria-labelledby="savedHeading" class="mt-10 md:mt-14">
+    <h2 id="savedHeading" class="text-2xl font-bold md:text-3xl">Saved recipes</h2>
+    <app-load-state [state]="saved.state()" what="saved recipes" />
+    @if (saved.state() === 'ready') {
+      @if (saved.items().length === 0) {
+        <div class="card mt-4 max-w-prose p-4 md:p-5">
+          <p><strong>You have not saved any recipes yet.</strong></p>
+          <p class="meta mt-1">Press <strong>Save recipe</strong> on any recipe and it will appear here.</p>
+          <p class="mt-1">
+            <a routerLink="/recipes" class="font-semibold">Browse the recipes <span aria-hidden="true">&rarr;</span></a>
+          </p>
+        </div>
+      } @else {
+        <!-- Two across on a phone, like a photo grid; three on a wide screen. -->
+        <div class="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+          @for (recipe of saved.items(); track recipe.id) {
+            <app-recipe-card [recipe]="recipe">
+              <button
+                type="button"
+                class="btn btn-secondary btn-small"
+                [attr.aria-label]="'Unsave ' + recipe.title"
+                (click)="unsave(recipe)"
+              >
+                Unsave
+              </button>
+            </app-recipe-card>
+          }
+        </div>
+      }
+    }
+  </section>
+}

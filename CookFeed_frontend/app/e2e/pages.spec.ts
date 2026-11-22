@@ -25,6 +25,7 @@ test('each built page names itself in the browser tab', async ({ page }) => {
     ['/help', 'Help | Cookfeed'],
     ['/cart', 'Cart | Cookfeed'],
     ['/orders', 'Your orders | Cookfeed'],
+    ['/kitchen', 'My kitchen | Cookfeed'],
     ['/creators/kenji-kitchen', 'kenji-kitchen | Cookfeed'],
     ['/plans/3', 'Three Weeknights in Japan | Cookfeed'],
     ['/recipes/16', 'Tamagoyaki | Cookfeed'],
@@ -36,9 +37,9 @@ test('each built page names itself in the browser tab', async ({ page }) => {
 });
 
 test('a page that is not converted yet says so, and leads back to Discover', async ({ page }) => {
-  await openAs(page, 'alex', '/kitchen');
+  await openAs(page, 'kenji', '/studio');
 
-  await expect(page.locator('main h1')).toHaveText('My kitchen');
+  await expect(page.locator('main h1')).toHaveText('My studio');
   await expect(page.locator('main')).toContainText('still being built');
   await page.getByRole('link', { name: 'Back to Discover' }).click();
   await expect(page).toHaveURL('/');
