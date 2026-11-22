@@ -127,3 +127,79 @@ export interface Storefront {
   /** For sale only. */
   products: StorefrontProduct[];
 }
+
+export type MealSlot = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+
+/** What a viewer who may open a recipe also gets on a plan's page: its id (the link) and a quick look. */
+export interface ProductRecipeDetails {
+  recipeId: number;
+  prepMinutes: number | null;
+  cookMinutes: number | null;
+  ingredientCount: number;
+  stepCount: number;
+  /** How the recipe starts; null when it has no steps yet. */
+  firstStep: string | null;
+  saveCount: number;
+  savedByViewer: boolean;
+  /** The title of the viewer's purchase that holds this recipe, for "Yours through ..."; null when none does. */
+  ownedThrough: string | null;
+}
+
+/** One recipe on a plan's page: the card every viewer sees, and its details for a viewer who may open it. */
+export interface ProductRecipe {
+  sortOrder: number;
+  /** For a meal plan, the day (0 is Monday); null in a collection. */
+  dayOffset: number | null;
+  /** For a meal plan, the meal; null in a collection. */
+  slot: MealSlot | null;
+  title: string;
+  thumbnailUrl: string | null;
+  servings: number;
+  totalMinutes: number | null;
+  visibility: 'Public' | 'ProductOnly';
+  /** False for a premium recipe the viewer has not bought: a card with no link. */
+  canOpen: boolean;
+  /** Null when canOpen is false, so a locked recipe gives nothing else away. */
+  details: ProductRecipeDetails | null;
+}
+
+/** The page of one meal plan or collection, as one viewer sees it (GET /api/products/{id}). */
+export interface ProductDetail {
+  id: number;
+  type: ProductType;
+  title: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  priceCents: number;
+  currency: string;
+  creator: { handle: string; displayName: string; isVerified: boolean };
+  recipeCount: number;
+  mealCount: number | null;
+  rating: ProductRating;
+  /** False once it is retired, its creator is suspended, or a recipe in it was taken down. */
+  isForSale: boolean;
+  ownedByViewer: boolean;
+  viewerIsCreator: boolean;
+  inCart: boolean;
+  /** In plan order. A buyer sees the recipes they bought; everyone else, the plan as it is today. */
+  recipes: ProductRecipe[];
+}
+
+/** One line of a shopping list: 2 tbsp sake, in the Beverages aisle. */
+export interface ShoppingListLine {
+  ingredientId: number;
+  ingredient: string;
+  aisle: string;
+  quantity: number;
+  unit: string;
+}
+
+/** "What you'll buy" on a plan's page (GET /api/products/{id}/shopping-list). */
+export interface ProductShoppingList {
+  /** Sorted by aisle, then ingredient; amounts as each recipe is written. */
+  lines: ShoppingListLine[];
+  /** The recipes on the list, by title, in plan order. */
+  fromRecipes: string[];
+  /** The recipes left off because the viewer may not open them yet. */
+  lockedRecipes: string[];
+}

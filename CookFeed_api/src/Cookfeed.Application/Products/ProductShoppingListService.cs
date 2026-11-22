@@ -7,8 +7,9 @@ using Cookfeed.Domain.ShoppingList;
 namespace Cookfeed.Application.Products;
 
 /// <summary>
-/// "What you'll buy" for one product: the ingredients of the recipes the viewer may open, combined by
-/// <see cref="ShoppingListAggregator"/> the same way the caller's own shopping list is (DesignDocument.md §7.5).
+/// "What you'll buy" for one product: the ingredients of the recipes the viewer may open, as each recipe writes
+/// them, joined by <see cref="WrittenShoppingList"/> the way the prototype's product page does. The cook's own
+/// shopping list, which converts between units, is <see cref="ShoppingList.ShoppingListService"/>'s.
 /// </summary>
 public class ProductShoppingListService(IProductRepository products, IShoppingListRepository shoppingList)
 {
@@ -28,16 +29,19 @@ public class ProductShoppingListService(IProductRepository products, IShoppingLi
         var byAccess = page.Placements.ToLookup(p => RecipeAccess.CanOpen(p.Access, viewerId));
         var (open, locked) = (byAccess[true].ToList(), byAccess[false].ToList());
 
-        // One entry per meal: a recipe the plan serves on two days is bought for both.
-        var timesByRecipe = open.GroupBy(p => p.RecipeId).ToDictionary(g => g.Key, g => g.Count());
-        var list = timesByRecipe.Count == 0
-            ? new AggregatedShoppingList([], [])
-            : ShoppingListAggregator.Aggregate(
-                await shoppingList.GetIngredientTotalsForRecipesAsync(timesByRecipe, cancellationToken));
+        IReadOnlyList<ShoppingListLine> list = [];
+        if (open.Count > 0)
+        {
+            var linesByRecipe = await shoppingList.GetWrittenLinesAsync(
+                open.Select(p => p.RecipeId).Distinct().ToList(), cancellationToken);
+
+            // One pass per meal, in plan order: a recipe the plan serves on two days is bought for both.
+            list = WrittenShoppingList.Combine(open.SelectMany(p =>
+                linesByRecipe.TryGetValue(p.RecipeId, out var lines) ? lines : []));
+        }
 
         return new ProductShoppingListDto(
-            [.. list.Lines.Select(ToDto)],
-            [.. list.Unmerged.Select(ToDto)],
+            [.. list.Select(ToDto)],
             [.. open.Select(p => p.Title).Distinct()],
             [.. locked.Select(p => p.Title).Distinct()]);
     }

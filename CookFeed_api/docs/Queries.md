@@ -372,12 +372,19 @@ one readable.
 or the `order_item_recipes` order-item index for the placements; `ix_reviews_product_id_user_id` for the
 rating; the `order_items` and `orders` indexes for ownership, as in §1b. No new index is needed.
 
-**The plan's shopping list**, `GET /api/products/{id}/shopping-list`. `ProductShoppingListService` reads
-the same page, keeps the placements `RecipeAccess.CanOpen` allows, and passes the recipes (with how many
-times each is served) to `ShoppingListRepository.GetIngredientTotalsForRecipesAsync`. That is one more
-statement: the joins and the per-line rounding of §3, over `recipe_id IN (...)` at the written size, grouped
-per recipe. A recipe served twice has its total doubled in C#, and `ShoppingListAggregator` then combines
-the totals exactly as §3 describes. A viewer who can open nothing costs no ingredient query at all.
+**The plan's shopping list**, `GET /api/products/{id}/shopping-list`: "What you'll buy" on the plan's page.
+`ProductShoppingListService` reads the same page, keeps the placements `RecipeAccess.CanOpen` allows, and
+asks `ShoppingListRepository.GetWrittenLinesAsync` for those recipes' ingredient lines. That is one more
+statement: `recipe_ingredients` joined to `ingredients` and `units` over `recipe_id IN (...)`, every line as
+the recipe writes it, optional ones included. A viewer who can open nothing costs no ingredient query at all.
+
+The lines are then put together by `WrittenShoppingList.Combine` (Domain, unit-tested), the way the
+prototype's plan page does: one pass per meal in plan order, so a recipe served twice is bought twice; two
+lines joined only when they name the same ingredient **in the same unit**; sorted by aisle, then ingredient.
+Nothing is converted between units here. That is the difference from the cook's own list in §3, which
+`ShoppingListAggregator` converts and merges once the cook has decided what to cook and for how many.
+*Changed 2026-11-21:* this endpoint first used the §3 aggregator; it now follows the prototype, which is
+the specification for the app.
 
 **To do:** capture the logged SQL and the plans here, as the other sections have.
 

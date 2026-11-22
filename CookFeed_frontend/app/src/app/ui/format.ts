@@ -30,3 +30,13 @@ export function productCounts(recipeCount: number, mealCount: number | null): st
   const recipes = plural(recipeCount, 'recipe', 'recipes');
   return mealCount !== null && mealCount !== recipeCount ? `${recipes}, ${plural(mealCount, 'meal', 'meals')}` : recipes;
 }
+
+/** "A", "A and B", "A, B and C": a list of names the way a sentence joins them. */
+export function joinWithAnd(items: string[]): string {
+  return items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}` : items.join('');
+}
+
+/** An amount to at most two decimals, with no trailing zeros: 2, 2.5, 0.67. */
+export function amount(quantity: number): string {
+  return String(Math.round(quantity * 100) / 100);
+}

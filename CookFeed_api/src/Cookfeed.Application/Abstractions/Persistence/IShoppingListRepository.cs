@@ -14,10 +14,9 @@ public interface IShoppingListRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// The ingredient totals of the given recipes as written, one per (ingredient, unit category).
-    /// <paramref name="timesByRecipe"/> says how many times each recipe counts: 2 for one a meal plan serves on two
-    /// days. It applies no access rule: pass only recipes the viewer may open.
+    /// Every ingredient line of the given recipes as each recipe writes it, optional ones included, by recipe id and
+    /// in the recipe's own order. It applies no access rule: pass only recipes the viewer may open.
     /// </summary>
-    Task<IReadOnlyList<IngredientTotal>> GetIngredientTotalsForRecipesAsync(IReadOnlyDictionary<int, int> timesByRecipe,
-        CancellationToken cancellationToken);
+    Task<IReadOnlyDictionary<int, IReadOnlyList<WrittenIngredientLine>>> GetWrittenLinesAsync(
+        IReadOnlyCollection<int> recipeIds, CancellationToken cancellationToken);
 }

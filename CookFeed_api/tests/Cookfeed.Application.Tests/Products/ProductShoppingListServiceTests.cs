@@ -3,21 +3,21 @@ using Cookfeed.Application.Products;
 using Cookfeed.Contracts.Recipes;
 using Cookfeed.Contracts.Storefront;
 using Cookfeed.Domain.Access;
-using DomainVisibility = Cookfeed.Domain.Enums.RecipeVisibility;
-using UnitCategory = Cookfeed.Domain.Enums.UnitCategory;
 using Cookfeed.Domain.ShoppingList;
 using NSubstitute;
+using DomainVisibility = Cookfeed.Domain.Enums.RecipeVisibility;
 
 namespace Cookfeed.Application.Tests.Products;
 
 /// <summary>
-/// <see cref="ProductShoppingListService"/> picks the recipes the viewer may open from the product's page, asks the
-/// repository to add up their ingredients (a recipe served twice counting twice), and names the rest as locked. The
-/// aggregator's own rules are tested in Cookfeed.Domain.Tests.
+/// <see cref="ProductShoppingListService"/> picks the recipes the viewer may open from the product's page, reads their
+/// ingredient lines as written, counts a recipe once for every meal it is served at, and names the rest as locked.
+/// How lines are joined and sorted is <see cref="WrittenShoppingList"/>'s, tested in Cookfeed.Domain.Tests.
 /// </summary>
 public class ProductShoppingListServiceTests
 {
     private const int ProductId = 4, CreatorId = 5, Viewer = 7;
+    private const int Oats = 9, Tacos = 10, Hummus = 11;
 
     private readonly IProductRepository _products = Substitute.For<IProductRepository>();
     private readonly IShoppingListRepository _shoppingList = Substitute.For<IShoppingListRepository>();
@@ -33,42 +33,42 @@ public class ProductShoppingListServiceTests
     }
 
     [Fact]
-    public async Task Only_recipes_the_viewer_may_open_are_added_up_and_the_rest_are_named_as_locked()
+    public async Task Only_recipes_the_viewer_may_open_are_read_and_the_rest_are_named_as_locked()
     {
-        Given(Placement(9, "Oats", open: true), Placement(10, "Tacos", open: false), Placement(11, "Hummus", open: true));
-        TotalsAre([]);
+        Given(Placement(Oats, "Oats", open: true), Placement(Tacos, "Tacos", open: false), Placement(Hummus, "Hummus", open: true));
+        LinesAre(new() { [Oats] = [Line(1, "rolled oats", 2.5m, "c")], [Hummus] = [Line(2, "chickpeas", 400m, "g")] });
 
         var list = (await Service.GetShoppingListAsync(ProductId, Viewer, CancellationToken.None))!;
 
-        await _shoppingList.Received(1).GetIngredientTotalsForRecipesAsync(
-            Arg.Is<IReadOnlyDictionary<int, int>>(times => times.Count == 2 && times[9] == 1 && times[11] == 1),
+        await _shoppingList.Received(1).GetWrittenLinesAsync(
+            Arg.Is<IReadOnlyCollection<int>>(ids => ids.Count == 2 && ids.Contains(Oats) && ids.Contains(Hummus)),
             Arg.Any<CancellationToken>());
+        Assert.Equal(["chickpeas", "rolled oats"], list.Lines.Select(l => l.Ingredient));
         Assert.Equal(["Oats", "Hummus"], list.FromRecipes);
         Assert.Equal(["Tacos"], list.LockedRecipes);
     }
 
     [Fact]
-    public async Task A_recipe_served_twice_is_added_up_twice_and_named_once()
+    public async Task A_recipe_served_twice_is_bought_twice_and_named_once()
     {
-        Given(Placement(9, "Oats", open: true), Placement(10, "Tacos", open: true), Placement(9, "Oats", open: true));
-        TotalsAre([]);
+        Given(Placement(Oats, "Oats", open: true), Placement(Tacos, "Tacos", open: true), Placement(Oats, "Oats", open: true));
+        LinesAre(new() { [Oats] = [Line(1, "rolled oats", 2.5m, "c")], [Tacos] = [Line(3, "ground beef", 500m, "g")] });
 
         var list = (await Service.GetShoppingListAsync(ProductId, Viewer, CancellationToken.None))!;
 
-        await _shoppingList.Received(1).GetIngredientTotalsForRecipesAsync(
-            Arg.Is<IReadOnlyDictionary<int, int>>(times => times[9] == 2 && times[10] == 1),
-            Arg.Any<CancellationToken>());
+        Assert.Equal((5m, "c"), Amount(list, "rolled oats"));
+        Assert.Equal((500m, "g"), Amount(list, "ground beef"));
         Assert.Equal(["Oats", "Tacos"], list.FromRecipes);
     }
 
     [Fact]
     public async Task With_nothing_to_open_the_ingredients_are_never_read()
     {
-        Given(Placement(9, "Oats", open: false), Placement(9, "Oats", open: false));
+        Given(Placement(Oats, "Oats", open: false), Placement(Oats, "Oats", open: false));
 
         var list = (await Service.GetShoppingListAsync(ProductId, Viewer, CancellationToken.None))!;
 
-        await _shoppingList.DidNotReceiveWithAnyArgs().GetIngredientTotalsForRecipesAsync(default!, CancellationToken.None);
+        await _shoppingList.DidNotReceiveWithAnyArgs().GetWrittenLinesAsync(default!, CancellationToken.None);
         Assert.Empty(list.Lines);
         Assert.Empty(list.FromRecipes);
         Assert.Equal(["Oats"], list.LockedRecipes);
@@ -77,32 +77,35 @@ public class ProductShoppingListServiceTests
     [Fact]
     public async Task Its_creator_gets_every_recipe()
     {
-        Given(Placement(9, "Oats", open: false));
-        TotalsAre([]);
+        Given(Placement(Oats, "Oats", open: false));
+        LinesAre(new() { [Oats] = [Line(1, "rolled oats", 2.5m, "c")] });
 
         var list = (await Service.GetShoppingListAsync(ProductId, CreatorId, CancellationToken.None))!;
 
         Assert.Equal(["Oats"], list.FromRecipes);
         Assert.Empty(list.LockedRecipes);
+        Assert.Single(list.Lines);
     }
 
     [Fact]
-    public async Task Aggregated_lines_and_unmerged_lines_reach_the_response()
+    public async Task Each_line_reaches_the_response_as_it_is_written()
     {
-        Given(Placement(9, "Oats", open: true));
-        TotalsAre(
-        [
-            new IngredientTotal(1, "all-purpose flour", "Pantry", 0.53m, UnitCategory.Mass, 1m, "g", UnitCategory.Mass, 500m),
-            new IngredientTotal(2, "mozzarella", "Dairy", null, UnitCategory.Mass, 1m, "g", UnitCategory.Mass, 200m),
-            new IngredientTotal(2, "mozzarella", "Dairy", null, UnitCategory.Mass, 1m, "g", UnitCategory.Volume, 250m),
-        ]);
+        Given(Placement(Oats, "Oats", open: true));
+        LinesAre(new() { [Oats] = [new WrittenIngredientLine(1, "rolled oats", "Pantry", 2.5m, "c")] });
 
-        var list = (await Service.GetShoppingListAsync(ProductId, Viewer, CancellationToken.None))!;
+        var line = Assert.Single((await Service.GetShoppingListAsync(ProductId, Viewer, CancellationToken.None))!.Lines);
 
-        Assert.Equal("all-purpose flour", Assert.Single(list.Lines).Ingredient);
-        Assert.Equal(2, list.Unmerged.Count);
-        Assert.All(list.Unmerged, line => Assert.Equal("mozzarella", line.Ingredient));
+        Assert.Equal((1, "rolled oats", "Pantry", 2.5m, "c"), (line.IngredientId, line.Ingredient, line.Aisle, line.Quantity, line.Unit));
     }
+
+    private static (decimal, string) Amount(Contracts.Products.ProductShoppingListDto list, string ingredient)
+    {
+        var line = Assert.Single(list.Lines, l => l.Ingredient == ingredient);
+        return (line.Quantity, line.Unit);
+    }
+
+    private static WrittenIngredientLine Line(int ingredientId, string ingredient, decimal quantity, string unit) =>
+        new(ingredientId, ingredient, "Pantry", quantity, unit);
 
     private void Given(params ProductPagePlacement[] placements) =>
         _products.GetPageAsync(ProductId, Arg.Any<int?>(), Arg.Any<CancellationToken>()).Returns(
@@ -112,9 +115,9 @@ public class ProductShoppingListServiceTests
                 ReviewCount: 0, RatingSum: 0, RecommendCount: 0,
                 placements));
 
-    private void TotalsAre(IReadOnlyList<IngredientTotal> totals) =>
-        _shoppingList.GetIngredientTotalsForRecipesAsync(Arg.Any<IReadOnlyDictionary<int, int>>(), Arg.Any<CancellationToken>())
-            .Returns(totals);
+    private void LinesAre(Dictionary<int, IReadOnlyList<WrittenIngredientLine>> linesByRecipe) =>
+        _shoppingList.GetWrittenLinesAsync(Arg.Any<IReadOnlyCollection<int>>(), Arg.Any<CancellationToken>())
+            .Returns(linesByRecipe);
 
     // "open" stands for a Paid order holding the recipe, the one thing that opens a ProductOnly recipe to a viewer who
     // did not make it.

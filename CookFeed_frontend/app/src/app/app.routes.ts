@@ -21,7 +21,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/sign-in/sign-in').then((m) => m.SignInPage),
   },
   { path: 'plans', ...notBuiltYet('Plans & collections') },
-  { path: 'plans/:id', ...notBuiltYet('Plan') },
+  {
+    // The page renames the tab after the plan once it has loaded.
+    path: 'plans/:id',
+    title: 'Plan | Cookfeed',
+    loadComponent: () => import('./pages/plan/plan').then((m) => m.PlanPage),
+  },
+  { path: 'plans/:id/reviews', ...notBuiltYet('Reviews') },
   { path: 'recipes', ...notBuiltYet('Recipes') },
   { path: 'recipes/:id', ...notBuiltYet('Recipe') },
   {

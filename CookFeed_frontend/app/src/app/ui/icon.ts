@@ -22,6 +22,7 @@ const ICONS = {
   chevron: ['M6 9l6 6 6-6'],
   play: ['M8 5v14l11-7z'],
   list: ['M8 6h12', 'M8 12h12', 'M8 18h12', 'M4 6h.01', 'M4 12h.01', 'M4 18h.01'],
+  lock: ['M6 11h12v9H6z', 'M8.5 11V8a3.5 3.5 0 0 1 7 0v3'],
   signOut: ['M15 4h4v16h-4', 'M10 8l-4 4 4 4', 'M6 12h10'],
 } as const;
 

@@ -2,18 +2,17 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using Cookfeed.Contracts.Products;
-using Cookfeed.Domain.Enums;
-using Cookfeed.Domain.ShoppingList;
 using Cookfeed.IntegrationTests.Support;
 
 namespace Cookfeed.IntegrationTests.Api;
 
 /// <summary>
-/// <c>GET /api/products/{id}/shopping-list</c> over HTTP: "What you'll buy" on a plan's page, every ingredient of the
-/// recipes the viewer may open, as each recipe is written, combined by <c>ShoppingListAggregator</c>
-/// (DesignDocument.md §7). Each test adds the ingredient lines up again in plain SQL and runs the aggregator over
-/// them, so the endpoint is checked against a second route to the same numbers. A recipe the viewer may not open adds
-/// nothing and is named in <c>lockedRecipes</c> instead. These tests only read.
+/// <c>GET /api/products/{id}/shopping-list</c> over HTTP: "What you'll buy" on a plan's page, as the prototype's
+/// product page lists it. Every ingredient line of the recipes the viewer may open, as each recipe writes it, optional
+/// ones included; two lines join only when they name the same ingredient in the same unit, and nothing is converted
+/// between units. Each test adds the lines up again in plain SQL, so the endpoint is checked against a second route to
+/// the same numbers. A recipe the viewer may not open adds nothing and is named in <c>lockedRecipes</c> instead. The
+/// test that changes rows builds its own database.
 /// </summary>
 public sealed class ProductShoppingListEndpointTests(DatabaseFixture databases) : IAsyncDisposable
 {
@@ -46,9 +45,8 @@ public sealed class ProductShoppingListEndpointTests(DatabaseFixture databases) 
 
         var list = await GetListAsync(productId, Alex);
 
-        Assert.NotEmpty(expected.Lines);
-        Assert.Equal(expected.Lines, Lines(list.Lines));
-        Assert.Equal(expected.Unmerged, Lines(list.Unmerged));
+        Assert.NotEmpty(expected);
+        Assert.Equal(expected, Lines(list.Lines));
         Assert.Empty(list.LockedRecipes);
     }
 
@@ -56,16 +54,57 @@ public sealed class ProductShoppingListEndpointTests(DatabaseFixture databases) 
     public async Task A_recipe_served_twice_counts_twice()
     {
         // Rolled oats are only in Five-Day Overnight Oats (2.5 cups), which Family Week serves on two mornings.
-        // One morning: 2.5 c x 236.588 ml x 0.41 g/ml = 242.5027 g. Two: 485.0054 g, shown as 485.01. The amounts are
-        // added before they are rounded, so it is not twice the rounded 242.50.
         var once = await ExpectedLinesAsync("SELECT id FROM recipes WHERE title = 'Five-Day Overnight Oats'");
 
         var list = await GetListAsync(FamilyWeek, Alex);
 
-        var oatsOnce = Assert.Single(once.Lines, l => l.Ingredient == "rolled oats");
+        var oatsOnce = Assert.Single(once, l => l.Ingredient == "rolled oats");
         var oatsInPlan = Assert.Single(list.Lines, l => l.Ingredient == "rolled oats");
-        Assert.Equal((242.50m, "g"), (oatsOnce.Quantity, oatsOnce.Unit));
-        Assert.Equal((485.01m, "g"), (oatsInPlan.Quantity, oatsInPlan.Unit));
+        Assert.Equal((2.5m, "c"), (oatsOnce.Quantity, oatsOnce.Unit));
+        Assert.Equal((5m, "c"), (oatsInPlan.Quantity, oatsInPlan.Unit));
+    }
+
+    [Fact]
+    public async Task An_ingredient_written_in_two_units_keeps_a_line_for_each()
+    {
+        // Family Week uses granulated sugar by the cup in one recipe and by the tablespoon in another. The plan's page
+        // shows both as written; adding them together is for the cook's own shopping list.
+        var list = await GetListAsync(FamilyWeek, Alex);
+
+        Assert.Equal(["c", "tbsp"], list.Lines.Where(l => l.Ingredient == "granulated sugar").Select(l => l.Unit).Order());
+    }
+
+    [Fact]
+    public async Task The_list_is_sorted_by_aisle_and_then_by_ingredient()
+    {
+        var list = await GetListAsync(FamilyWeek, Alex);
+
+        var keys = list.Lines.Select(l => (l.Aisle, l.Ingredient)).ToList();
+        Assert.True(keys.Count > 10);
+        Assert.Equal(keys.OrderBy(k => k.Aisle, StringComparer.Ordinal).ThenBy(k => k.Ingredient, StringComparer.Ordinal), keys);
+    }
+
+    [Fact]
+    public async Task An_optional_ingredient_is_listed_like_any_other()
+    {
+        // The seed marks no ingredient of a plan's recipes optional, so this database makes the oats' honey optional.
+        var connection = await databases.CreateMigratedDatabaseAsync("planlist");
+        await DatabaseFixture.SeedWithDbSeederAsync(connection);
+        await Sql.ExecuteAsync(connection, """
+            UPDATE recipe_ingredients ri SET is_optional = TRUE
+            FROM recipes r, ingredients i
+            WHERE r.id = ri.recipe_id AND i.id = ri.ingredient_id
+              AND r.title = 'Five-Day Overnight Oats' AND i.name = 'honey'
+            """);
+        await using var api = new CookfeedApiFactory(connection);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/products/{FamilyWeek}/shopping-list");
+        request.Headers.Add("X-User-Id", Alex.ToString(CultureInfo.InvariantCulture));
+
+        var response = await api.CreateClient().SendAsync(request, TestContext.Current.CancellationToken);
+        var list = await response.Content.ReadFromJsonAsync<ProductShoppingListDto>(TestContext.Current.CancellationToken);
+
+        // 3 tbsp in the recipe, served on two mornings.
+        Assert.Contains(list!.Lines, l => l.Ingredient == "honey" && l.Unit == "tbsp" && l.Quantity >= 6m);
     }
 
     [Fact]
@@ -90,7 +129,6 @@ public sealed class ProductShoppingListEndpointTests(DatabaseFixture databases) 
         var list = await GetListAsync(ThreeWeeknights, viewer);
 
         Assert.Empty(list.Lines);
-        Assert.Empty(list.Unmerged);
         Assert.Empty(list.FromRecipes);
         Assert.Equal(["Chicken Teriyaki, the Real Way", "10-Minute Ginger Garlic Stir-Fry", "Onigiri Three Ways"],
             list.LockedRecipes);
@@ -104,7 +142,7 @@ public sealed class ProductShoppingListEndpointTests(DatabaseFixture databases) 
 
         var list = await GetListAsync(BreadBox, Alex);
 
-        Assert.Equal(expected.Lines, Lines(list.Lines));
+        Assert.Equal(expected, Lines(list.Lines));
         Assert.Equal(["No-Knead Focaccia"], list.FromRecipes);
         Assert.Equal(["Rosemary Ciabatta"], list.LockedRecipes);
     }
@@ -126,7 +164,7 @@ public sealed class ProductShoppingListEndpointTests(DatabaseFixture databases) 
 
         var list = await GetListAsync(ThreeWeeknights, Kenji);
 
-        Assert.Equal(expected.Lines, Lines(list.Lines));
+        Assert.Equal(expected, Lines(list.Lines));
         Assert.Empty(list.LockedRecipes);
     }
 
@@ -135,7 +173,7 @@ public sealed class ProductShoppingListEndpointTests(DatabaseFixture databases) 
     {
         var list = await GetListAsync(RetiredGrilling);
 
-        Assert.Equal((0, 0, 0, 0), (list.Lines.Count, list.Unmerged.Count, list.FromRecipes.Count, list.LockedRecipes.Count));
+        Assert.Equal((0, 0, 0), (list.Lines.Count, list.FromRecipes.Count, list.LockedRecipes.Count));
     }
 
     [Fact]
@@ -146,39 +184,34 @@ public sealed class ProductShoppingListEndpointTests(DatabaseFixture databases) 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    // The same arithmetic as the endpoint, by another route: every non-optional ingredient line of the given recipes
-    // (one row per meal, so a recipe listed twice counts twice), summed per ingredient and unit category in plain SQL,
-    // then combined by the aggregator.
-    private async Task<(List<Line> Lines, List<Line> Unmerged)> ExpectedLinesAsync(string recipeIdsSql)
+    // The same list as the endpoint, by another route: every ingredient line of the given recipes (one row per meal,
+    // so a recipe listed twice counts twice), added up per ingredient and unit in plain SQL. Sorted here by aisle,
+    // ingredient and unit, as Lines() sorts the endpoint's, so the comparison does not depend on how either breaks a tie.
+    private async Task<List<Line>> ExpectedLinesAsync(string recipeIdsSql)
     {
         var rows = await Sql.QueryAsync(await ConnectionStringAsync(), $"""
-            SELECT i.id, i.name, i.category, i.density_g_per_ml, pu.category, pu.to_base_factor, pu.abbreviation,
-                   u.category, SUM(ROUND(ri.quantity * u.to_base_factor, 6))
+            SELECT i.id, i.name, i.category, SUM(ri.quantity), u.abbreviation
             FROM ({recipeIdsSql}) AS meals(recipe_id)
-            JOIN recipe_ingredients ri ON ri.recipe_id = meals.recipe_id AND NOT ri.is_optional
+            JOIN recipe_ingredients ri ON ri.recipe_id = meals.recipe_id
             JOIN units u ON u.id = ri.unit_id
             JOIN ingredients i ON i.id = ri.ingredient_id
-            LEFT JOIN units pu ON pu.id = i.preferred_shopping_unit_id
-            GROUP BY i.id, i.name, i.category, i.density_g_per_ml, pu.category, pu.to_base_factor, pu.abbreviation, u.category
+            GROUP BY i.id, i.name, i.category, u.abbreviation
             """);
 
-        var list = ShoppingListAggregator.Aggregate(rows.Select(row => new IngredientTotal(
+        return Sorted(rows.Select(row => new Line(
             int.Parse(row[0]!, CultureInfo.InvariantCulture),
             row[1]!,
             row[2]!,
-            row[3] is null ? null : decimal.Parse(row[3]!, CultureInfo.InvariantCulture),
-            row[4] is null ? null : Enum.Parse<UnitCategory>(row[4]!),
-            row[5] is null ? null : decimal.Parse(row[5]!, CultureInfo.InvariantCulture),
-            row[6],
-            Enum.Parse<UnitCategory>(row[7]!),
-            decimal.Parse(row[8]!, CultureInfo.InvariantCulture))));
-
-        return ([.. list.Lines.Select(l => new Line(l.IngredientId, l.Ingredient, l.Aisle, l.Quantity, l.Unit))],
-            [.. list.Unmerged.Select(l => new Line(l.IngredientId, l.Ingredient, l.Aisle, l.Quantity, l.Unit))]);
+            decimal.Parse(row[3]!, CultureInfo.InvariantCulture),
+            row[4]!)));
     }
 
     private static List<Line> Lines(IEnumerable<Contracts.ShoppingList.ShoppingListLineDto> lines) =>
-        [.. lines.Select(l => new Line(l.IngredientId, l.Ingredient, l.Aisle, l.Quantity, l.Unit))];
+        Sorted(lines.Select(l => new Line(l.IngredientId, l.Ingredient, l.Aisle, l.Quantity, l.Unit)));
+
+    private static List<Line> Sorted(IEnumerable<Line> lines) =>
+        [.. lines.OrderBy(l => l.Aisle, StringComparer.Ordinal).ThenBy(l => l.Ingredient, StringComparer.Ordinal)
+            .ThenBy(l => l.Unit, StringComparer.Ordinal)];
 
     private sealed record Line(int IngredientId, string Ingredient, string Aisle, decimal Quantity, string Unit);
 
