@@ -85,7 +85,11 @@ export const routes: Routes = [
     title: 'Help | Cookfeed',
     loadComponent: () => import('./pages/help/help').then((m) => m.HelpPage),
   },
-  { path: 'studio', ...notBuiltYet('My studio') },
+  {
+    path: 'studio',
+    title: 'My studio | Cookfeed',
+    loadComponent: () => import('./pages/studio/studio').then((m) => m.StudioPage),
+  },
   { path: 'admin', ...notBuiltYet('Admin') },
   { path: '**', ...notBuiltYet('Page not found') },
 ];

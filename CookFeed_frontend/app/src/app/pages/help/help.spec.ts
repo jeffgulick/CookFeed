@@ -35,6 +35,7 @@ describe('Help page', () => {
     expect(questions()).toContain('Can I buy more than one copy?');
     expect(questions()).toContain('Why is there no Add to cart on my own plan?');
     expect(questions()).toContain('Why does the admin account see no cart or Save buttons?');
+    expect(questions()).toContain('What is My studio?');
     expect(questions()).toContain('Is this the real store?');
   });
 

@@ -1229,6 +1229,45 @@ HTTP.
   beside the first; adding to the list named; each refusal of a named list; and Shop again, with what it leaves
   out and when it is refused.
 
+## 9. The creator studio — *built 2026-11-21; generated SQL not yet captured here*
+
+A creator's studio is what they publish, what they sell, and what it has earned (DesignDocument.md §3.8; the
+prototype's `studio.html`).
+
+**Endpoints**, under `/api/me/studio`. Only an account with the Creator role has a studio (403 otherwise); another
+creator's recipe or plan answers 404, like one that does not exist. Every change answers with the whole studio, so
+the app redraws without a second request.
+
+| Route | Answer |
+|---|---|
+| `GET /api/me/studio` | the stats row; every recipe, drafts included, with the plans it is in; every plan and collection with how many sold; the sales, newest first (Q10); the reviews of their plans (Q12) |
+| `POST /api/me/studio/recipes/{id}/publish`, `/unpublish` | publishes a draft, or makes a published recipe a draft again |
+| `POST /api/me/studio/products/{id}/retire`, `/restore` | takes a plan off the store, or puts a retired one back on sale |
+
+**Code:** `MyStudioController` → `StudioService` → `StudioRepository`, with the rules in
+`Domain/Access/StudioRules` (the prototype's `creatorPublishProblem` and `creatorRestoreProblem` in `rules.js`).
+
+**Rules**
+
+- A recipe is published only with at least one ingredient and one step, and not when Cookfeed took it down.
+- A published recipe is not unpublished while a plan holds it or cooks have bought it: they keep what they bought.
+- A retired plan goes back on sale only with at least one recipe and no draft in it, and not when Cookfeed
+  retired it. Retiring is always allowed; buyers keep the plan.
+- A change the rules do not allow is a 409 whose `detail` is the sentence to show. The same sentence comes with
+  each row beforehand (`publishProblem`, `restoreProblem`), so the page writes the reason beside a button that is
+  off instead of letting the press fail.
+- Each of the four changes is safe to repeat: asking for the state a row is already in changes nothing.
+
+**Not built:** creating and editing a recipe or a plan (the prototype's two forms).
+
+**Tests:**
+
+- `tests/Cookfeed.Domain.Tests/Access/StudioRulesTests.cs`: each reason a recipe cannot be published or
+  unpublished, and a plan cannot be restored, in the order they are checked.
+- `tests/Cookfeed.IntegrationTests/Api/StudioEndpointTests.cs`, over HTTP: the recipes, plans, sales (against Q10),
+  stats and reviews a creator sees; only a creator has a studio; unpublish and publish; each refusal as a 409 that
+  says why and changes nothing; retire and restore; and that another creator's row is not found and not changed.
+
 ## Write paths worth noting
 
 The writes that keep the denormalized columns correct are described where they are built: the cart and

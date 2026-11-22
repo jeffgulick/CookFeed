@@ -58,7 +58,7 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Database design: schema, seed data, queries (`docs/`) | Done |
 | EF Core entities, mappings and migration | Done — builds the same database as `docs/schema.sql` |
 | C# seeder | Done — loads the same rows as `docs/sql/seed.sql` |
-| Tests | 765, all passing: Domain 98, Application 112, Integration 555 |
+| Tests | 794, all passing: Domain 107, Application 112, Integration 575 |
 | Recipe feed, `GET /api/feed` | Done: controller, service, repository, DTOs; 21 tests; SQL verified in `docs/Queries.md` §1 |
 | Creator storefront, `GET /api/creators/{handle}` | Done: 35 tests; SQL verified in `docs/Queries.md` §2, with the 2026-11-21 changes noted there |
 | Order history, `GET /api/me/orders` | Done: 14 tests; SQL verified in `docs/Queries.md` §4 |
@@ -75,6 +75,7 @@ GitHub Actions runs the build and all the tests on every pull request that touch
 | Writing a review, `POST /api/products/{id}/reviews` and `DELETE /api/products/{id}/reviews/mine` | Done: allowed exactly when the reviews page shows the caller the form (`ReviewAccess`); 13 service tests, 18 HTTP tests; described in `docs/Queries.md` §7 |
 | Shopping lists, `/api/me/trips` | Done: made by "Shop this recipe" or "Shop this plan"; a cook can keep several lists in use, adding to the one they name or starting a new one; lines computed with the shopping list's arithmetic; Have it, people, start, done, delete; Shop again from a finished list; the rules in `Domain/ShoppingList/TripRules` (30 Domain tests) and 29 HTTP tests; described in `docs/Queries.md` §8 |
 | Saved recipes, `GET /api/me/saves`, `PUT` and `DELETE /api/me/saves/{recipeId}` | Done: who may save in `Domain/Access/RecipeAccess.CanSave` (7 Domain tests), 9 service tests, 17 HTTP tests against Q6 and Q16; the database's trigger keeps `save_count`; described in `docs/Queries.md` §6 |
+| Creator studio, `GET /api/me/studio`, `POST /api/me/studio/recipes/{id}/publish` and `/unpublish`, `POST /api/me/studio/products/{id}/retire` and `/restore` | Done: what a creator publishes, sells and has earned, in one read; the rules in `Domain/Access/StudioRules`; a refusal is a 409 with the sentence to show, and each row carries that sentence beforehand; Domain and HTTP tests; described in `docs/Queries.md` §9. Not built: creating and editing a recipe or a plan |
 | Reset to the seed, `POST /api/dev/reset` | Done: Development only, for demonstrations and the browser tests; 2 tests |
 | Accounts for the sign-in picker, `GET /api/accounts` | Done: Development only (`Accounts:PickerEnabled`), no email or password data; 6 tests |
 | CORS and OpenAPI | Done: the Angular dev server may call the API; `/openapi/v1.json` describes it in Development (5 and 9 tests) |

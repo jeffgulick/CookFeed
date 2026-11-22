@@ -1,0 +1,225 @@
+@let words = view();
+
+<span class="pill">My studio</span>
+<h1 class="mt-3 text-3xl font-bold tracking-tight md:text-5xl">Your recipes and plans</h1>
+
+@if (session.user() === null) {
+  <!-- next carries this page's address, so the sign-in page can offer the way back. -->
+  <p data-no-studio class="card mt-6 max-w-prose p-4 md:p-5">
+    <a routerLink="/sign-in" [queryParams]="{ next: '/studio' }" class="font-semibold">Sign in to open your studio</a>. The
+    studio is where creators publish recipes and sell plans.
+  </p>
+} @else if (!session.isCreator()) {
+  <p data-no-studio class="card mt-6 max-w-prose p-4 md:p-5">Only creators have a studio. Sign in as Maria, Kenji or Dan to see one.</p>
+} @else {
+  <app-load-state [state]="state()" what="studio" />
+
+  @if (state() === 'ready' && words) {
+    <p data-lede class="meta mt-2 max-w-prose">
+      What you publish, what you sell, and what it has earned.
+      <a [routerLink]="words.storefront" class="font-semibold">See your storefront <span aria-hidden="true">&rarr;</span></a>
+    </p>
+
+    @if (words.isSuspended) {
+      <p data-suspended class="card mt-5 max-w-prose border-bad bg-bad-soft p-4 text-ink md:p-5">
+        <strong>Your account is suspended.</strong> Your plans are off the store and you cannot put new ones on sale. Cooks
+        who bought your plans keep them. Contact Cookfeed support to sort it out.
+      </p>
+    }
+
+    <!-- Five figures: two across on a phone, all five in a row on a wide screen. -->
+    <ul class="card mt-6 grid grid-cols-2 gap-x-4 gap-y-5 p-4 sm:grid-cols-3 md:p-6 lg:grid-cols-5">
+      @for (stat of words.stats; track $index) {
+        <li data-stat>
+          <strong class="block font-display text-3xl leading-tight font-bold text-ink">{{ stat.value }}</strong
+          >&ngsp;<span class="meta text-sm">{{ stat.label }}</span>
+        </li>
+      }
+    </ul>
+
+    <section aria-labelledby="recipesHeading" class="mt-10 md:mt-12">
+      <h2 id="recipesHeading" class="text-2xl font-bold md:text-3xl">My recipes</h2>
+      <p class="meta mt-2 max-w-prose">
+        A recipe starts as a draft only you can open. A <strong>free</strong> recipe is on Discover and your storefront for
+        anyone to save. A <strong>premium</strong> recipe is reached only by buying a plan it is in, and a plan sells only
+        premium recipes.
+      </p>
+      <!-- A wide table scrolls sideways inside its own box; the box takes focus so a keyboard can scroll it. -->
+      <div data-recipes tabindex="0" role="region" aria-label="My recipes, as a table" class="card mt-4 overflow-x-auto">
+        <table class="w-full min-w-[44rem] text-left">
+          <thead>
+            <tr class="border-b border-line text-sm text-ink-soft">
+              <th scope="col" class="p-3 font-semibold">Recipe</th>
+              <th scope="col" class="p-3 font-semibold">Status</th>
+              <th scope="col" class="p-3 font-semibold">Access</th>
+              <th scope="col" class="p-3 font-semibold">Saved by</th>
+              <th scope="col" class="p-3 font-semibold">In plans</th>
+              <th scope="col" class="p-3 font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            @for (row of words.recipes; track row.recipe.id) {
+              <tr class="align-top">
+                <td class="p-3">
+                  <a [routerLink]="['/recipes', row.recipe.id]" class="font-semibold">{{ row.recipe.title }}</a
+                  >&ngsp;<span class="meta block text-sm">{{ row.serves }}</span>
+                </td>
+                <!-- The word says the status; the color only repeats it. -->
+                <td class="p-3 whitespace-nowrap">
+                  <span [class]="row.statusClass">{{ row.status }}</span>
+                </td>
+                <td class="p-3 whitespace-nowrap">
+                  <span [class]="row.accessClass">{{ row.access }}</span>
+                </td>
+                <td class="p-3 whitespace-nowrap">{{ row.savedBy }}</td>
+                <td class="p-3">
+                  @if (row.inPlans) {
+                    {{ row.inPlans }}
+                  } @else {
+                    <span class="meta">none</span>
+                  }
+                </td>
+                <td class="p-3">
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-small"
+                    [attr.aria-label]="row.action + ': ' + row.recipe.title"
+                    [attr.aria-describedby]="row.whyNot ? row.whyNotId : null"
+                    [disabled]="row.whyNot !== null || busy()"
+                    (click)="togglePublished(row.recipe)"
+                  >
+                    {{ row.action }}
+                  </button>
+                  <!-- Why the button is off, as text anyone can read: a tooltip never shows on a phone. -->
+                  @if (row.whyNot) {
+                    <span data-why-not [id]="row.whyNotId" class="meta mt-1.5 block max-w-xs text-sm">{{ row.whyNot }}</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="meta p-3">No recipes yet.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="productsHeading" class="mt-10 md:mt-12">
+      <h2 id="productsHeading" class="text-2xl font-bold md:text-3xl">My plans and collections</h2>
+      <p class="meta mt-2 max-w-prose">
+        A plan is for sale as soon as you create it. Retiring it takes it off the store; everyone who bought it keeps it.
+      </p>
+      <div data-products tabindex="0" role="region" aria-label="My plans and collections, as a table" class="card mt-4 overflow-x-auto">
+        <table class="w-full min-w-[46rem] text-left">
+          <thead>
+            <tr class="border-b border-line text-sm text-ink-soft">
+              <th scope="col" class="p-3 font-semibold">Plan</th>
+              <th scope="col" class="p-3 font-semibold">Type</th>
+              <th scope="col" class="p-3 font-semibold">Price</th>
+              <th scope="col" class="p-3 font-semibold">Contents</th>
+              <th scope="col" class="p-3 font-semibold">Status</th>
+              <th scope="col" class="p-3 font-semibold">Sold</th>
+              <th scope="col" class="p-3 font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            @for (row of words.products; track row.product.id) {
+              <tr class="align-top">
+                <td class="p-3"><a [routerLink]="['/plans', row.product.id]" class="font-semibold">{{ row.product.title }}</a></td>
+                <td class="p-3 whitespace-nowrap">{{ row.type }}</td>
+                <td class="p-3 whitespace-nowrap">{{ row.price }}</td>
+                <td class="p-3 whitespace-nowrap">{{ row.contents }}</td>
+                <td class="p-3">
+                  <span [class]="row.statusClass">{{ row.status }}</span>
+                </td>
+                <td class="p-3">{{ row.product.sold }}</td>
+                <td class="p-3">
+                  <span class="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-small"
+                      [attr.aria-label]="row.action + ': ' + row.product.title"
+                      [attr.aria-describedby]="row.whyNot ? row.whyNotId : null"
+                      [disabled]="row.whyNot !== null || busy()"
+                      (click)="toggleActive(row.product)"
+                    >
+                      {{ row.action }}</button
+                    >&ngsp;<a
+                      [routerLink]="['/plans', row.product.id, 'reviews']"
+                      class="btn btn-secondary btn-small"
+                      [attr.aria-label]="'Reviews: ' + row.product.title"
+                      >Reviews</a
+                    >
+                  </span>
+                  @if (row.whyNot) {
+                    <span data-why-not [id]="row.whyNotId" class="meta mt-1.5 block max-w-xs text-sm">{{ row.whyNot }}</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="meta p-3">Nothing for sale yet.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="salesHeading" class="mt-10 md:mt-12">
+      <h2 id="salesHeading" class="text-2xl font-bold md:text-3xl">Sales</h2>
+      <p data-sales-summary class="meta mt-2">{{ words.salesSummary }}</p>
+      <div data-sales tabindex="0" role="region" aria-label="Sales, as a table" class="card mt-4 max-w-4xl overflow-x-auto">
+        <table class="w-full min-w-[34rem] text-left">
+          <thead>
+            <tr class="border-b border-line text-sm text-ink-soft">
+              <th scope="col" class="p-3 font-semibold">Date</th>
+              <th scope="col" class="p-3 font-semibold">Buyer</th>
+              <th scope="col" class="p-3 font-semibold">Plan</th>
+              <th scope="col" class="p-3 font-semibold">Paid</th>
+              <th scope="col" class="p-3 font-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            @for (sale of words.sales; track $index) {
+              <tr>
+                <td class="p-3 whitespace-nowrap">{{ sale.date }}</td>
+                <td class="p-3">{{ sale.buyer }}</td>
+                <td class="p-3">{{ sale.plan }}</td>
+                <td class="p-3 whitespace-nowrap">{{ sale.paid }}</td>
+                <td class="p-3 whitespace-nowrap">
+                  <span [class]="sale.statusClass">{{ sale.status }}</span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="meta p-3">Nothing sold yet.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="reviewsHeading" class="mt-10 md:mt-12">
+      <h2 id="reviewsHeading" class="text-2xl font-bold md:text-3xl">Reviews of my plans</h2>
+      <div data-studio-reviews class="mt-4 grid max-w-3xl gap-3">
+        @for (review of words.reviews; track review.id) {
+          <article data-review class="card p-4 md:p-5">
+            <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <strong>{{ review.reviewer }}</strong
+              >&ngsp;<span role="img" [attr.aria-label]="review.starsLabel" class="text-star-text">{{ review.stars }}</span
+              >&ngsp;<span class="meta">{{ review.on }}</span
+              >&ngsp;<span class="meta sm:ml-auto">{{ review.date }}</span>
+            </p>
+            <p class="mt-2">{{ review.body }}</p>
+          </article>
+        } @empty {
+          <p class="meta">No reviews of your plans yet.</p>
+        }
+      </div>
+    </section>
+  }
+}

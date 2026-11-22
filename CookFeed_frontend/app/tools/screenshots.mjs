@@ -19,6 +19,20 @@ const SCREENS = {
 
 // Each shot: a file name, the page, who is signed in (an account id, or null for a guest), and anything to do first.
 const SHOTS = [
+  // The studio first, before the shot further down that places an order, so its figures are the seed's.
+  { name: 'studio', path: '/studio', user: 4 },
+  // Dan has a retired plan that cannot go back on sale; the reason is written beside the button.
+  { name: 'studio-retired-plan', path: '/studio', user: 5, only: 'desktop' },
+  {
+    name: 'studio-confirm',
+    path: '/studio',
+    user: 4,
+    only: 'desktop',
+    before: async (page) => {
+      await page.getByRole('button', { name: 'Retire: Three Weeknights in Japan' }).click();
+      await page.getByRole('dialog').waitFor();
+    },
+  },
   { name: 'discover-guest', path: '/', user: null },
   { name: 'discover-home-cook', path: '/', user: 1 },
   { name: 'sign-in', path: '/sign-in', user: null },
