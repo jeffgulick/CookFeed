@@ -2,19 +2,21 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { map } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { CookfeedApi } from '../../core/api';
 import { ReviewFormState } from '../../core/api-types';
 import { loadValue } from '../../core/load';
+import { Notices, problemText } from '../../core/notices';
 import { Session } from '../../core/session';
+import { Confirm } from '../../ui/confirm';
 import { longDate, plural, productNoun } from '../../ui/format';
 import { LoadStateMessage } from '../../ui/load-state';
 
 type Sort = 'newest' | 'highest' | 'lowest';
 
 /**
- * Why there is no review form, for every state but "can review" and "sign in" (which is a link). %noun% is "plan" or
- * "collection". The form itself, and deleting a review, arrive with the review endpoints.
+ * Why there is no review form, for every state but "can review" (the form) and "sign in" (a link). %noun% is "plan"
+ * or "collection".
  */
 const GATES: Partial<Record<ReviewFormState, string>> = {
   NoShop: 'Admin accounts do not write reviews. Hidden reviews show only to admins.',
@@ -40,6 +42,8 @@ export class ReviewsPage {
   private readonly api = inject(CookfeedApi);
   private readonly session = inject(Session);
   private readonly title = inject(Title);
+  private readonly notices = inject(Notices);
+  private readonly confirm = inject(Confirm);
 
   /** The address of this page, for "Sign in to write a review" to come back to. */
   protected readonly here = inject(Router).url;
@@ -51,7 +55,38 @@ export class ReviewsPage {
   /** Read again when the account changes: who is looking decides which reviews are sent and what the form may do. */
   protected readonly reviews = loadValue(
     () => this.api.productReviews(this.id()),
-    computed(() => `${this.id()} ${this.session.user()?.id ?? 'guest'}`),
+    computed(() => `${this.id()} ${this.session.user()?.id ?? 'guest'} ${this.written()}`),
+  );
+
+  /** Goes up after a review is posted or deleted, so the page is read again and shows the reviews as they are now. */
+  private readonly written = signal(0);
+
+  /* ---------- the review form ---------- */
+
+  /** A review needs at least this many characters, not counting spaces around it (the API checks the same). */
+  private static readonly MinBodyLength = 15;
+
+  protected readonly starChoices = [1, 2, 3, 4, 5];
+
+  /** The reviewer is the signed-in account, under its own name; nobody types one. */
+  protected readonly postingAs = computed(() => this.session.user()?.displayName ?? '');
+
+  /** 0 until a star is chosen. */
+  protected readonly rating = signal(0);
+  protected readonly recommends = signal(true);
+  protected readonly body = signal('');
+
+  /** True once Post review has been pressed: only then does the form say what is missing. */
+  private readonly submitted = signal(false);
+
+  /** True while the review is being posted, so a second press does nothing. */
+  protected readonly posting = signal(false);
+
+  protected readonly ratingError = computed(() => (this.submitted() && this.rating() === 0 ? 'Choose a rating.' : ''));
+  protected readonly bodyError = computed(() =>
+    this.submitted() && this.body().trim().length < ReviewsPage.MinBodyLength
+      ? `Write at least ${ReviewsPage.MinBodyLength} characters.`
+      : '',
   );
 
   /** 0 shows every rating; 1 to 5 shows only the reviews with that many stars. */
@@ -122,6 +157,50 @@ export class ReviewsPage {
         this.title.setTitle(`Reviews of ${data.title} | Cookfeed`);
       }
     });
+  }
+
+  /** Posts the review when it has a rating and enough words; otherwise says what is missing. */
+  protected async post(event: Event): Promise<void> {
+    event.preventDefault();
+    this.submitted.set(true);
+    const data = this.reviews.value();
+    if (data === null || this.ratingError() !== '' || this.bodyError() !== '') {
+      return;
+    }
+
+    this.posting.set(true);
+    try {
+      await firstValueFrom(
+        this.api.postReview(data.productId, { rating: this.rating(), recommends: this.recommends(), body: this.body().trim() }),
+      );
+      this.notices.say(`Thanks, ${this.postingAs()}. Your review is at the top of the list.`);
+      this.rating.set(0);
+      this.recommends.set(true);
+      this.body.set('');
+      this.submitted.set(false);
+      // Newest first with no filter, so the new review really is at the top.
+      this.clearFilters();
+      this.written.update((count) => count + 1);
+    } catch (error) {
+      this.notices.problem(problemText(error, 'Your review could not be posted. Please try again.'));
+    } finally {
+      this.posting.set(false);
+    }
+  }
+
+  /** Deletes the viewer's own review, after asking. They may then write another. */
+  protected async deleteMine(): Promise<void> {
+    const data = this.reviews.value();
+    if (data === null || !(await this.confirm.ask(`Delete your review of ${data.title}?`, 'Delete review'))) {
+      return;
+    }
+    try {
+      await firstValueFrom(this.api.deleteMyReview(data.productId));
+      this.notices.say('Your review is deleted.');
+      this.written.update((count) => count + 1);
+    } catch (error) {
+      this.notices.problem(problemText(error, 'Your review could not be deleted. Please try again.'));
+    }
   }
 
   /** Pressing a bar shows only that rating; pressing it again shows every rating. */

@@ -1128,6 +1128,47 @@ other environment the address is a 404. The browser tests call it before each ru
   (counter equals rows) returns nothing; the feed and recipe detail mark the recipe saved; each refusal's
   status, with nothing written.
 
+## 7. Writing a review — *built 2026-11-21; generated SQL not yet captured here*
+
+**Endpoints**
+
+| Route | Answer |
+|---|---|
+| `POST /api/products/{id}/reviews` with `{ rating, recommends, body }` | **201** with the reviews page as the caller now sees it |
+| `DELETE /api/products/{id}/reviews/mine` | **200** with the reviews page |
+
+**Code:** `ProductReviewsController` → `ReviewWriteService` → `ReviewRepository`. The service asks
+`ProductReviewsService` what the reviews page shows this caller (`ReviewAccess.FormState`) and allows the write
+exactly when the page would offer it, so the form a cook sees and the write the API accepts cannot disagree.
+
+**Rules** (DesignDocument.md §3.5)
+
+- The caller is required (the `X-User-Id` header until login exists); the name shown is the account's, never typed.
+- `rating` 1 to 5 and `body` 15 to 2,000 characters, counted without the spaces around it, or a **400**.
+- Only a cook with a Paid order for the product: anyone else, the product's creator and the admin get a **403**.
+- One review per account and product: a second is a **409**, whether the first still counts, was hidden, or
+  stopped counting after a refund.
+- An author may delete their review, and then write another, unless the admin hid it (**409**): deleting and
+  posting again would undo the moderation. With no review of one's own, delete is a **404**.
+
+**The statements**
+
+- *Post:* `INSERT INTO reviews (product_id, user_id, rating, recommends, body, created_at) VALUES (...) ON
+  CONFLICT (product_id, user_id) DO NOTHING`. The unique index `ix_reviews_product_id_user_id` is what allows one
+  review per account and product; `ON CONFLICT` turns a second one that slips past the service (two requests
+  arriving together) into "no row inserted", which the service answers as a 409. `ck_reviews_rating_range`
+  remains the last line of defense on the rating.
+- *Delete:* one `DELETE` through the same unique index.
+- Each is followed by the two statements of §1d, to answer with the page.
+
+**Tests:**
+
+- `tests/Cookfeed.Application.Tests/Reviews/ReviewWriteServiceTests.cs`: who may post, the trimmed body and
+  the time, each refusal, and delete in each state of the caller's review.
+- `tests/Cookfeed.IntegrationTests/Api/ReviewWriteEndpointTests.cs`, over HTTP: the 201 and the row written;
+  everyone then sees it and the rating; each refusal's status with nothing written; the 400s; delete, then
+  post again; a hidden review cannot be deleted.
+
 ## Write paths worth noting
 
 The writes that keep the denormalized columns correct are described where they are built: the cart and

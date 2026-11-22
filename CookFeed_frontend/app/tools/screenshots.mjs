@@ -61,6 +61,7 @@ const SHOTS = [
   },
   { name: 'orders', path: '/orders', user: 1 },
   { name: 'kitchen', path: '/kitchen', user: 1 },
+  { name: 'reviews-form', path: '/plans/4/reviews', user: 2 },
   { name: 'recipe-saved', path: '/recipes/16', user: 7, only: 'desktop' },
   { name: 'creator-guest', path: '/creators/kenji-kitchen', user: null },
   { name: 'plan-deciding', path: '/plans/3', user: null },

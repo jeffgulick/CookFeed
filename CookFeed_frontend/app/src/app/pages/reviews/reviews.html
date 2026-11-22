@@ -119,6 +119,10 @@
             <span class="meta text-sm sm:ml-auto">{{ item.date }}</span>
           </div>
           <p class="mt-2">{{ item.review.body }}</p>
+          <!-- A review Cookfeed hid stays: deleting it and posting again would undo the moderation. -->
+          @if (item.review.isMine && !item.review.isHidden) {
+            <button type="button" class="mt-2 font-semibold text-brand underline" (click)="deleteMine()">Delete my review</button>
+          }
         </article>
       } @empty {
         <p class="card meta p-4">{{ data.reviews.length === 0 ? 'No reviews yet.' : 'No reviews match these filters.' }}</p>
@@ -126,10 +130,76 @@
     </div>
   </section>
 
-  <!-- A viewer who may review gets the form here once the review endpoints exist; until then nothing is promised. -->
-  @if (data.formState !== 'CanReview') {
-    <section aria-labelledby="feedbackHeading" class="mt-10">
-      <h2 id="feedbackHeading" class="text-2xl font-bold md:text-3xl">Leave your feedback</h2>
+  <section aria-labelledby="feedbackHeading" class="mt-10">
+    <h2 id="feedbackHeading" class="text-2xl font-bold md:text-3xl">Leave your feedback</h2>
+    @if (data.formState === 'CanReview') {
+      <!-- novalidate: the form says what is missing in its own words, next to each field, when Post review is pressed. -->
+      <form data-review-form novalidate class="card mt-4 grid max-w-2xl gap-5 p-4 md:p-6" (submit)="post($event)">
+        <p class="meta">
+          Posting as <strong class="text-ink">{{ postingAs() }}</strong>
+        </p>
+
+        <fieldset>
+          <legend class="font-semibold">Rating</legend>
+          <div class="mt-2 flex flex-wrap gap-2">
+            @for (star of starChoices; track star) {
+              <!-- A native radio group: the arrow keys move between the stars, and a screen reader says "3 of 5". -->
+              <label
+                class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-line-strong px-3 has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-on-dark"
+              >
+                <input
+                  type="radio"
+                  name="rating"
+                  class="size-4 accent-brand"
+                  [value]="star"
+                  [checked]="rating() === star"
+                  [attr.aria-describedby]="ratingError() ? 'ratingError' : null"
+                  (change)="rating.set(star)"
+                />
+                {{ star }} {{ star === 1 ? 'star' : 'stars' }}
+              </label>
+            }
+          </div>
+          <p id="ratingError" role="alert" class="mt-1 text-sm font-semibold text-bad">{{ ratingError() }}</p>
+        </fieldset>
+
+        <fieldset>
+          <legend class="font-semibold">Would you recommend this {{ words.noun }} to another home cook?</legend>
+          <div class="mt-2 flex gap-5">
+            <label class="inline-flex min-h-11 cursor-pointer items-center gap-2">
+              <input type="radio" name="recommend" value="yes" class="size-5 accent-brand" [checked]="recommends()" (change)="recommends.set(true)" />
+              Yes
+            </label>
+            <label class="inline-flex min-h-11 cursor-pointer items-center gap-2">
+              <input type="radio" name="recommend" value="no" class="size-5 accent-brand" [checked]="!recommends()" (change)="recommends.set(false)" />
+              No
+            </label>
+          </div>
+        </fieldset>
+
+        <div>
+          <label for="reviewBody" class="font-semibold">Your review</label>
+          <textarea
+            id="reviewBody"
+            rows="4"
+            maxlength="2000"
+            placeholder="Did it save you a trip? Did the shopping list match what you actually needed?"
+            class="mt-2 block w-full rounded-lg border border-line-strong bg-card p-3 placeholder:text-muted"
+            aria-describedby="reviewHint reviewBodyError"
+            [attr.aria-invalid]="bodyError() !== ''"
+            [value]="body()"
+            (input)="body.set($any($event.target).value)"
+          ></textarea>
+          <p class="meta mt-1 flex justify-between gap-4 text-sm">
+            <span id="reviewHint">At least 15 characters</span>
+            <span data-review-count-typed>{{ body().length }} / 2000</span>
+          </p>
+          <p id="reviewBodyError" role="alert" class="mt-1 text-sm font-semibold text-bad">{{ bodyError() }}</p>
+        </div>
+
+        <button type="submit" class="btn btn-primary justify-self-start" [disabled]="posting()">Post review</button>
+      </form>
+    } @else {
       <p data-review-gate class="card mt-4 p-4 md:p-5">
         @if (data.formState === 'SignIn') {
           <a routerLink="/sign-in" [queryParams]="{ next: here }" class="font-semibold">Sign in to write a review</a>. Only cooks who
@@ -138,8 +208,8 @@
           {{ words.gate }}
         }
       </p>
-    </section>
-  }
+    }
+  </section>
 
   <p data-back class="mt-10">
     <a [routerLink]="['/plans', data.productId]" class="font-semibold"

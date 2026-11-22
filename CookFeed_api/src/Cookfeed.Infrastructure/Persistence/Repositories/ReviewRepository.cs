@@ -71,4 +71,24 @@ public class ReviewRepository(CookfeedDbContext db) : IReviewRepository
             product.ViewerOwnsProduct,
             reviews);
     }
+
+    public async Task<bool> AddAsync(int productId, int userId, int rating, bool recommends, string body,
+        DateTimeOffset createdAt, CancellationToken cancellationToken)
+    {
+        // The unique index on (product_id, user_id) allows one review per account and product. ON CONFLICT DO
+        // NOTHING turns a second one into "no row inserted" instead of an error, and the count says which
+        // happened. The values travel as parameters.
+        var inserted = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO reviews (product_id, user_id, rating, recommends, body, created_at)
+            VALUES ({productId}, {userId}, {(short)rating}, {recommends}, {body}, {createdAt})
+            ON CONFLICT (product_id, user_id) DO NOTHING
+            """, cancellationToken);
+        return inserted == 1;
+    }
+
+    public Task DeleteAsync(int productId, int userId, CancellationToken cancellationToken) =>
+        // One DELETE through the unique index; no row to delete is not an error.
+        db.Reviews
+            .Where(rv => rv.ProductId == productId && rv.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken);
 }
